@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/SentinelHub" >
+        <file>favicon.ico</file>
+    </qresource>
+</RCC>
