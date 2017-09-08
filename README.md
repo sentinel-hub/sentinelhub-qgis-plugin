@@ -5,7 +5,7 @@ Sentinel Hub QGIS Plugin enables users to harness power of Sentinel Hub services
 
 ## Install
 
-Download [latest release](https://github.com/sinergise/qgis_sentinel_hub/releases/latest), unzip it into QGIS Plugin directory (`%userprofile%/.qgis/python/plugins/` for Windows users, `~/.qgis2/python/plugins/`) and enable plugin under QGIS Installed Plugins.
+Download [latest release](https://github.com/sinergise/qgis_sentinel_hub/releases/latest), unzip it into QGIS Plugin directory (`%userprofile%/.qgis/python/plugins/` for Windows users, `~/.qgis2/python/plugins/` for Linux and OS X users) and enable plugin under QGIS Installed Plugins.
 
 ## Development
 
