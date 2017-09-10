@@ -386,33 +386,37 @@ class SentinelHub:
         """
         self.updateParameters()
 
-        features = self.iface.activeLayer().selectedFeatures()
-        if len(features) == 0:
-            self.iface.messageBar().pushMessage("Info", "No feature selected",
-                                                level=QgsMessageBar.INFO)
-        elif len(features) == 1:
-            bbox = features[0].geometry().boundingBox()
+        if self.iface.activeLayer().type() == 0:
+            features = self.iface.activeLayer().selectedFeatures()
+            if len(features) == 0:
+                self.iface.messageBar().pushMessage("Info", "No feature selected",
+                                                    level=QgsMessageBar.INFO)
+            elif len(features) == 1:
+                bbox = features[0].geometry().boundingBox()
 
-            current_crs = QgsCoordinateReferenceSystem(self.iface.activeLayer().crs().authid())
-            target_crs = QgsCoordinateReferenceSystem(self.parameters['crs'])
+                current_crs = QgsCoordinateReferenceSystem(self.iface.activeLayer().crs().authid())
+                target_crs = QgsCoordinateReferenceSystem(self.parameters['crs'])
 
-            print current_crs.authid(), target_crs.authid()
 
-            if current_crs != target_crs:
-                xform = QgsCoordinateTransform(current_crs, target_crs)
-                bbox = xform.transform(bbox)
+                if current_crs != target_crs:
+                    xform = QgsCoordinateTransform(current_crs, target_crs)
+                    bbox = xform.transform(bbox)
 
-            if target_crs.authid() == 'EPSG:4326':
-                return [",".join(map(str, [round(bbox.yMinimum(), 6), round(bbox.xMinimum(), 6),
-                                           round(bbox.yMaximum(), 6), round(bbox.xMaximum(), 6)])), self.getWidthHeight(
-                    bbox,
-                    target_crs)]
+                if target_crs.authid() == 'EPSG:4326':
+                    return [",".join(map(str, [round(bbox.yMinimum(), 6), round(bbox.xMinimum(), 6),
+                                               round(bbox.yMaximum(), 6), round(bbox.xMaximum(), 6)])), self.getWidthHeight(
+                        bbox,
+                        target_crs)]
+                else:
+                    return [",".join(map(str, [round(bbox.xMinimum(), 6), round(bbox.yMinimum(), 6),
+                                               round(bbox.xMaximum(), 6), round(bbox.yMaximum(), 6)])), '']
             else:
-                return [",".join(map(str, [round(bbox.xMinimum(), 6), round(bbox.yMinimum(), 6),
-                                           round(bbox.xMaximum(), 6), round(bbox.yMaximum(), 6)])), '']
+                self.iface.messageBar().pushMessage("Info", "More than one features selected. Please select only one!",
+                                                    level=QgsMessageBar.INFO)
         else:
-            self.iface.messageBar().pushMessage("Info", "More than one features selected. Please select only one!",
+            self.iface.messageBar().pushMessage("Info", "Select vector layer from Layers panel, then select feature on map!",
                                                 level=QgsMessageBar.INFO)
+        return False
 
 
     def updateCustomExtent(self):
@@ -421,32 +425,14 @@ class SentinelHub:
         :return: 
         """
 
-        self.customExtent, self.customExtentWidthHeight = self.getSelectedExtent()
-        print self.customExtent
-        bbox = self.customExtent.split(',')
-        self.dockwidget.xMin.setText(bbox[0])
-        self.dockwidget.yMin.setText(bbox[1])
-        self.dockwidget.xMax.setText(bbox[2])
-        self.dockwidget.yMax.setText(bbox[3])
+        if self.getSelectedExtent():
+            self.customExtent, self.customExtentWidthHeight = self.getSelectedExtent()
+            bbox = self.customExtent.split(',')
+            self.dockwidget.xMin.setText(bbox[0])
+            self.dockwidget.yMin.setText(bbox[1])
+            self.dockwidget.xMax.setText(bbox[2])
+            self.dockwidget.yMax.setText(bbox[3])
 
-    def extentUserChange(self, value):
-        """
-        Update custom extent values from user manual changes to values
-        :param value: 
-        :return: 
-        """
-        #TODO: Curently boxes readonly (Because of WGS)
-
-        bbox = self.customExtent.split(',')
-        if value == 'xMin':
-            self.customExtent = ",".join(map(str, [self.dockwidget.xMin.text(), bbox[1], bbox[2], bbox[3]]))
-        elif value == 'yMin':
-            self.customExtent = ",".join(map(str, [bbox[0], self.dockwidget.yMin.text(), bbox[2], bbox[3]]))
-        elif value == 'xMax':
-            self.customExtent = ",".join(map(str, [bbox[0], bbox[1], self.dockwidget.xMax.text(), bbox[3]]))
-        elif value == 'yMax':
-            self.customExtent = ",".join(map(str, [bbox[0], bbox[1], bbox[2], self.dockwidget.yMax.text()]))
-        print self.customExtent
 
     def getWidthHeight(self, bbox, bbox_crs):
 
@@ -484,9 +470,11 @@ class SentinelHub:
         :return: 
         """
 
-        self.parameters['layers'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
-        self.parameters['coverage'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
-        self.parameters['title'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Title']
+        if 'Name' in self.capabilities:
+            self.parameters['layers'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
+            self.parameters['coverage'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
+        if 'Title' in self.capabilities:
+            self.parameters['title'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Title']
         self.parameters['priority'] = self.dockwidget.priority.currentText()
         self.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
         self.parameters['time'] = str(self.getTime())
@@ -628,7 +616,6 @@ class SentinelHub:
 
             url = self.getURLrequestWCS(bbox) + widthHeight
             filename = self.getFileName(bbox)
-            print url
 
             self.downloadWCS(url, filename, destination)
         else:
@@ -777,10 +764,6 @@ class SentinelHub:
                 self.dockwidget.format.currentIndexChanged.connect(self.updateDownloadFormat)
                 self.dockwidget.radioCurrentExtent.clicked.connect(lambda: self.toggleExtent('current'))
                 self.dockwidget.radioCustomExtent.clicked.connect(lambda: self.toggleExtent('custom'))
-                self.dockwidget.xMax.editingFinished.connect(lambda: self.extentUserChange('xMax'))
-                self.dockwidget.yMax.editingFinished.connect(lambda: self.extentUserChange('yMax'))
-                self.dockwidget.xMin.editingFinished.connect(lambda: self.extentUserChange('xMin'))
-                self.dockwidget.yMin.editingFinished.connect(lambda: self.extentUserChange('yMin'))
 
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
