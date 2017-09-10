@@ -513,7 +513,7 @@ class SentinelHub:
         if self.dockwidget.time0.text() == '' and not self.dockwidget.exactDate.isChecked():
             return self.dockwidget.time1.text()
         elif self.dockwidget.exactDate.isChecked():
-            return self.dockwidget.time1.text() + '/' + self.dockwidget.time1.text() + '/P1D'
+            return self.dockwidget.time0.text() + '/' + self.dockwidget.time0.text() + '/P1D'
         else:
             return self.dockwidget.time0.text() + '/' + self.dockwidget.time1.text() + '/P1D'
 
@@ -677,9 +677,10 @@ class SentinelHub:
         """
 
         if self.dockwidget.exactDate.isChecked():
-            self.dockwidget.time0.hide()
+            self.dockwidget.time1.hide()
+            self.moveCalendar('time0')
         else:
-            self.dockwidget.time0.show()
+            self.dockwidget.time1.show()
 
     def changeInstanceId(self):
         """
