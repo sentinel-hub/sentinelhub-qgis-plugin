@@ -524,7 +524,6 @@ class SentinelHub:
             self.clearCell(QDate(int(d[0]), int(d[1]), int(d[2])))
 
         timeInput.setText(str(self.dockwidget.calendar.selectedDate().toPyDate()))
-        self.paintCell(self.dockwidget.calendar.selectedDate())
 
         # ------------------------------------------------------------------------
 
