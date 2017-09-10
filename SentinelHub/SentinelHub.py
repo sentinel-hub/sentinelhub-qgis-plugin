@@ -470,11 +470,9 @@ class SentinelHub:
         :return: 
         """
 
-        if 'Name' in self.capabilities:
-            self.parameters['layers'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
-            self.parameters['coverage'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
-        if 'Title' in self.capabilities:
-            self.parameters['title'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Title']
+        self.parameters['layers'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
+        self.parameters['coverage'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
+        self.parameters['title'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Title']
         self.parameters['priority'] = self.dockwidget.priority.currentText()
         self.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
         self.parameters['time'] = str(self.getTime())
@@ -518,36 +516,9 @@ class SentinelHub:
         elif self.activeTime == 'time1':
             timeInput = self.dockwidget.time1
 
-        oldTime = timeInput.text()
-        if oldTime:
-            d = oldTime.split('-')
-            self.clearCell(QDate(int(d[0]), int(d[1]), int(d[2])))
-
         timeInput.setText(str(self.dockwidget.calendar.selectedDate().toPyDate()))
 
         # ------------------------------------------------------------------------
-
-    def paintCell(self, date):
-        """
-        Paint selected cell in calendar
-        :param date: 
-        :return: 
-        """
-
-        style = QTextCharFormat()
-        style.setBackground(QColor(182, 191, 0))
-        self.dockwidget.calendar.setDateTextFormat(date, style)
-
-    def clearCell(self, date):
-        """
-        Unpaint selected cell in calendar
-        :param date: 
-        :return: 
-        """
-
-        style = QTextCharFormat()
-        style.setBackground(Qt.white)
-        self.dockwidget.calendar.setDateTextFormat(date, style)
 
     def clearAllCells(self):
         """
@@ -613,7 +584,7 @@ class SentinelHub:
                 bbox = self.customExtent
                 widthHeight = self.customExtentWidthHeight
 
-            url = self.getURLrequestWCS(bbox) + widthHeight
+            url = self.getURLrequestWCS(bbox)
             filename = self.getFileName(bbox)
 
             self.downloadWCS(url, filename, destination)
