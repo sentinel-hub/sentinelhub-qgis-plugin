@@ -687,32 +687,29 @@ class SentinelHub:
         :return: 
         """
 
-        if self.instanceId != self.dockwidget.instanceId.text():
-            try:
-                response = requests.get(Settings.urlBase + 'wms/' +
-                                        self.dockwidget.instanceId.text() +
-                                        '?service=wms&request=GetCapabilities&version=1.1.1')
-            except requests.ConnectionError as error:
-                self.iface.messageBar().pushMessage("Connection error: ",
-                                                    'Can not access serivce! Check your intrenet connection. - ' + error,
-                                                    level=QgsMessageBar.CRITICAL)
-                response = False
-            if response:
-                if response.status_code == 400:
-                    self.iface.messageBar().pushMessage("Error", "Instance ID not valid",
-                                                        level=QgsMessageBar.CRITICAL)
-                elif response.status_code == 200:
-                    self.instanceId = self.dockwidget.instanceId.text()
-                    self.capabilities = self.getCapabilities('wms')
-                    self.updateLayers()
-                    self.iface.messageBar().pushMessage("Success", "New Instance ID and available renderer set",
-                                                        level=QgsMessageBar.SUCCESS)
-                else:
-                    self.iface.messageBar().pushMessage("Error", "Instance ID not valid",
-                                                        level=QgsMessageBar.CRITICAL)
+        try:
+            response = requests.get(Settings.urlBase + 'wms/' +
+                                    self.dockwidget.instanceId.text() +
+                                    '?service=wms&request=GetCapabilities&version=1.1.1')
+        except requests.ConnectionError as error:
+            response = False
+            self.iface.messageBar().pushMessage("Connection error: ",
+                                                'Can not access serivce! Check your intrenet connection. - ' + error,
+                                                level=QgsMessageBar.CRITICAL)
+
+        if response.status_code == 400:
+            self.iface.messageBar().pushMessage("Error", "Instance ID not valid",
+                                                level=QgsMessageBar.CRITICAL)
+        elif response.status_code == 200:
+            self.instanceId = self.dockwidget.instanceId.text()
+            self.capabilities = self.getCapabilities('wms')
+            self.updateLayers()
+            self.iface.messageBar().pushMessage("Success", "New Instance ID and available renderer set",
+                                                level=QgsMessageBar.SUCCESS)
         else:
-            self.iface.messageBar().pushMessage("Info", "Instance ID already set",
-                                                level=QgsMessageBar.INFO)
+            self.iface.messageBar().pushMessage("Error", "Instance ID not valid",
+                                                level=QgsMessageBar.CRITICAL)
+
 
     def updateMonth(self):
         """
