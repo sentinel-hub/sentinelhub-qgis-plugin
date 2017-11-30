@@ -10,3 +10,7 @@ Download [latest release](https://github.com/sinergise/qgis_sentinel_hub/release
 ## Development
 
 Requires properly configured QGIS Python and [Plugin Build Tool](http://g-sherman.github.io/plugin_build_tool/) for compiling and deployment.
+
+## Usage
+
+For quick tutorial check this [article](https://medium.com/sentinel-hub/control-sentinel-hub-from-within-qgis-2a83eb7f13db).
