@@ -48,7 +48,7 @@ PY_FILES = \
 
 UI_FILES = SentinelHub_dockwidget_base.ui
 
-EXTRAS = metadata.txt icon.png
+EXTRAS = metadata.txt favicon.ico Settings.py
 
 EXTRA_DIRS =
 
@@ -63,7 +63,7 @@ PEP8EXCLUDE=pydev,resources.py,conf.py,third_party,ui
 
 HELP = help/build/html
 
-PLUGIN_UPLOAD = $(c)/plugin_upload.py
+PLUGIN_UPLOAD = python2 plugin_upload.py
 
 RESOURCE_SRC=$(shell grep '^ *<file' resources.qrc | sed 's@</file>@@g;s/.*>//g' | tr '\n' ' ')
 
