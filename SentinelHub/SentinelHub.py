@@ -209,8 +209,6 @@ class SentinelHub:
     def getURIrequestWMS(self):
         """ Generate URI for WMS request from parameters """
 
-        self.updateParameters()
-
         uri = ''
         requestParameters = dict(Settings.parametersWMS.items() + Settings.parameters.items())
         for parameter, value in requestParameters.iteritems():
@@ -233,7 +231,9 @@ class SentinelHub:
         requestParameters = dict(Settings.parametersWCS.items() + Settings.parameters.items())
 
         for parameter, value in requestParameters.iteritems():
-            url = url + parameter + '=' + value + '&'
+            if parameter in ('resx', 'resy'):
+                value = value.strip('m') + 'm'
+            url += parameter + '=' + value + '&'
         return url + 'bbox=' + bbox
 
     def getURLrequestWFS(self, timeRange):
@@ -305,9 +305,8 @@ class SentinelHub:
         :param destination: path to destination
         :return:
         """
+        # self.iface.messageBar().pushMessage("Downloading ", filename, level=QgsMessageBar.INFO)
 
-        self.iface.messageBar().pushMessage("Downloading ", filename,
-                                            level=QgsMessageBar.INFO)
         with open(destination + '/' + filename, "wb") as dlfile:
             try:
                 response = requests.get(url, stream=True)

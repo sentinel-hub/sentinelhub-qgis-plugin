@@ -55,8 +55,8 @@ parametersWCS = {
     'priority': 'mostRecent',
     'showLogo': 'false',
     'maxcc': '20',
-    'resx': '10m',
-    'resy': '10m'
+    'resx': '10',
+    'resy': '10'
 }
 
 # enum values of parameters
