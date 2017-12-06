@@ -35,6 +35,8 @@ import datetime
 import math
 import qgis
 import resources
+import warnings
+import urllib
 
 import Settings
 
@@ -208,15 +210,17 @@ class SentinelHub:
         """ Generate URI for WMS request from parameters """
 
         self.updateParameters()
-        url = Settings.urlBase + 'wms/' + self.instanceId
+
         uri = ''
         requestParameters = dict(Settings.parametersWMS.items() + Settings.parameters.items())
-
         for parameter, value in requestParameters.iteritems():
             uri = uri + parameter + '=' + value + '&'
 
-        # TODO: Hack - QGIS removes time parameter, remove when no need
-        return uri + 'url=' + url + '?TIME=' + self.getTime() + '&priority=' + Settings.parameters['priority']
+        # Every parameter that QGIS layer doesn't use by default must be in url
+        # And url has to be encoded
+        url = Settings.urlBase + 'wms/' + self.instanceId + '?TIME=' + self.getTime() + '&priority=' \
+              + Settings.parameters['priority'] + '&maxcc=' + Settings.parameters['maxcc']
+        return uri + 'url=' + urllib.quote_plus(url)
 
     def getURLrequestWCS(self, bbox):
         """ Generate URL for WCS request from parameters
@@ -397,7 +401,6 @@ class SentinelHub:
                 current_crs = QgsCoordinateReferenceSystem(self.iface.activeLayer().crs().authid())
                 target_crs = QgsCoordinateReferenceSystem(self.parameters['crs'])
 
-
                 if current_crs != target_crs:
                     xform = QgsCoordinateTransform(current_crs, target_crs)
                     bbox = xform.transform(bbox)
@@ -418,7 +421,6 @@ class SentinelHub:
                                                 level=QgsMessageBar.INFO)
         return False
 
-
     def updateCustomExtent(self):
         """
         From Custom extent get values, save them and show them in UI
@@ -433,7 +435,6 @@ class SentinelHub:
             self.dockwidget.xMax.setText(bbox[2])
             self.dockwidget.yMax.setText(bbox[3])
 
-
     def getWidthHeight(self, bbox, bbox_crs):
 
         utm_crs = QgsCoordinateReferenceSystem(self.longitudeToUTMzone(
@@ -441,8 +442,8 @@ class SentinelHub:
             (bbox.yMinimum() + bbox.yMaximum()) / 2))
         xform = QgsCoordinateTransform(bbox_crs, utm_crs)
         bbox = xform.transform(bbox)
-        width = int(math.fabs((bbox.xMaximum() - bbox.xMinimum()) / int(Settings.parametersWCS['resx'])))
-        height = int(math.fabs((bbox.yMinimum() - bbox.yMaximum()) / int(Settings.parametersWCS['resy'])))
+        width = int(math.fabs((bbox.xMaximum() - bbox.xMinimum()) / int(Settings.parametersWCS['resx'].strip('m'))))
+        height = int(math.fabs((bbox.yMinimum() - bbox.yMaximum()) / int(Settings.parametersWCS['resy'].strip('m'))))
         return '&width={0}&height={1}'.format(width, height)
 
     def longitudeToUTMzone(self, longitude, latitude):
@@ -450,19 +451,17 @@ class SentinelHub:
         hemisphere = 6 if latitude > 0 else 7
         return 'EPSG:32{0}{1:02d}'.format(hemisphere, zone)
 
-    def updateTime(self):
+    def updateQgisLayer(self):
         """
-        Update provided raster layer with new parameters
+        Updating layer in pyqgis somehow doesn't work therefore this method creates a new layer and deletes the old one
         :param rlayer: rlayer that should be updated
         :return:
         """
-
-        self.updateParameters()
         layers = self.iface.legendInterface().layers()
         rlayer = layers[self.dockwidget.sentinelWMSlayers.currentIndex()]
-        rlayer.dataProvider().setDataSourceUri(self.getURIrequestWMS())
-        rlayer.dataProvider().reloadData()
-        rlayer.triggerRepaint()
+        self.addWms()
+        QgsMapLayerRegistry.instance().removeMapLayer(rlayer)
+        self.updateCurrentWMSLayers()
 
     def updateParameters(self):
         """
@@ -476,7 +475,6 @@ class SentinelHub:
         self.parameters['priority'] = self.dockwidget.priority.currentText()
         self.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
         self.parameters['time'] = str(self.getTime())
-        self.parameters['srs'] = self.dockwidget.epsg.currentText().replace(' ', '')
         self.parameters['crs'] = self.dockwidget.epsg.currentText().replace(' ', '')
 
         Settings.parametersWCS['resx'] = self.dockwidget.inputResX.text()
@@ -715,7 +713,7 @@ class SentinelHub:
 
                 # Bind actions to buttons
                 self.dockwidget.buttonAddWms.clicked.connect(self.addWms)
-                self.dockwidget.buttonUpdateWms.clicked.connect(self.updateTime)
+                self.dockwidget.buttonUpdateWms.clicked.connect(self.updateQgisLayer)
                 self.dockwidget.buttonDownload.clicked.connect(self.download)
                 self.dockwidget.refreshExtent.clicked.connect(self.updateCustomExtent)
                 self.dockwidget.selectDestination.clicked.connect(self.selectDestination)
