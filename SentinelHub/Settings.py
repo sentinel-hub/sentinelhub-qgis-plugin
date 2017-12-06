@@ -6,8 +6,8 @@ urlBase = 'http://services.sentinel-hub.com/ogc/'
 instanceId = ''
 
 epsg = [
-    'EPSG:3857',
-    'EPSG:4326'
+    'EPSG: 3857',
+    'EPSG: 4326'
 ]
 
 # Request parameters

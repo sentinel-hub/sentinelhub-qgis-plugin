@@ -158,7 +158,7 @@ class SentinelHub:
     def updateLayers(self):
         """
         Update list of Layers avalivale at Sentinel Hub Instance
-        :return: 
+        :return:
         """
 
         self.dockwidget.layers.clear()
@@ -171,7 +171,7 @@ class SentinelHub:
     def updateCurrentWMSLayers(self):
         """
         Updates List of Qgis layers
-        :return: 
+        :return:
         """
 
         layers = self.iface.legendInterface().layers()
@@ -219,8 +219,8 @@ class SentinelHub:
         return uri + 'url=' + url + '?TIME=' + self.getTime() + '&priority=' + Settings.parameters['priority']
 
     def getURLrequestWCS(self, bbox):
-        """ Generate URL for WCS request from parameters 
-        
+        """ Generate URL for WCS request from parameters
+
             :param bbox: Bounding box [xmin, ymin, xmax, ymax]
             :type bbox: str
         """
@@ -244,7 +244,7 @@ class SentinelHub:
         # ---------------------------------------------------------------------------
 
     def getCapabilities(self, service):
-        """ Get capabilities of desired service 
+        """ Get capabilities of desired service
 
         :param service: Service (wms, wfs, wdc)
         :type service: object
@@ -270,9 +270,9 @@ class SentinelHub:
         return props
 
     def getCloudCover(self, timeRange):
-        """ Get cloud cover for current extent.  
-        
-        :return: 
+        """ Get cloud cover for current extent.
+
+        :return:
         """
 
         self.currentExtent, width = self.getExtent()
@@ -295,11 +295,11 @@ class SentinelHub:
     def downloadWCS(self, url, filename, destination):
         """
         Download image from provided URL WCS request
-        
+
         :param url: WCS url request with specified bounding box
         :param filename: filename of image
         :param destination: path to destination
-        :return: 
+        :return:
         """
 
         self.iface.messageBar().pushMessage("Downloading ", filename,
@@ -340,8 +340,8 @@ class SentinelHub:
 
     def addWms(self):
         """
-        Add WMS raster layer to canvas, 
-        :return: 
+        Add WMS raster layer to canvas,
+        :return:
         """
 
         self.updateParameters()
@@ -359,7 +359,7 @@ class SentinelHub:
         """
         Get Current extent if not same as target transorfm it to target, transform it to WebMercator
         TODO: If user defined CRS it might fail?!
-        :return: 
+        :return:
         """
 
         bbox = self.iface.mapCanvas().extent()
@@ -382,7 +382,7 @@ class SentinelHub:
     def getSelectedExtent(self):
         """
         Get extent of selected feature
-        :return: 
+        :return:
         """
         self.updateParameters()
 
@@ -422,7 +422,7 @@ class SentinelHub:
     def updateCustomExtent(self):
         """
         From Custom extent get values, save them and show them in UI
-        :return: 
+        :return:
         """
 
         if self.getSelectedExtent():
@@ -454,7 +454,7 @@ class SentinelHub:
         """
         Update provided raster layer with new parameters
         :param rlayer: rlayer that should be updated
-        :return: 
+        :return:
         """
 
         self.updateParameters()
@@ -467,7 +467,7 @@ class SentinelHub:
     def updateParameters(self):
         """
         Update parameters from GUI
-        :return: 
+        :return:
         """
 
         self.parameters['layers'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
@@ -476,8 +476,8 @@ class SentinelHub:
         self.parameters['priority'] = self.dockwidget.priority.currentText()
         self.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
         self.parameters['time'] = str(self.getTime())
-        self.parameters['srs'] = self.dockwidget.epsg.currentText()
-        self.parameters['crs'] = self.dockwidget.epsg.currentText()
+        self.parameters['srs'] = self.dockwidget.epsg.currentText().replace(' ', '')
+        self.parameters['crs'] = self.dockwidget.epsg.currentText().replace(' ', '')
 
         Settings.parametersWCS['resx'] = self.dockwidget.inputResX.text()
         Settings.parametersWCS['resy'] = self.dockwidget.inputResY.text()
@@ -485,7 +485,7 @@ class SentinelHub:
     def updateMaxccLabel(self):
         """
         Update Max Cloud Coverage Label when slider value change
-        :return: 
+        :return:
         """
 
         self.dockwidget.maxccLabel.setText('Cloud coverage ' + str(self.dockwidget.maxcc.value()) + ' %')
@@ -493,7 +493,7 @@ class SentinelHub:
     def getTime(self):
         """
         Format time parameter according to settings
-        :return: 
+        :return:
         """
 
         if self.dockwidget.time0.text() == '' and not self.dockwidget.exactDate.isChecked():
@@ -508,7 +508,7 @@ class SentinelHub:
         Add / update time parameter from calendar regrading which time was chosen and paint calander
         time0 - starting time
         time1 - ending time
-        :return: 
+        :return:
         """
 
         if self.activeTime == 'time0':
@@ -523,7 +523,7 @@ class SentinelHub:
     def clearAllCells(self):
         """
         Clear all cells
-        :return: 
+        :return:
         """
 
         style = QTextCharFormat()
@@ -533,7 +533,7 @@ class SentinelHub:
     def updatecalendarFromCloudCover(self):
         """
         Update painted cells regrading Max Cloud Coverage
-        :return: 
+        :return:
         """
 
         self.clearAllCells()
@@ -546,8 +546,8 @@ class SentinelHub:
 
     def moveCalendar(self, active):
         """
-        :param active: 
-        :return: 
+        :param active:
+        :return:
         """
         if active == 'time0':
             self.dockwidget.calendarSpacer.hide()
@@ -558,7 +558,7 @@ class SentinelHub:
     def selectDestination(self):
         """
         Opens dialog to select destination folder
-        :return: 
+        :return:
         """
 
         folder = QFileDialog.getExistingDirectory(self.dockwidget, "Select folder")
@@ -567,7 +567,7 @@ class SentinelHub:
     def download(self):
         """
         Prepare download request and then download images
-        :return: 
+        :return:
         """
 
         self.updateParameters()
@@ -595,8 +595,8 @@ class SentinelHub:
     def getFileName(self, bbox):
         """
         Prepare unique filename with some metadata encoded (YYYYMMDD_sentil2_LAYER_xmin_y_min.FORMAT)
-        :param bbox: 
-        :return: 
+        :param bbox:
+        :return:
         """
 
         bboxArray = []
@@ -613,7 +613,7 @@ class SentinelHub:
     def updateMaxcc(self):
         """
         Update max cloud cover
-        :return: 
+        :return:
         """
 
         self.updateParameters()
@@ -622,7 +622,7 @@ class SentinelHub:
     def updateDownloadFormat(self):
         """
         Update image format
-        :return: 
+        :return:
         """
 
         Settings.parametersWCS['format'] = self.dockwidget.format.currentText()
@@ -630,7 +630,7 @@ class SentinelHub:
     def changeExactDate(self):
         """
         Change if using exact date or not
-        :return: 
+        :return:
         """
 
         if self.dockwidget.exactDate.isChecked():
@@ -642,7 +642,7 @@ class SentinelHub:
     def changeInstanceId(self):
         """
         Change Instance ID, and validate that is valid
-        :return: 
+        :return:
         """
 
         try:
@@ -672,7 +672,7 @@ class SentinelHub:
     def updateMonth(self):
         """
         On Widget Month update, get first and last dates to get Cloud Cover
-        :return: 
+        :return:
         """
 
         year = self.dockwidget.calendar.yearShown()
@@ -686,8 +686,8 @@ class SentinelHub:
     def toggleExtent(self, setting):
         """
         Toggle Current / Custom extent
-        :param setting: 
-        :return: 
+        :param setting:
+        :return:
         """
 
         if setting == 'current':
@@ -723,7 +723,7 @@ class SentinelHub:
                 # Render input fields changes and events
                 self.dockwidget.time0.selectionChanged.connect(lambda: self.moveCalendar('time0'))
                 self.dockwidget.time1.selectionChanged.connect(lambda: self.moveCalendar('time1'))
-                self.dockwidget.calendar.activated.connect(self.addTime)
+                self.dockwidget.calendar.clicked.connect(self.addTime)
                 self.dockwidget.exactDate.stateChanged.connect(self.changeExactDate)
                 self.dockwidget.calendar.currentPageChanged.connect(self.updateMonth)
                 self.dockwidget.maxcc.valueChanged.connect(self.updateMaxccLabel)
