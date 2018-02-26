@@ -7,8 +7,8 @@
                               -------------------
         begin                : 2017-07-07
         git sha              : $Format:%H$
-        copyright            : (C) 2017 by TODO
-        email                : TODO
+        copyright            : (C) 2017 by Sinergise
+        email                : info@sinergise.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -204,7 +204,7 @@ class SentinelHub:
             self.iface.removeToolBarIcon(action)
         del self.toolbar
 
-        # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def getURIrequestWMS(self):
         """ Generate URI for WMS request from parameters """
@@ -245,33 +245,30 @@ class SentinelHub:
 
         return url + 'bbox=' + self.getExtent()[0] + '&time=' + timeRange
 
-        # ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
 
-    def getCapabilities(self, service):
+    def getCapabilities(self, service, instance_id):
         """ Get capabilities of desired service
 
-        :param service: Service (wms, wfs, wdc)
-        :type service: object
+        :param service: Service (wms, wfs, wcs)
+        :type service: str
+        :param instance_id: Sentinel Hub instance id
+        :type instance_id: str
+        :return: list of properties and flag if capabilities were obtained
+        :rtype: list(str), bool
         """
+        if not instance_id:
+            return [], False
 
+        response = self.download_from_url('{}{}/{}?service={}&request=GetCapabilities'
+                                          '&version=1.1.1'.format(Settings.urlBase, service, instance_id, service))
         props = []
-
-        try:
-            response = requests.get(Settings.urlBase + service + '/' +
-                                    self.instanceId +
-                                    '?service=' + service + '&request=GetCapabilities&version=1.1.1')
-        except requests.ConnectionError as error:
-            self.iface.messageBar().pushMessage("Connection error: ",
-                                                'Can not access serivce! Check your intrenet connection.',
-                                                level=QgsMessageBar.CRITICAL)
-            response = False
-
         if response:
             root = ElementTree.fromstring(response.content)
             for layer in root.findall('./Capability/Layer/Layer'):
                 props.append({'Title': layer.find('Title').text,
                               'Name': layer.find('Name').text})
-        return props
+        return props, response is not None
 
     def getCloudCover(self, timeRange):
         """ Get cloud cover for current extent.
@@ -281,14 +278,12 @@ class SentinelHub:
 
         self.currentExtent, width = self.getExtent()
         self.cloudCover = {}
-        url = self.getURLrequestWFS(timeRange)
-        try:
-            response = requests.get(url)
-        except requests.ConnectionError as error:
-            self.iface.messageBar().pushMessage("Connection error: ",
-                                                'Can not access serivce! Check your intrenet connection. - ' + error,
-                                                level=QgsMessageBar.CRITICAL)
-            response = False
+
+        if not self.instanceId:
+            return
+
+        response = self.download_from_url(self.getURLrequestWFS(timeRange))
+
         if response:
             content = json.loads(response.content)
             for features in content['features']:
@@ -307,14 +302,8 @@ class SentinelHub:
         """
         # self.iface.messageBar().pushMessage("Downloading ", filename, level=QgsMessageBar.INFO)
 
-        with open(destination + '/' + filename, "wb") as dlfile:
-            try:
-                response = requests.get(url, stream=True)
-            except requests.ConnectionError as error:
-                self.iface.messageBar().pushMessage("Connection error: ",
-                                                    'Can not access serivce! Check your intrenet connection. - ' + error,
-                                                    level=QgsMessageBar.CRITICAL)
-                response = False
+        with open('{}/{}'.format(destination, filename), "wb") as dlfile:
+            response = self.download_from_url(url, stream=True)
 
             if response:
                 total_length = response.headers.get('content-length')
@@ -339,7 +328,44 @@ class SentinelHub:
             self.iface.messageBar().pushMessage("Error ", 'Download failed: ' + filename,
                                                 level=QgsMessageBar.CRITICAL)
 
-            # ----------------------------------------------------------------------------
+
+    def download_from_url(self, url, stream=False):
+        """ Downloads data from url and handles possible errors
+
+        :param url: download url
+        :type url: str
+        :param stream: True if download should be streamed and False otherwise
+        :type stream: bool
+        :return: download response or None if download failed
+        :rtype: requests.response or None
+        """
+        try:
+            response = requests.get(url, stream=stream)
+            response.raise_for_status()
+        except requests.RequestException as exception:
+            message = '{}: '.format(exception.__class__.__name__)
+
+            if isinstance(exception, (requests.ConnectionError, requests.ConnectTimeout, requests.ReadTimeout,
+                                      requests.Timeout)):
+                message += 'Cannot access service, check your internet connection.'
+            elif isinstance(exception, requests.HTTPError):
+                try:
+                    server_message = ''
+                    for elem in ElementTree.fromstring(exception.response.content):
+                        if 'ServiceException' in elem.tag:
+                            server_message += elem.text.strip('\n\t ')
+                except ElementTree.ParseError:
+                    server_message = exception.response.text.strip('\n\t ')
+                server_message = server_message.encode('ascii', errors='ignore')
+                message += 'server response: "{}"'.format(server_message)
+            else:
+                message += str(exception)
+
+            self.iface.messageBar().pushMessage('Error', message, level=QgsMessageBar.CRITICAL)
+            response = None
+
+        return response
+    # ----------------------------------------------------------------------------
 
     def addWms(self):
         """
@@ -515,7 +541,7 @@ class SentinelHub:
 
         timeInput.setText(str(self.dockwidget.calendar.selectedDate().toPyDate()))
 
-        # ------------------------------------------------------------------------
+    # ------------------------------------------------------------------------
 
     def clearAllCells(self):
         """
@@ -561,11 +587,14 @@ class SentinelHub:
         folder = QFileDialog.getExistingDirectory(self.dockwidget, "Select folder")
         self.dockwidget.destination.setText(folder)
 
-    def download(self):
+    def download_caption(self):
         """
         Prepare download request and then download images
         :return:
         """
+        if not self.instanceId:
+            self.iface.messageBar().pushMessage("Error", "Instance ID is not set.", level=QgsMessageBar.CRITICAL)
+            return
 
         self.updateParameters()
         if self.dockwidget.destination.text():
@@ -641,30 +670,22 @@ class SentinelHub:
         Change Instance ID, and validate that is valid
         :return:
         """
+        new_instance_id = self.dockwidget.instanceId.text()
+        if new_instance_id == self.instanceId:
+            return
 
-        try:
-            response = requests.get(Settings.urlBase + 'wms/' +
-                                    self.dockwidget.instanceId.text() +
-                                    '?service=wms&request=GetCapabilities&version=1.1.1')
-        except requests.ConnectionError as error:
-            response = False
-            self.iface.messageBar().pushMessage("Connection error: ",
-                                                'Can not access serivce! Check your intrenet connection. - ' + error,
-                                                level=QgsMessageBar.CRITICAL)
+        capabilities, is_valid = self.getCapabilities('wms', new_instance_id)
 
-        if response.status_code == 400:
-            self.iface.messageBar().pushMessage("Error", "Instance ID not valid",
-                                                level=QgsMessageBar.CRITICAL)
-        elif response.status_code == 200:
-            self.instanceId = self.dockwidget.instanceId.text()
-            self.capabilities = self.getCapabilities('wms')
+        if is_valid:
+            self.instanceId = new_instance_id
+            self.capabilities = capabilities
             self.updateLayers()
             self.iface.messageBar().pushMessage("Success", "New Instance ID and available renderer set",
                                                 level=QgsMessageBar.SUCCESS)
         else:
-            self.iface.messageBar().pushMessage("Error", "Instance ID not valid",
-                                                level=QgsMessageBar.CRITICAL)
-
+            self.dockwidget.instanceId.setText(self.instanceId)
+            # self.iface.messageBar().pushMessage("Error", "Instance ID {} is not valid".format(new_instance_id),
+            #                                     level=QgsMessageBar.CRITICAL)
 
     def updateMonth(self):
         """
@@ -703,7 +724,7 @@ class SentinelHub:
             if self.dockwidget == None:
                 # Initial function calls
                 self.dockwidget = SentinelHubDockWidget()
-                self.capabilities = self.getCapabilities('wms')
+                self.capabilities, _ = self.getCapabilities('wms', self.instanceId)
                 self.initGuiSettings()
                 self.updateMonth()
                 self.toggleExtent('current')
@@ -713,7 +734,7 @@ class SentinelHub:
                 # Bind actions to buttons
                 self.dockwidget.buttonAddWms.clicked.connect(self.addWms)
                 self.dockwidget.buttonUpdateWms.clicked.connect(self.updateQgisLayer)
-                self.dockwidget.buttonDownload.clicked.connect(self.download)
+                self.dockwidget.buttonDownload.clicked.connect(self.download_caption)
                 self.dockwidget.refreshExtent.clicked.connect(self.updateCustomExtent)
                 self.dockwidget.selectDestination.clicked.connect(self.selectDestination)
 
