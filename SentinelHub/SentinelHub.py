@@ -24,7 +24,7 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from qgis.gui import *
 from qgis.core import *
-from SentinelHub_dockwidget import SentinelHubDockWidget
+from .SentinelHub_dockwidget import SentinelHubDockWidget
 from xml.etree import ElementTree
 import os.path
 import requests
@@ -38,7 +38,7 @@ import resources
 import warnings
 import urllib
 
-import Settings
+from . import Settings
 
 
 class SentinelHub:
@@ -142,7 +142,6 @@ class SentinelHub:
         Layers - Renderers
         Priority
         """
-
         self.updateLayers()
 
         self.dockwidget.instanceId.setText(Settings.instance_id)
