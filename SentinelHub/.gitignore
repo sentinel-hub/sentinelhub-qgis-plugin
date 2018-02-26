@@ -1,0 +1,5 @@
+# Files created during plugin deploy
+resources.py
+
+# Zip files (created for upload to QGIS repo)
+*.zip
