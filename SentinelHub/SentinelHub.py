@@ -68,7 +68,7 @@ class SentinelHub:
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&SentinelHub')
+        self.menu = self.translate(u'&SentinelHub')
         self.toolbar = self.iface.addToolBar(u'SentinelHub')
         self.toolbar.setObjectName(u'SentinelHub')
         self.pluginIsActive = False
@@ -76,15 +76,16 @@ class SentinelHub:
 
         # Set value
         self.parameters = Settings.parameters
-        self.instanceId = Settings.instanceId
+        self.instance_id = Settings.instance_id
         self.capabilities = []
-        self.activeTime = 'time0'
-        self.cloudCover = {}
-        self.currentExtent = {}
-        self.customExtent = ''
-        self.downloadCurrentExtent = True
+        self.active_time = 'time0'
+        self.cloud_cover = {}
+        self.current_extent = {}
+        self.custom_extent = ''
+        self.download_current_extent = True
 
-    def tr(self, message):
+    @staticmethod
+    def translate(message):
         """Get the translation for a string using Qt translation API.
         """
         return QCoreApplication.translate('SentinelHub', message)
@@ -132,7 +133,7 @@ class SentinelHub:
         icon_path = ':/plugins/SentinelHub/favicon.ico'
         self.add_action(
             icon_path,
-            text=self.tr(u'SentinelHub'),
+            text=self.translate(u'SentinelHub'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -144,9 +145,9 @@ class SentinelHub:
 
         self.updateLayers()
 
-        self.dockwidget.instanceId.setText(Settings.instanceId)
-        self.dockwidget.inputResX.setText(Settings.parametersWCS['resx'])
-        self.dockwidget.inputResY.setText(Settings.parametersWCS['resy'])
+        self.dockwidget.instanceId.setText(Settings.instance_id)
+        self.dockwidget.inputResX.setText(Settings.parameters_wcs['resx'])
+        self.dockwidget.inputResY.setText(Settings.parameters_wcs['resy'])
 
         self.dockwidget.priority.clear()
         self.dockwidget.priority.addItems(Settings.priority_list)
@@ -199,7 +200,7 @@ class SentinelHub:
 
         for action in self.actions:
             self.iface.removePluginWebMenu(
-                self.tr(u'&SentinelHub'),
+                self.translate(u'&SentinelHub'),
                 action)
             self.iface.removeToolBarIcon(action)
         del self.toolbar
@@ -210,14 +211,14 @@ class SentinelHub:
         """ Generate URI for WMS request from parameters """
 
         uri = ''
-        requestParameters = dict(Settings.parametersWMS.items() + Settings.parameters.items())
-        for parameter, value in requestParameters.iteritems():
+        request_parameters = dict(Settings.parameters_wms.items() + Settings.parameters.items())
+        for parameter, value in request_parameters.iteritems():
             uri = uri + parameter + '=' + value + '&'
 
         # Every parameter that QGIS layer doesn't use by default must be in url
         # And url has to be encoded
-        url = Settings.urlBase + 'wms/' + self.instanceId + '?TIME=' + self.getTime() + '&priority=' \
-              + Settings.parameters['priority'] + '&maxcc=' + Settings.parameters['maxcc']
+        url = Settings.url_base + 'wms/' + self.instance_id + '?TIME=' + self.getTime() + '&priority=' \
+            + Settings.parameters['priority'] + '&maxcc=' + Settings.parameters['maxcc']
         return uri + 'url=' + urllib.quote_plus(url)
 
     def getURLrequestWCS(self, bbox):
@@ -227,23 +228,23 @@ class SentinelHub:
             :type bbox: str
         """
 
-        url = Settings.urlBase + 'wcs/' + self.instanceId + '?'
-        requestParameters = dict(Settings.parametersWCS.items() + Settings.parameters.items())
+        url = Settings.url_base + 'wcs/' + self.instance_id + '?'
+        request_parameters = dict(Settings.parameters_wcs.items() + Settings.parameters.items())
 
-        for parameter, value in requestParameters.iteritems():
+        for parameter, value in request_parameters.iteritems():
             if parameter in ('resx', 'resy'):
                 value = value.strip('m') + 'm'
             url += parameter + '=' + value + '&'
         return url + 'bbox=' + bbox
 
-    def getURLrequestWFS(self, timeRange):
+    def getURLrequestWFS(self, time_range):
         """ Generate URL for WFS request from parameters """
 
-        url = Settings.urlBase + 'wfs/' + self.instanceId + '?'
-        for parameter, value in Settings.parametersWFS.iteritems():
+        url = Settings.url_base + 'wfs/' + self.instance_id + '?'
+        for parameter, value in Settings.parameters_wfs.iteritems():
             url = url + parameter + '=' + value + '&'
 
-        return url + 'bbox=' + self.getExtent()[0] + '&time=' + timeRange
+        return url + 'bbox=' + self.getExtent()[0] + '&time=' + time_range
 
     # ---------------------------------------------------------------------------
 
@@ -261,7 +262,7 @@ class SentinelHub:
             return [], False
 
         response = self.download_from_url('{}{}/{}?service={}&request=GetCapabilities'
-                                          '&version=1.1.1'.format(Settings.urlBase, service, instance_id, service))
+                                          '&version=1.1.1'.format(Settings.url_base, service, instance_id, service))
         props = []
         if response:
             root = ElementTree.fromstring(response.content)
@@ -270,26 +271,26 @@ class SentinelHub:
                               'Name': layer.find('Name').text})
         return props, response is not None
 
-    def getCloudCover(self, timeRange):
+    def getCloudCover(self, time_range):
         """ Get cloud cover for current extent.
 
         :return:
         """
 
-        self.currentExtent, width = self.getExtent()
-        self.cloudCover = {}
+        self.current_extent, width = self.getExtent()
+        self.cloud_cover = {}
 
-        if not self.instanceId:
+        if not self.instance_id:
             return
 
-        response = self.download_from_url(self.getURLrequestWFS(timeRange))
+        response = self.download_from_url(self.getURLrequestWFS(time_range))
 
         if response:
             content = json.loads(response.content)
-            for features in content['features']:
-                self.cloudCover.update(
-                    {str(features['properties']['date']): features['properties']['cloudCoverPercentage']})
-            self.updatecalendarFromCloudCover()
+            for feature in content['features']:
+                self.cloud_cover.update(
+                    {str(feature['properties']['date']):feature['properties']['cloudCoverPercentage']})
+            self.updateCalendarFromCloudCover()
 
     def downloadWCS(self, url, filename, destination):
         """
@@ -302,21 +303,17 @@ class SentinelHub:
         """
         # self.iface.messageBar().pushMessage("Downloading ", filename, level=QgsMessageBar.INFO)
 
-        with open('{}/{}'.format(destination, filename), "wb") as dlfile:
+        with open('{}/{}'.format(destination, filename), "wb") as download_file:
             response = self.download_from_url(url, stream=True)
 
             if response:
                 total_length = response.headers.get('content-length')
 
                 if total_length is None:
-                    dlfile.write(response.content)
+                    download_file.write(response.content)
                 else:
-                    dl = 0
-                    total_length = int(total_length)
                     for data in response.iter_content(chunk_size=4096):
-                        dl += len(data)
-                        dlfile.write(data)
-                        done = int(100 * dl / total_length)
+                        download_file.write(data)
                 downloaded = True
             else:
                 downloaded = False
@@ -327,7 +324,6 @@ class SentinelHub:
         else:
             self.iface.messageBar().pushMessage("Error ", 'Download failed: ' + filename,
                                                 level=QgsMessageBar.CRITICAL)
-
 
     def download_from_url(self, url, stream=False):
         """ Downloads data from url and handles possible errors
@@ -379,7 +375,7 @@ class SentinelHub:
                                 name,
                                 'wms')
         if not rlayer.isValid():
-            print "Layer failed to load!"
+            print("Layer failed to load!")  # TODO: something...
 
         QgsMapLayerRegistry.instance().addMapLayer(rlayer)
         self.updateCurrentWMSLayers()
@@ -442,7 +438,8 @@ class SentinelHub:
                 self.iface.messageBar().pushMessage("Info", "More than one features selected. Please select only one!",
                                                     level=QgsMessageBar.INFO)
         else:
-            self.iface.messageBar().pushMessage("Info", "Select vector layer from Layers panel, then select feature on map!",
+            self.iface.messageBar().pushMessage("Info",
+                                                "Select vector layer from Layers panel, then select feature on map!",
                                                 level=QgsMessageBar.INFO)
         return False
 
@@ -453,8 +450,8 @@ class SentinelHub:
         """
 
         if self.getSelectedExtent():
-            self.customExtent, self.customExtentWidthHeight = self.getSelectedExtent()
-            bbox = self.customExtent.split(',')
+            self.custom_extent, self.custom_extent_width_height = self.getSelectedExtent()
+            bbox = self.custom_extent.split(',')
             self.dockwidget.xMin.setText(bbox[0])
             self.dockwidget.yMin.setText(bbox[1])
             self.dockwidget.xMax.setText(bbox[2])
@@ -467,8 +464,8 @@ class SentinelHub:
             (bbox.yMinimum() + bbox.yMaximum()) / 2))
         xform = QgsCoordinateTransform(bbox_crs, utm_crs)
         bbox = xform.transform(bbox)
-        width = int(math.fabs((bbox.xMaximum() - bbox.xMinimum()) / int(Settings.parametersWCS['resx'].strip('m'))))
-        height = int(math.fabs((bbox.yMinimum() - bbox.yMaximum()) / int(Settings.parametersWCS['resy'].strip('m'))))
+        width = int(math.fabs((bbox.xMaximum() - bbox.xMinimum()) / int(Settings.parameters_wcs['resx'].strip('m'))))
+        height = int(math.fabs((bbox.yMinimum() - bbox.yMaximum()) / int(Settings.parameters_wcs['resy'].strip('m'))))
         return '&width={0}&height={1}'.format(width, height)
 
     def longitudeToUTMzone(self, longitude, latitude):
@@ -502,8 +499,8 @@ class SentinelHub:
         self.parameters['time'] = str(self.getTime())
         self.parameters['crs'] = self.dockwidget.epsg.currentText().replace(' ', '')
 
-        Settings.parametersWCS['resx'] = self.dockwidget.inputResX.text()
-        Settings.parametersWCS['resy'] = self.dockwidget.inputResY.text()
+        Settings.parameters_wcs['resx'] = self.dockwidget.inputResX.text()
+        Settings.parameters_wcs['resy'] = self.dockwidget.inputResY.text()
 
     def updateMaxccLabel(self):
         """
@@ -534,12 +531,12 @@ class SentinelHub:
         :return:
         """
 
-        if self.activeTime == 'time0':
-            timeInput = self.dockwidget.time0
-        elif self.activeTime == 'time1':
-            timeInput = self.dockwidget.time1
+        if self.active_time == 'time0':
+            time_input = self.dockwidget.time0
+        elif self.active_time == 'time1':
+            time_input = self.dockwidget.time1
 
-        timeInput.setText(str(self.dockwidget.calendar.selectedDate().toPyDate()))
+        time_input.setText(str(self.dockwidget.calendar.selectedDate().toPyDate()))
 
     # ------------------------------------------------------------------------
 
@@ -553,14 +550,14 @@ class SentinelHub:
         style.setBackground(Qt.white)
         self.dockwidget.calendar.setDateTextFormat(QDate(), style)
 
-    def updatecalendarFromCloudCover(self):
+    def updateCalendarFromCloudCover(self):
         """
         Update painted cells regrading Max Cloud Coverage
         :return:
         """
 
         self.clearAllCells()
-        for date, value in self.cloudCover.iteritems():
+        for date, value in self.cloud_cover.iteritems():
             if float(value) < int(self.parameters['maxcc']):
                 d = date.split('-')
                 style = QTextCharFormat()
@@ -576,7 +573,7 @@ class SentinelHub:
             self.dockwidget.calendarSpacer.hide()
         else:
             self.dockwidget.calendarSpacer.show()
-        self.activeTime = active
+        self.active_time = active
 
     def selectDestination(self):
         """
@@ -592,7 +589,7 @@ class SentinelHub:
         Prepare download request and then download images
         :return:
         """
-        if not self.instanceId:
+        if not self.instance_id:
             self.iface.messageBar().pushMessage("Error", "Instance ID is not set.", level=QgsMessageBar.CRITICAL)
             return
 
@@ -604,11 +601,11 @@ class SentinelHub:
             destination = self.dockwidget.destination.text()
 
         if self.dockwidget.destination.text():
-            if self.downloadCurrentExtent:
-                bbox, widthHeight = self.getExtent()
+            if self.download_current_extent:
+                bbox, width_height = self.getExtent()
             else:
-                bbox = self.customExtent
-                widthHeight = self.customExtentWidthHeight
+                bbox = self.custom_extent
+                width_height = self.custom_extent_width_height
 
             url = self.getURLrequestWCS(bbox)
             filename = self.getFileName(bbox)
@@ -625,16 +622,16 @@ class SentinelHub:
         :return:
         """
 
-        bboxArray = []
+        bbox_array = []
         for value in bbox.split(','):
-            bboxArray.append(value.split('.')[0])
+            bbox_array.append(value.split('.')[0])
 
         return '.'.join(map(str, ['_'.join(map(str, [Settings.parameters['time'].split('/')[0].replace('-', ''),
                                                      Settings.parameters['name'],
                                                      Settings.parameters['layers'],
-                                                     bboxArray[0],
-                                                     bboxArray[1]])),
-                                  Settings.parametersWCS['format'].split(';')[0].split('/')[1]]))
+                                                     bbox_array[0],
+                                                     bbox_array[1]])),
+                                  Settings.parameters_wcs['format'].split(';')[0].split('/')[1]]))
 
     def updateMaxcc(self):
         """
@@ -643,7 +640,7 @@ class SentinelHub:
         """
 
         self.updateParameters()
-        self.updatecalendarFromCloudCover()
+        self.updateCalendarFromCloudCover()
 
     def updateDownloadFormat(self):
         """
@@ -651,7 +648,7 @@ class SentinelHub:
         :return:
         """
 
-        Settings.parametersWCS['format'] = self.dockwidget.format.currentText()
+        Settings.parameters_wcs['format'] = self.dockwidget.format.currentText()
 
     def changeExactDate(self):
         """
@@ -671,19 +668,19 @@ class SentinelHub:
         :return:
         """
         new_instance_id = self.dockwidget.instanceId.text()
-        if new_instance_id == self.instanceId:
+        if new_instance_id == self.instance_id:
             return
 
         capabilities, is_valid = self.getCapabilities('wms', new_instance_id)
 
         if is_valid:
-            self.instanceId = new_instance_id
+            self.instance_id = new_instance_id
             self.capabilities = capabilities
             self.updateLayers()
             self.iface.messageBar().pushMessage("Success", "New Instance ID and available renderer set",
                                                 level=QgsMessageBar.SUCCESS)
         else:
-            self.dockwidget.instanceId.setText(self.instanceId)
+            self.dockwidget.instanceId.setText(self.instance_id)
             # self.iface.messageBar().pushMessage("Error", "Instance ID {} is not valid".format(new_instance_id),
             #                                     level=QgsMessageBar.CRITICAL)
 
@@ -695,9 +692,9 @@ class SentinelHub:
 
         year = self.dockwidget.calendar.yearShown()
         month = self.dockwidget.calendar.monthShown()
-        _, numberOfDays = calendar.monthrange(year, month)
+        _, number_of_days = calendar.monthrange(year, month)
         first = datetime.date(year, month, 1)
-        last = datetime.date(year, month, numberOfDays)
+        last = datetime.date(year, month, number_of_days)
 
         self.getCloudCover(first.strftime('%Y-%m-%d') + '/' + last.strftime('%Y-%m-%d') + '/P1D')
 
@@ -709,10 +706,10 @@ class SentinelHub:
         """
 
         if setting == 'current':
-            self.downloadCurrentExtent = True
+            self.download_current_extent = True
             self.dockwidget.widgetCustomExtent.hide()
         elif setting == 'custom':
-            self.downloadCurrentExtent = False
+            self.download_current_extent = False
             self.dockwidget.widgetCustomExtent.show()
 
     def run(self):
@@ -721,10 +718,10 @@ class SentinelHub:
         if not self.pluginIsActive:
             self.pluginIsActive = True
 
-            if self.dockwidget == None:
+            if self.dockwidget is None:
                 # Initial function calls
                 self.dockwidget = SentinelHubDockWidget()
-                self.capabilities, _ = self.getCapabilities('wms', self.instanceId)
+                self.capabilities, _ = self.getCapabilities('wms', self.instance_id)
                 self.initGuiSettings()
                 self.updateMonth()
                 self.toggleExtent('current')
