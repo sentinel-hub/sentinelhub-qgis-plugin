@@ -46,7 +46,7 @@ except ImportError:
 def is_qgis_version_3():
     return Qgis.QGIS_VERSION >= '3.0'
 
-from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform
+from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle
 
 if is_qgis_version_3():
     from qgis.core import QgsProject
@@ -61,6 +61,8 @@ if is_qgis_version_3():
 else:
     from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QDate
     from PyQt4.QtGui import QIcon, QAction, QTextCharFormat, QFileDialog
+
+WGS84 = 'EPSG:4326'
 
 
 class MessageType(Enum):
@@ -107,15 +109,20 @@ class SentinelHub:
         self.instance_id = QSettings().value(Settings.instance_id_location)
         if self.instance_id is None:
             self.instance_id = ''
+        self.download_folder = QSettings().value(Settings.download_folder_location)
+        if self.download_folder is None:
+            self.download_folder = ''
 
         self.parameters = Settings.parameters
+        self.qgis_layers = []
         self.capabilities = []
         self.active_time = 'time0'
         self.cloud_cover = {}
-        self.current_extent = {}
-        self.custom_extent = ''
-        self.download_current_extent = True
-        self.qgis_layers = []
+
+        self.download_current_window = True
+        self.custom_bbox_params = {}
+        for name in ['latMin', 'latMax', 'lngMin', 'lngMax']:
+            self.custom_bbox_params[name] = ''
 
     @staticmethod
     def translate(message):
@@ -178,8 +185,8 @@ class SentinelHub:
         self.updateLayers()
 
         self.dockwidget.instanceId.setText(self.instance_id)
-        self.dockwidget.inputResX.setText(Settings.parameters_wcs['resx'])
-        self.dockwidget.inputResY.setText(Settings.parameters_wcs['resy'])
+        self.dockwidget.destination.setText(self.download_folder)
+        self.set_values()
 
         self.dockwidget.priority.clear()
         self.dockwidget.priority.addItems(Settings.priority_list)
@@ -189,6 +196,14 @@ class SentinelHub:
 
         self.dockwidget.epsg.clear()
         self.dockwidget.epsg.addItems(Settings.epsg)
+
+    def set_values(self):
+        self.dockwidget.inputResX.setText(Settings.parameters_wcs['resx'])
+        self.dockwidget.inputResY.setText(Settings.parameters_wcs['resy'])
+        self.dockwidget.latMin.setText(self.custom_bbox_params['latMin'])
+        self.dockwidget.latMax.setText(self.custom_bbox_params['latMax'])
+        self.dockwidget.lngMin.setText(self.custom_bbox_params['lngMin'])
+        self.dockwidget.lngMax.setText(self.custom_bbox_params['lngMax'])
 
     # --------------------------------------------------------------------------
 
@@ -273,8 +288,8 @@ class SentinelHub:
     def getURLrequestWCS(self, bbox):
         """ Generate URL for WCS request from parameters
 
-            :param bbox: Bounding box [xmin, ymin, xmax, ymax]
-            :type bbox: str
+        :param bbox: Bounding box in form of "xmin,ymin,xmax,ymax"
+        :type bbox: str
         """
 
         url = Settings.url_base + 'wcs/' + self.instance_id + '?'
@@ -293,7 +308,7 @@ class SentinelHub:
         for parameter, value in Settings.parameters_wfs.items():
             url = url + parameter + '=' + value + '&'
 
-        return url + 'bbox=' + self.getExtent()[0] + '&time=' + time_range
+        return url + 'bbox=' + self.bbox_to_string(self.get_bbox()) + '&time=' + time_range
 
     # ---------------------------------------------------------------------------
 
@@ -325,12 +340,13 @@ class SentinelHub:
 
         :return:
         """
-
-        self.current_extent, width = self.getExtent()
         self.cloud_cover = {}
 
         if not self.instance_id:
             return
+
+        # First check
+        # width_height = self.custom_extent_width_height
 
         response = self.download_from_url(self.getURLrequestWFS(time_range))
 
@@ -341,7 +357,7 @@ class SentinelHub:
                     {str(feature['properties']['date']):feature['properties']['cloudCoverPercentage']})
             self.updateCalendarFromCloudCover()
 
-    def downloadWCS(self, url, filename, destination):
+    def downloadWCS(self, url, filename):
         """
         Download image from provided URL WCS request
 
@@ -350,7 +366,7 @@ class SentinelHub:
         :param destination: path to destination
         :return:
         """
-        with open('{}/{}'.format(destination, filename), "wb") as download_file:
+        with open(os.path.join(self.download_folder, filename), "wb") as download_file:
             response = self.download_from_url(url, stream=True)
 
             if response:
@@ -424,19 +440,17 @@ class SentinelHub:
         else:
             self.show_message('Failed to create layer {}.'.format(name), MessageType.CRITICAL)
 
-    def getExtent(self):
+    def get_bbox(self, crs=None):
         """
-        Get Current extent if not same as target transorfm it to target, transform it to WebMercator
-        TODO: If user defined CRS it might fail?!
-        :return:
+        Get window bbox
         """
+        target_crs = QgsCoordinateReferenceSystem(crs if crs else self.parameters['crs'])
 
         bbox = self.iface.mapCanvas().extent()
         if is_qgis_version_3():
             current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapSettings().destinationCrs().authid())
         else:
             current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapRenderer().destinationCrs().authid())
-        target_crs = QgsCoordinateReferenceSystem(self.parameters['crs'])
 
         if current_crs != target_crs:
             if is_qgis_version_3():
@@ -445,63 +459,40 @@ class SentinelHub:
                 xform = QgsCoordinateTransform(current_crs, target_crs)
             bbox = xform.transform(bbox)
 
-        if target_crs.authid() == 'EPSG:4326':
-            return [",".join(map(str, [round(bbox.yMinimum(), 6), round(bbox.xMinimum(), 6),
-                                       round(bbox.yMaximum(), 6), round(bbox.xMaximum(), 6)])), self.getWidthHeight(
-                bbox,
-                target_crs)]
+        return bbox
+
+    def bbox_to_string(self, bbox, crs=None):
+        target_crs = QgsCoordinateReferenceSystem(crs if crs else self.parameters['crs'])
+
+        if target_crs.authid() == WGS84:
+            precision = 6
+            bbox_list = [bbox.yMinimum(), bbox.xMinimum(), bbox.yMaximum(), bbox.xMaximum()]
         else:
-            return [",".join(map(str, [round(bbox.xMinimum(), 6), round(bbox.yMinimum(), 6),
-                                       round(bbox.xMaximum(), 6), round(bbox.yMaximum(), 6)])), '']
+            precision = 2
+            bbox_list = [bbox.xMinimum(), bbox.yMinimum(), bbox.xMaximum(), bbox.yMaximum()]
 
-    def getSelectedExtent(self):
-        """
-        Get extent of selected feature
-        :return:
-        """
-        self.updateParameters()
+        return ','.join(map(lambda coord: str(round(coord, precision)), bbox_list))
 
-        if self.iface.activeLayer().type() == 0:
-            features = self.iface.activeLayer().selectedFeatures()
-            if len(features) == 0:
-                self.show_message("No feature selected", MessageType.INFO)
-            elif len(features) == 1:
-                bbox = features[0].geometry().boundingBox()
+    def get_custom_bbox(self):
+        lat_min = min(float(self.custom_bbox_params['latMin']), float(self.custom_bbox_params['latMax']))
+        lat_max = max(float(self.custom_bbox_params['latMin']), float(self.custom_bbox_params['latMax']))
+        lng_min = min(float(self.custom_bbox_params['lngMin']), float(self.custom_bbox_params['lngMax']))
+        lng_max = max(float(self.custom_bbox_params['lngMin']), float(self.custom_bbox_params['lngMax']))
+        return QgsRectangle(lng_min, lat_min, lng_max, lat_max)
 
-                current_crs = QgsCoordinateReferenceSystem(self.iface.activeLayer().crs().authid())
-                target_crs = QgsCoordinateReferenceSystem(self.parameters['crs'])
-
-                if current_crs != target_crs:
-                    xform = QgsCoordinateTransform(current_crs, target_crs)
-                    bbox = xform.transform(bbox)
-
-                if target_crs.authid() == 'EPSG:4326':
-                    return [",".join(map(str, [round(bbox.yMinimum(), 6), round(bbox.xMinimum(), 6),
-                                               round(bbox.yMaximum(), 6), round(bbox.xMaximum(), 6)])),
-                            self.getWidthHeight(bbox, target_crs)]
-                else:
-                    return [",".join(map(str, [round(bbox.xMinimum(), 6), round(bbox.yMinimum(), 6),
-                                               round(bbox.xMaximum(), 6), round(bbox.yMaximum(), 6)])), '']
-            else:
-                self.show_message("More than one feature selected, please select only one.", MessageType.INFO)
-        else:
-            self.show_message("Select a layer from 'Select Layer', then select 'Create new WMS layer'",
-                              MessageType.INFO)
-        return False
-
-    def updateCustomExtent(self):
+    def take_window_bbox(self):
         """
         From Custom extent get values, save them and show them in UI
         :return:
         """
+        bbox = self.get_bbox(crs=WGS84)
+        bbox_list = self.bbox_to_string(bbox, crs=WGS84).split(',')
+        self.custom_bbox_params['latMin'] = bbox_list[0]
+        self.custom_bbox_params['lngMin'] = bbox_list[1]
+        self.custom_bbox_params['latMax'] = bbox_list[2]
+        self.custom_bbox_params['lngMax'] = bbox_list[3]
 
-        if self.getSelectedExtent():
-            self.custom_extent, self.custom_extent_width_height = self.getSelectedExtent()
-            bbox = self.custom_extent.split(',')
-            self.dockwidget.xMin.setText(bbox[0])
-            self.dockwidget.yMin.setText(bbox[1])
-            self.dockwidget.xMax.setText(bbox[2])
-            self.dockwidget.yMax.setText(bbox[3])
+        self.set_values()
 
     def getWidthHeight(self, bbox, bbox_crs):
 
@@ -547,7 +538,6 @@ class SentinelHub:
         Update parameters from GUI
         :return:
         """
-
         self.parameters['layers'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
         self.parameters['coverage'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
         self.parameters['title'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Title']
@@ -555,9 +545,6 @@ class SentinelHub:
         self.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
         self.parameters['time'] = str(self.getTime())
         self.parameters['crs'] = self.dockwidget.epsg.currentText().replace(' ', '')
-
-        Settings.parameters_wcs['resx'] = self.dockwidget.inputResX.text()
-        Settings.parameters_wcs['resy'] = self.dockwidget.inputResY.text()
 
     def updateMaxccLabel(self):
         """
@@ -612,7 +599,6 @@ class SentinelHub:
         Update painted cells regrading Max Cloud Coverage
         :return:
         """
-
         self.clearAllCells()
         for date, value in self.cloud_cover.items():
             if float(value) < int(self.parameters['maxcc']):
@@ -637,9 +623,9 @@ class SentinelHub:
         Opens dialog to select destination folder
         :return:
         """
-
         folder = QFileDialog.getExistingDirectory(self.dockwidget, "Select folder")
         self.dockwidget.destination.setText(folder)
+        self.change_download_folder()
 
     def download_caption(self):
         """
@@ -649,26 +635,27 @@ class SentinelHub:
         if not self.instance_id:
             return self.missing_instance_id()
 
+        if Settings.parameters_wcs['resx'] == '' or Settings.parameters_wcs['resy'] == '':
+            return self.show_message('Spatial resolution parameters are not set.', MessageType.CRITICAL)
+        if not self.download_current_window:
+            for value in self.custom_bbox_params.values():
+                if value == '':
+                    return self.show_message('Custom bounding box parameters are missing.', MessageType.CRITICAL)
+
         self.updateParameters()
-        if self.dockwidget.destination.text():
-            destination = self.dockwidget.destination.text()
-        else:
+
+        if not self.download_folder:
             self.selectDestination()
-            destination = self.dockwidget.destination.text()
+            if not self.download_folder:
+                return self.show_message("Download canceled. No destination set.", MessageType.CRITICAL)
 
-        if self.dockwidget.destination.text():
-            if self.download_current_extent:
-                bbox, width_height = self.getExtent()
-            else:
-                bbox = self.custom_extent
-                width_height = self.custom_extent_width_height
+        bbox = self.get_bbox() if self.download_current_window else self.get_custom_bbox()
 
-            url = self.getURLrequestWCS(bbox)
-            filename = self.getFileName(bbox)
+        bbox_str = self.bbox_to_string(bbox, None if self.download_current_window else WGS84)
+        url = self.getURLrequestWCS(bbox_str)
+        filename = self.getFileName(bbox_str)
 
-            self.downloadWCS(url, filename, destination)
-        else:
-            self.show_message("Download canceled. No destination set", MessageType.CRITICAL)
+        self.downloadWCS(url, filename)
 
     def getFileName(self, bbox):
         """
@@ -717,7 +704,7 @@ class SentinelHub:
         else:
             self.dockwidget.time1.show()
 
-    def changeInstanceId(self):
+    def change_instance_id(self):
         """
         Change Instance ID, and validate that is valid
         :return:
@@ -741,6 +728,19 @@ class SentinelHub:
         else:
             self.dockwidget.instanceId.setText(self.instance_id)
 
+    def change_download_folder(self):
+        new_download_folder = self.dockwidget.destination.text()
+        if new_download_folder == self.download_folder:
+            return
+
+        if new_download_folder == '' or os.path.exists(new_download_folder):
+            self.download_folder = new_download_folder
+            QSettings().setValue(Settings.download_folder_location, new_download_folder)
+        else:
+            self.dockwidget.destination.setText(self.download_folder)
+            self.show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
+                              MessageType.CRITICAL)
+
     def updateMonth(self):
         """
         On Widget Month update, get first and last dates to get Cloud Cover
@@ -762,13 +762,43 @@ class SentinelHub:
         :param setting:
         :return:
         """
-
         if setting == 'current':
-            self.download_current_extent = True
+            self.download_current_window = True
             self.dockwidget.widgetCustomExtent.hide()
         elif setting == 'custom':
-            self.download_current_extent = False
+            self.download_current_window = False
             self.dockwidget.widgetCustomExtent.show()
+
+    def update_values(self):
+        new_values = self.get_values()
+
+        if not new_values:
+            self.show_message('Please input a numerical value.', MessageType.INFO)
+            self.set_values()
+            return
+
+        for name, value in new_values.items():
+            if name in ['resx', 'resy']:
+                Settings.parameters_wcs[name] = value
+            else:
+                self.custom_bbox_params[name] = value
+
+    def get_values(self):
+        new_values = {
+            'resx': self.dockwidget.inputResX.text(),
+            'resy': self.dockwidget.inputResY.text(),
+            'latMin': self.dockwidget.latMin.text(),
+            'latMax': self.dockwidget.latMax.text(),
+            'lngMin': self.dockwidget.lngMin.text(),
+            'lngMax': self.dockwidget.lngMax.text()
+        }
+        for name, value in new_values.items():
+            if value != '':
+                try:
+                    float(value)
+                except ValueError:
+                    return None
+        return new_values
 
     def run(self):
         """Run method that loads and starts the plugin and binds all UI actions"""
@@ -790,7 +820,7 @@ class SentinelHub:
                 self.dockwidget.buttonAddWms.clicked.connect(self.addWms)
                 self.dockwidget.buttonUpdateWms.clicked.connect(self.updateQgisLayer)
                 self.dockwidget.buttonDownload.clicked.connect(self.download_caption)
-                self.dockwidget.refreshExtent.clicked.connect(self.updateCustomExtent)
+                self.dockwidget.refreshExtent.clicked.connect(self.take_window_bbox)
                 self.dockwidget.selectDestination.clicked.connect(self.selectDestination)
 
                 # Render input fields changes and events
@@ -801,7 +831,15 @@ class SentinelHub:
                 self.dockwidget.calendar.currentPageChanged.connect(self.updateMonth)
                 self.dockwidget.maxcc.valueChanged.connect(self.updateMaxccLabel)
                 self.dockwidget.maxcc.sliderReleased.connect(self.updateMaxcc)
-                self.dockwidget.instanceId.editingFinished.connect(self.changeInstanceId)
+                self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
+                self.dockwidget.destination.editingFinished.connect(self.change_download_folder)
+
+                self.dockwidget.inputResX.editingFinished.connect(self.update_values)
+                self.dockwidget.inputResY.editingFinished.connect(self.update_values)
+                self.dockwidget.latMin.editingFinished.connect(self.update_values)
+                self.dockwidget.latMax.editingFinished.connect(self.update_values)
+                self.dockwidget.lngMin.editingFinished.connect(self.update_values)
+                self.dockwidget.lngMax.editingFinished.connect(self.update_values)
 
                 # Download input fields changes and events
                 self.dockwidget.format.currentIndexChanged.connect(self.updateDownloadFormat)

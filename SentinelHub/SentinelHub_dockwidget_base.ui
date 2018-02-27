@@ -38,7 +38,7 @@
          </sizepolicy>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="rendererTab">
          <attribute name="title">
@@ -185,11 +185,9 @@
               </layout>
              </item>
             </layout>
-            <zorder>scrollAreaRenderer</zorder>
             <zorder>label_8</zorder>
             <zorder>label_9</zorder>
             <zorder>buttonAddWms</zorder>
-            <zorder>layoutWidget</zorder>
            </widget>
           </item>
           <item row="0" column="0" rowspan="2">
@@ -886,7 +884,7 @@
               <item row="2" column="0">
                <widget class="QLabel" name="label">
                 <property name="text">
-                 <string>Select Layer</string>
+                 <string>Select layer</string>
                 </property>
                </widget>
               </item>
@@ -1116,7 +1114,7 @@
               <item row="2" column="1">
                <widget class="QRadioButton" name="radioCurrentExtent">
                 <property name="text">
-                 <string>Current Extent</string>
+                 <string>Current window</string>
                 </property>
                 <property name="checked">
                  <bool>true</bool>
@@ -1156,7 +1154,7 @@
               <item row="3" column="1">
                <widget class="QRadioButton" name="radioCustomExtent">
                 <property name="text">
-                 <string>Custom Extent</string>
+                 <string>Custom bounding box</string>
                 </property>
                </widget>
               </item>
@@ -1278,90 +1276,87 @@
                  <item row="0" column="0">
                   <widget class="QLabel" name="label_14">
                    <property name="text">
-                    <string>Min</string>
+                    <string>Latitude</string>
                    </property>
                   </widget>
                  </item>
                  <item row="1" column="0">
                   <widget class="QLabel" name="label_15">
                    <property name="text">
-                    <string>Max</string>
+                    <string>Longitude</string>
                    </property>
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QLineEdit" name="xMax">
+                  <widget class="QLineEdit" name="lngMin">
                    <property name="minimumSize">
                     <size>
-                     <width>160</width>
+                     <width>140</width>
                      <height>0</height>
                     </size>
                    </property>
                    <property name="maximumSize">
                     <size>
-                     <width>160</width>
+                     <width>140</width>
                      <height>16777215</height>
                     </size>
                    </property>
                    <property name="readOnly">
-                    <bool>true</bool>
+                    <bool>false</bool>
                    </property>
                   </widget>
                  </item>
                  <item row="0" column="2">
-                  <widget class="QLineEdit" name="yMin">
+                  <widget class="QLineEdit" name="latMax">
                    <property name="minimumSize">
                     <size>
-                     <width>160</width>
+                     <width>140</width>
                      <height>0</height>
                     </size>
                    </property>
                    <property name="maximumSize">
                     <size>
-                     <width>160</width>
+                     <width>140</width>
                      <height>16777215</height>
                     </size>
                    </property>
                    <property name="readOnly">
-                    <bool>true</bool>
+                    <bool>false</bool>
                    </property>
                   </widget>
                  </item>
                  <item row="1" column="2">
-                  <widget class="QLineEdit" name="yMax">
+                  <widget class="QLineEdit" name="lngMax">
                    <property name="minimumSize">
                     <size>
-                     <width>160</width>
+                     <width>140</width>
                      <height>0</height>
                     </size>
                    </property>
                    <property name="maximumSize">
                     <size>
-                     <width>160</width>
+                     <width>140</width>
                      <height>16777215</height>
                     </size>
                    </property>
                    <property name="readOnly">
-                    <bool>true</bool>
+                    <bool>false</bool>
                    </property>
                   </widget>
                  </item>
                  <item row="0" column="1">
-                  <widget class="QLineEdit" name="xMin">
+                  <widget class="QLineEdit" name="latMin">
                    <property name="minimumSize">
                     <size>
-                     <width>160</width>
+                     <width>140</width>
                      <height>0</height>
                     </size>
                    </property>
                    <property name="maximumSize">
                     <size>
-                     <width>160</width>
+                     <width>140</width>
                      <height>16777215</height>
                     </size>
-                   </property>
-                   <property name="readOnly">
-                    <bool>true</bool>
                    </property>
                   </widget>
                  </item>
@@ -1393,17 +1388,17 @@
                     </size>
                    </property>
                    <property name="text">
-                    <string>Update from selected feature</string>
+                    <string>Take window coordinates</string>
                    </property>
                   </widget>
                  </item>
                 </layout>
                 <zorder>label_14</zorder>
-                <zorder>xMin</zorder>
-                <zorder>yMin</zorder>
+                <zorder>latMin</zorder>
+                <zorder>latMax</zorder>
                 <zorder>label_15</zorder>
-                <zorder>xMax</zorder>
-                <zorder>yMax</zorder>
+                <zorder>lngMin</zorder>
+                <zorder>lngMax</zorder>
                 <zorder>horizontalSpacer_8</zorder>
                 <zorder>refreshExtent</zorder>
                </widget>

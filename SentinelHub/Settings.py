@@ -5,6 +5,7 @@
 url_base = 'https://services.sentinel-hub.com/ogc/'
 
 instance_id_location = "SentinelHub/instance_id"
+download_folder_location = "SentinelHub/download_folder"
 
 epsg = [
     'EPSG: 3857',
