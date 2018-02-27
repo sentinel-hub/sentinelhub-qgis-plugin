@@ -19,15 +19,18 @@ parameters = {
     'title': '',
     'showLogo': 'false',
     'layers': '',
-    'styles': '',
     'maxcc': '20',
     'priority': 'mostRecent',
     'time': '',
     'crs': 'EPSG:3857'
 }
 
-parameters_wms = {
+parameters_wms = {  # The first 3 parameters are required for qgis layer
+    'IgnoreGetFeatureInfoUrl': '1',
+    'IgnoreGetMapUrl': '1',
+    'contextualWMSLegend': '0',
     'service': 'WMS',
+    'styles': '',
     'request': 'GetMap',
     'format': 'image/jpeg',
     'transparent': 'true',

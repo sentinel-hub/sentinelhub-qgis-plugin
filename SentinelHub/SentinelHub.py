@@ -657,7 +657,8 @@ class SentinelHub:
 
         self.downloadWCS(url, filename)
 
-    def get_filename(self, bbox):
+    @staticmethod
+    def get_filename(bbox):
         """ Prepare filename which contains some metadata
         sentinel2_LAYER_time0_time1_xmin_y_min_xmax_ymax_maxcc_priority.FORMAT
 
