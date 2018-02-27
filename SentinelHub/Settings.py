@@ -3,7 +3,8 @@
 
 # Base setup values
 url_base = 'https://services.sentinel-hub.com/ogc/'
-instance_id = ''
+
+instance_id_location = "SentinelHub/instance_id"
 
 epsg = [
     'EPSG: 3857',

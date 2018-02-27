@@ -104,8 +104,11 @@ class SentinelHub:
         self.dockwidget = None
 
         # Set value
+        self.instance_id = QSettings().value(Settings.instance_id_location)
+        if self.instance_id is None:
+            self.instance_id = ''
+
         self.parameters = Settings.parameters
-        self.instance_id = Settings.instance_id
         self.capabilities = []
         self.active_time = 'time0'
         self.cloud_cover = {}
@@ -174,7 +177,7 @@ class SentinelHub:
         """
         self.updateLayers()
 
-        self.dockwidget.instanceId.setText(Settings.instance_id)
+        self.dockwidget.instanceId.setText(self.instance_id)
         self.dockwidget.inputResX.setText(Settings.parameters_wcs['resx'])
         self.dockwidget.inputResY.setText(Settings.parameters_wcs['resy'])
 
@@ -187,6 +190,8 @@ class SentinelHub:
         self.dockwidget.epsg.clear()
         self.dockwidget.epsg.addItems(Settings.epsg)
 
+    # --------------------------------------------------------------------------
+
     def show_message(self, message, message_type):
         """ Show message for user
 
@@ -196,6 +201,11 @@ class SentinelHub:
         :param message_type: MessageType
         """
         self.iface.messageBar().pushMessage(message_type.value[0], message, level=message_type.value[1])
+
+    def missing_instance_id(self):
+        self.show_message("Please set Sentinel Hub Instance ID first.", MessageType.INFO)
+
+    # --------------------------------------------------------------------------
 
     def updateLayers(self):
         """
@@ -402,6 +412,9 @@ class SentinelHub:
         Add WMS raster layer to canvas,
         :return:
         """
+        if not self.instance_id:
+            return self.missing_instance_id()
+
         self.updateParameters()
         name = '{} - {}'.format(self.parameters['prettyName'], self.parameters['title'])
         new_layer = QgsRasterLayer(self.getURIrequestWMS(), name, 'wms')
@@ -512,6 +525,9 @@ class SentinelHub:
         :param rlayer: rlayer that should be updated
         :return:
         """
+        if not self.instance_id:
+            self.missing_instance_id()
+
         selected_index = self.dockwidget.sentinelWMSlayers.currentIndex()
         if selected_index < 0:
             return
@@ -631,8 +647,7 @@ class SentinelHub:
         :return:
         """
         if not self.instance_id:
-            self.show_message("Please set Sentinel Hub Instance ID first.", MessageType.INFO)
-            return
+            return self.missing_instance_id()
 
         self.updateParameters()
         if self.dockwidget.destination.text():
@@ -711,13 +726,18 @@ class SentinelHub:
         if new_instance_id == self.instance_id:
             return
 
-        capabilities, is_valid = self.getCapabilities('wms', new_instance_id)
+        if new_instance_id == '':
+            capabilities, is_valid = [], True
+        else:
+            capabilities, is_valid = self.getCapabilities('wms', new_instance_id)
 
         if is_valid:
             self.instance_id = new_instance_id
             self.capabilities = capabilities
             self.updateLayers()
-            self.show_message("New Instance ID and layers set.", MessageType.SUCCESS)
+            if self.instance_id:
+                self.show_message("New Instance ID and layers set.", MessageType.SUCCESS)
+            QSettings().setValue(Settings.instance_id_location, new_instance_id)
         else:
             self.dockwidget.instanceId.setText(self.instance_id)
 
@@ -733,7 +753,8 @@ class SentinelHub:
         first = datetime.date(year, month, 1)
         last = datetime.date(year, month, number_of_days)
 
-        self.getCloudCover(first.strftime('%Y-%m-%d') + '/' + last.strftime('%Y-%m-%d') + '/P1D')
+        # This is currently disabled
+        # self.getCloudCover(first.strftime('%Y-%m-%d') + '/' + last.strftime('%Y-%m-%d') + '/P1D')
 
     def toggleExtent(self, setting):
         """
