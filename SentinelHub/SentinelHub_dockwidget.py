@@ -24,10 +24,15 @@
 import os
 
 try:
+    from qgis.utils import Qgis
+except ImportError:
+    from qgis.utils import QGis as Qgis
+
+if Qgis.QGIS_VERSION >= '3.0':
     from PyQt5.QtWidgets import QDockWidget
     from PyQt5.uic import loadUiType
     from PyQt5.QtCore import pyqtSignal
-except ImportError:
+else:
     from PyQt4.QtGui import QDockWidget
     from PyQt4.uic import loadUiType
     from PyQt4.QtCore import pyqtSignal

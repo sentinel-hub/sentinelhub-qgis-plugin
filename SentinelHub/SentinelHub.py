@@ -28,6 +28,7 @@ import calendar
 import datetime
 import math
 import warnings
+from enum import Enum
 from xml.etree import ElementTree
 try:
     from urllib.parse import quote_plus
@@ -53,25 +54,20 @@ else:
     from qgis.core import QgsMapLayerRegistry as QgsProject
     from qgis.gui import QgsMessageBar
 
-try:
+if is_qgis_version_3():
     from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QDate
     from PyQt5.QtGui import QIcon, QTextCharFormat
     from PyQt5.QtWidgets import QAction, QFileDialog
-except ImportError:
+else:
     from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QDate
     from PyQt4.QtGui import QIcon, QAction, QTextCharFormat, QFileDialog
 
 
-if is_qgis_version_3():
-    INFO_MSG = Qgis.Info
-    WARNING_MSG = Qgis.Warning
-    CRITICAL_MSG = Qgis.Critical
-    SUCCESS_MSG = Qgis.Success
-else:
-    INFO_MSG = QgsMessageBar.INFO
-    WARNING_MSG = QgsMessageBar.WARNING
-    CRITICAL_MSG = QgsMessageBar.CRITICAL
-    SUCCESS_MSG = QgsMessageBar.SUCCESS
+class MessageType(Enum):
+    INFO = ('Info', Qgis.Info if is_qgis_version_3() else QgsMessageBar.INFO)
+    WARNING = ('Warning', Qgis.Warning if is_qgis_version_3() else QgsMessageBar.WARNING)
+    CRITICAL = ('Error', Qgis.Critical if is_qgis_version_3() else QgsMessageBar.CRITICAL)
+    SUCCESS = ('Success', Qgis.Success if is_qgis_version_3() else QgsMessageBar.SUCCESS)
 
 
 class SentinelHub:
@@ -116,6 +112,7 @@ class SentinelHub:
         self.current_extent = {}
         self.custom_extent = ''
         self.download_current_extent = True
+        self.qgis_layers = []
 
     @staticmethod
     def translate(message):
@@ -190,12 +187,21 @@ class SentinelHub:
         self.dockwidget.epsg.clear()
         self.dockwidget.epsg.addItems(Settings.epsg)
 
+    def show_message(self, message, message_type):
+        """ Show message for user
+
+        :param message: Message for user
+        :param message: str
+        :param message_type: Type of message
+        :param message_type: MessageType
+        """
+        self.iface.messageBar().pushMessage(message_type.value[0], message, level=message_type.value[1])
+
     def updateLayers(self):
         """
         Update list of Layers avalivale at Sentinel Hub Instance
         :return:
         """
-
         self.dockwidget.layers.clear()
 
         layer_list = []
@@ -208,21 +214,17 @@ class SentinelHub:
         Updates List of Qgis layers
         :return:
         """
-        if is_qgis_version_3():
-            layers = QgsProject.instance().mapLayers()
-        else:
-            layers = self.iface.legendInterface().layers()
-        if len(layers) != 0:
-            layer_list = []
-            for layer in layers:
-                # if layer.type() == 1:
-                if is_qgis_version_3():
-                    layer_list.append(layer)
-                else:
-                    layer_list.append(layer.name())
-            self.dockwidget.sentinelWMSlayers.clear()
-            self.dockwidget.sentinelWMSlayers.addItems(layer_list)
+        self.qgis_layers = self.get_qgis_layers()
+        layer_names = []
+        for layer in self.qgis_layers:
+            layer_names.append(layer.name())
+        self.dockwidget.sentinelWMSlayers.clear()
+        self.dockwidget.sentinelWMSlayers.addItems(layer_names)
 
+    def get_qgis_layers(self):
+        if is_qgis_version_3():
+            return list(QgsProject.instance().mapLayers().values())
+        return self.iface.legendInterface().layers()
     # --------------------------------------------------------------------------
 
     def onClosePlugin(self):
@@ -353,10 +355,10 @@ class SentinelHub:
             else:
                 downloaded = False
         if downloaded:
-            self.iface.messageBar().pushMessage("Done downloading: ", filename, level=SUCCESS_MSG)
+            self.show_message("Done downloading to {}".format(filename), MessageType.SUCCESS)
             time.sleep(1)
         else:
-            self.iface.messageBar().pushMessage("Error ", 'Download failed: ' + filename, level=CRITICAL_MSG)
+            self.show_message("Failed to download from {} to {}".format(url, filename), MessageType.CRITICAL)
 
     def download_from_url(self, url, stream=False):
         """ Downloads data from url and handles possible errors
@@ -374,8 +376,7 @@ class SentinelHub:
         except requests.RequestException as exception:
             message = '{}: '.format(exception.__class__.__name__)
 
-            if isinstance(exception, (requests.ConnectionError, requests.ConnectTimeout, requests.ReadTimeout,
-                                      requests.Timeout)):
+            if isinstance(exception, requests.ConnectionError):
                 message += 'Cannot access service, check your internet connection.'
             elif isinstance(exception, requests.HTTPError):
                 try:
@@ -385,12 +386,12 @@ class SentinelHub:
                             server_message += elem.text.strip('\n\t ')
                 except ElementTree.ParseError:
                     server_message = exception.response.text.strip('\n\t ')
-                server_message = server_message.encode('ascii', errors='ignore')
+                server_message = server_message.encode('ascii', errors='ignore').decode('utf-8')
                 message += 'server response: "{}"'.format(server_message)
             else:
                 message += str(exception)
 
-            self.iface.messageBar().pushMessage('Error', message, level=CRITICAL_MSG)
+            self.show_message(message, MessageType.CRITICAL)
             response = None
 
         return response
@@ -401,15 +402,14 @@ class SentinelHub:
         Add WMS raster layer to canvas,
         :return:
         """
-
         self.updateParameters()
-        name = self.parameters['prettyName'] + " - " + self.parameters['title']
-        rlayer = QgsRasterLayer(self.getURIrequestWMS(), name, 'wms')
-        if not rlayer.isValid():
-            print("Layer failed to load!")  # TODO: something...
-
-        QgsProject.instance().addMapLayer(rlayer)
-        self.updateCurrentWMSLayers()
+        name = '{} - {}'.format(self.parameters['prettyName'], self.parameters['title'])
+        new_layer = QgsRasterLayer(self.getURIrequestWMS(), name, 'wms')
+        if new_layer.isValid():
+            QgsProject.instance().addMapLayer(new_layer)
+            self.updateCurrentWMSLayers()
+        else:
+            self.show_message('Failed to create layer {}.'.format(name), MessageType.CRITICAL)
 
     def getExtent(self):
         """
@@ -451,7 +451,7 @@ class SentinelHub:
         if self.iface.activeLayer().type() == 0:
             features = self.iface.activeLayer().selectedFeatures()
             if len(features) == 0:
-                self.iface.messageBar().pushMessage("Info", "No feature selected", level=INFO_MSG)
+                self.show_message("No feature selected", MessageType.INFO)
             elif len(features) == 1:
                 bbox = features[0].geometry().boundingBox()
 
@@ -470,12 +470,10 @@ class SentinelHub:
                     return [",".join(map(str, [round(bbox.xMinimum(), 6), round(bbox.yMinimum(), 6),
                                                round(bbox.xMaximum(), 6), round(bbox.yMaximum(), 6)])), '']
             else:
-                self.iface.messageBar().pushMessage("Info", "More than one features selected. Please select only one!",
-                                                    level=INFO_MSG)
+                self.show_message("More than one feature selected, please select only one.", MessageType.INFO)
         else:
-            self.iface.messageBar().pushMessage("Info",
-                                                "Select vector layer from Layers panel, then select feature on map!",
-                                                level=INFO_MSG)
+            self.show_message("Select a layer from 'Select Layer', then select 'Create new WMS layer'",
+                              MessageType.INFO)
         return False
 
     def updateCustomExtent(self):
@@ -514,13 +512,18 @@ class SentinelHub:
         :param rlayer: rlayer that should be updated
         :return:
         """
-        if is_qgis_version_3():
-            layers = QgsProject.instance().mapLayers()
-        else:
-            layers = self.iface.legendInterface().layers()
-        rlayer = layers[self.dockwidget.sentinelWMSlayers.currentIndex()]
-        self.addWms()
-        QgsProject.instance().removeMapLayer(rlayer)
+        selected_index = self.dockwidget.sentinelWMSlayers.currentIndex()
+        if selected_index < 0:
+            return
+
+        for layer in self.get_qgis_layers():
+            if layer == self.qgis_layers[selected_index]:
+                self.addWms()
+                QgsProject.instance().removeMapLayer(layer)
+                self.updateCurrentWMSLayers()
+                return
+        self.show_message('Chosen layer {} does not exist anymore.'
+                          ''.format(self.dockwidget.sentinelWMSlayers.currentText()), MessageType.INFO)
         self.updateCurrentWMSLayers()
 
     def updateParameters(self):
@@ -628,7 +631,7 @@ class SentinelHub:
         :return:
         """
         if not self.instance_id:
-            self.iface.messageBar().pushMessage("Error", "Instance ID is not set.", level=CRITICAL_MSG)
+            self.show_message("Please set Sentinel Hub Instance ID first.", MessageType.INFO)
             return
 
         self.updateParameters()
@@ -650,7 +653,7 @@ class SentinelHub:
 
             self.downloadWCS(url, filename, destination)
         else:
-            self.iface.messageBar().pushMessage("Info", "Download canceled. No destination set", level=INFO_MSG)
+            self.show_message("Download canceled. No destination set", MessageType.CRITICAL)
 
     def getFileName(self, bbox):
         """
@@ -714,12 +717,9 @@ class SentinelHub:
             self.instance_id = new_instance_id
             self.capabilities = capabilities
             self.updateLayers()
-            self.iface.messageBar().pushMessage("Success", "New Instance ID and available renderer set",
-                                                level=SUCCESS_MSG)
+            self.show_message("New Instance ID and layers set.", MessageType.SUCCESS)
         else:
             self.dockwidget.instanceId.setText(self.instance_id)
-            # self.iface.messageBar().pushMessage("Error", "Instance ID {} is not valid".format(new_instance_id),
-            #                                     level=CRITICAL_MSG)
 
     def updateMonth(self):
         """
