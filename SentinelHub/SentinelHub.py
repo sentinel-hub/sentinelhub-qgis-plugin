@@ -7,8 +7,8 @@
                               -------------------
         begin                : 2017-07-07
         git sha              : $Format:%H$
-        copyright            : (C) 2017 by Sinergise
-        email                : info@sinergise.com
+        copyright            : (C) 2017 by Sentinel Hub, Sinergise ltd.
+        email                : info@sentinel-hub.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -27,7 +27,6 @@ import time
 import calendar
 import datetime
 import math
-import warnings
 from enum import Enum
 from xml.etree import ElementTree
 try:
@@ -35,6 +34,7 @@ try:
 except ImportError:
     from urllib import quote_plus
 
+from . import resources  # this imports resources.qrc
 from .SentinelHub_dockwidget import SentinelHubDockWidget
 from . import Settings
 
