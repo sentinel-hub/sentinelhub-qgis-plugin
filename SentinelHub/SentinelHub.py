@@ -653,26 +653,21 @@ class SentinelHub:
 
         bbox_str = self.bbox_to_string(bbox, None if self.download_current_window else WGS84)
         url = self.getURLrequestWCS(bbox_str)
-        filename = self.getFileName(bbox_str)
+        filename = self.get_filename(bbox_str)
 
         self.downloadWCS(url, filename)
 
-    def getFileName(self, bbox):
-        """
-        Prepare unique filename with some metadata encoded (YYYYMMDD_sentil2_LAYER_xmin_y_min.FORMAT)
+    def get_filename(self, bbox):
+        """ Prepare filename which contains some metadata
+        sentinel2_LAYER_time0_time1_xmin_y_min_xmax_ymax_maxcc_priority.FORMAT
+
         :param bbox:
         :return:
         """
-
-        bbox_array = []
-        for value in bbox.split(','):
-            bbox_array.append(value.split('.')[0])
-
-        return '.'.join(map(str, ['_'.join(map(str, [Settings.parameters['time'].split('/')[0].replace('-', ''),
-                                                     Settings.parameters['name'],
-                                                     Settings.parameters['layers'],
-                                                     bbox_array[0],
-                                                     bbox_array[1]])),
+        info_list = [Settings.parameters['name'], Settings.parameters['layers']] \
+            + Settings.parameters['time'].split('/')[:2] + bbox.split(',') \
+            + [Settings.parameters['maxcc'], Settings.parameters['priority']]
+        return '.'.join(map(str, ['_'.join(map(str, info_list)),
                                   Settings.parameters_wcs['format'].split(';')[0].split('/')[1]]))
 
     def updateMaxcc(self):
@@ -680,7 +675,6 @@ class SentinelHub:
         Update max cloud cover
         :return:
         """
-
         self.updateParameters()
         self.updateCalendarFromCloudCover()
 
@@ -689,7 +683,6 @@ class SentinelHub:
         Update image format
         :return:
         """
-
         Settings.parameters_wcs['format'] = self.dockwidget.format.currentText()
 
     def changeExactDate(self):
@@ -697,7 +690,6 @@ class SentinelHub:
         Change if using exact date or not
         :return:
         """
-
         if self.dockwidget.exactDate.isChecked():
             self.dockwidget.time1.hide()
             self.moveCalendar('time0')
@@ -746,7 +738,6 @@ class SentinelHub:
         On Widget Month update, get first and last dates to get Cloud Cover
         :return:
         """
-
         year = self.dockwidget.calendar.yearShown()
         month = self.dockwidget.calendar.monthShown()
         _, number_of_days = calendar.monthrange(year, month)
