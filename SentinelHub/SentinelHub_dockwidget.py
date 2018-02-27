@@ -23,14 +23,20 @@
 
 import os
 
-from PyQt4 import QtGui, uic
-from PyQt4.QtCore import pyqtSignal
+try:
+    from PyQt5.QtWidgets import QDockWidget
+    from PyQt5.uic import loadUiType
+    from PyQt5.QtCore import pyqtSignal
+except ImportError:
+    from PyQt4.QtGui import QDockWidget
+    from PyQt4.uic import loadUiType
+    from PyQt4.QtCore import pyqtSignal
 
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'SentinelHub_dockwidget_base.ui'))
+FORM_CLASS, _ = loadUiType(os.path.join(os.path.dirname(__file__),
+                                        'SentinelHub_dockwidget_base.ui'))
 
 
-class SentinelHubDockWidget(QtGui.QDockWidget, FORM_CLASS):
+class SentinelHubDockWidget(QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
 

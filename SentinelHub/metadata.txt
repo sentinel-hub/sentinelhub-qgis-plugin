@@ -1,16 +1,18 @@
 # This file contains metadata for your plugin. Since
 # version 2.0 of QGIS this is the proper way to supply
 # information about a plugin. The old method of
-# embedding metadata in __init__.py will
+# embedding metadata in __init__.py
 # is no longer supported since version 2.0.
 
-# This file should be included when you package your plugin.# Mandatory items:
+# This file should be included when you package your plugin.
+# Mandatory items:
 
 [general]
 name=SentinelHub
 qgisMinimumVersion=2.0
+qgisMaximumVersion=3.99
 description=SentinelHub plugin enables users to harness power of Sentinel Hub services directly from QGIS.
-version=0.3
+version=1.0
 author=Sinergise
 email=info@sentinel-hub.com
 

@@ -20,25 +20,58 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from qgis.gui import *
-from qgis.core import *
-from .SentinelHub_dockwidget import SentinelHubDockWidget
-from xml.etree import ElementTree
+
 import os.path
 import requests
-import json
 import time
 import calendar
 import datetime
 import math
-import qgis
-import resources
 import warnings
-import urllib
+from xml.etree import ElementTree
+try:
+    from urllib.parse import quote_plus
+except ImportError:
+    from urllib import quote_plus
 
+from .SentinelHub_dockwidget import SentinelHubDockWidget
 from . import Settings
+
+try:
+    from qgis.utils import Qgis
+except ImportError:
+    from qgis.utils import QGis as Qgis
+
+def is_qgis_version_3():
+    return Qgis.QGIS_VERSION >= '3.0'
+
+from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform
+
+if is_qgis_version_3():
+    from qgis.core import QgsProject
+else:
+    from qgis.core import QgsMapLayerRegistry as QgsProject
+    from qgis.gui import QgsMessageBar
+
+try:
+    from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QDate
+    from PyQt5.QtGui import QIcon, QTextCharFormat
+    from PyQt5.QtWidgets import QAction, QFileDialog
+except ImportError:
+    from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QDate
+    from PyQt4.QtGui import QIcon, QAction, QTextCharFormat, QFileDialog
+
+
+if is_qgis_version_3():
+    INFO_MSG = Qgis.Info
+    WARNING_MSG = Qgis.Warning
+    CRITICAL_MSG = Qgis.Critical
+    SUCCESS_MSG = Qgis.Success
+else:
+    INFO_MSG = QgsMessageBar.INFO
+    WARNING_MSG = QgsMessageBar.WARNING
+    CRITICAL_MSG = QgsMessageBar.CRITICAL
+    SUCCESS_MSG = QgsMessageBar.SUCCESS
 
 
 class SentinelHub:
@@ -175,13 +208,18 @@ class SentinelHub:
         Updates List of Qgis layers
         :return:
         """
-
-        layers = self.iface.legendInterface().layers()
+        if is_qgis_version_3():
+            layers = QgsProject.instance().mapLayers()
+        else:
+            layers = self.iface.legendInterface().layers()
         if len(layers) != 0:
             layer_list = []
             for layer in layers:
                 # if layer.type() == 1:
-                layer_list.append(layer.name())
+                if is_qgis_version_3():
+                    layer_list.append(layer)
+                else:
+                    layer_list.append(layer.name())
             self.dockwidget.sentinelWMSlayers.clear()
             self.dockwidget.sentinelWMSlayers.addItems(layer_list)
 
@@ -210,15 +248,15 @@ class SentinelHub:
         """ Generate URI for WMS request from parameters """
 
         uri = ''
-        request_parameters = dict(Settings.parameters_wms.items() + Settings.parameters.items())
-        for parameter, value in request_parameters.iteritems():
+        request_parameters = list(Settings.parameters_wms.items()) + list(Settings.parameters.items())
+        for parameter, value in request_parameters:
             uri = uri + parameter + '=' + value + '&'
 
         # Every parameter that QGIS layer doesn't use by default must be in url
         # And url has to be encoded
         url = Settings.url_base + 'wms/' + self.instance_id + '?TIME=' + self.getTime() + '&priority=' \
             + Settings.parameters['priority'] + '&maxcc=' + Settings.parameters['maxcc']
-        return uri + 'url=' + urllib.quote_plus(url)
+        return uri + 'url=' + quote_plus(url)
 
     def getURLrequestWCS(self, bbox):
         """ Generate URL for WCS request from parameters
@@ -228,9 +266,9 @@ class SentinelHub:
         """
 
         url = Settings.url_base + 'wcs/' + self.instance_id + '?'
-        request_parameters = dict(Settings.parameters_wcs.items() + Settings.parameters.items())
+        request_parameters = list(Settings.parameters_wcs.items()) + list(Settings.parameters.items())
 
-        for parameter, value in request_parameters.iteritems():
+        for parameter, value in request_parameters:
             if parameter in ('resx', 'resy'):
                 value = value.strip('m') + 'm'
             url += parameter + '=' + value + '&'
@@ -240,7 +278,7 @@ class SentinelHub:
         """ Generate URL for WFS request from parameters """
 
         url = Settings.url_base + 'wfs/' + self.instance_id + '?'
-        for parameter, value in Settings.parameters_wfs.iteritems():
+        for parameter, value in Settings.parameters_wfs.items():
             url = url + parameter + '=' + value + '&'
 
         return url + 'bbox=' + self.getExtent()[0] + '&time=' + time_range
@@ -285,8 +323,8 @@ class SentinelHub:
         response = self.download_from_url(self.getURLrequestWFS(time_range))
 
         if response:
-            content = json.loads(response.content)
-            for feature in content['features']:
+            area_info = response.json()
+            for feature in area_info['features']:
                 self.cloud_cover.update(
                     {str(feature['properties']['date']):feature['properties']['cloudCoverPercentage']})
             self.updateCalendarFromCloudCover()
@@ -300,8 +338,6 @@ class SentinelHub:
         :param destination: path to destination
         :return:
         """
-        # self.iface.messageBar().pushMessage("Downloading ", filename, level=QgsMessageBar.INFO)
-
         with open('{}/{}'.format(destination, filename), "wb") as download_file:
             response = self.download_from_url(url, stream=True)
 
@@ -317,12 +353,10 @@ class SentinelHub:
             else:
                 downloaded = False
         if downloaded:
-            self.iface.messageBar().pushMessage("Done downloading: ", filename,
-                                                level=QgsMessageBar.SUCCESS)
+            self.iface.messageBar().pushMessage("Done downloading: ", filename, level=SUCCESS_MSG)
             time.sleep(1)
         else:
-            self.iface.messageBar().pushMessage("Error ", 'Download failed: ' + filename,
-                                                level=QgsMessageBar.CRITICAL)
+            self.iface.messageBar().pushMessage("Error ", 'Download failed: ' + filename, level=CRITICAL_MSG)
 
     def download_from_url(self, url, stream=False):
         """ Downloads data from url and handles possible errors
@@ -356,7 +390,7 @@ class SentinelHub:
             else:
                 message += str(exception)
 
-            self.iface.messageBar().pushMessage('Error', message, level=QgsMessageBar.CRITICAL)
+            self.iface.messageBar().pushMessage('Error', message, level=CRITICAL_MSG)
             response = None
 
         return response
@@ -370,13 +404,11 @@ class SentinelHub:
 
         self.updateParameters()
         name = self.parameters['prettyName'] + " - " + self.parameters['title']
-        rlayer = QgsRasterLayer(self.getURIrequestWMS(),
-                                name,
-                                'wms')
+        rlayer = QgsRasterLayer(self.getURIrequestWMS(), name, 'wms')
         if not rlayer.isValid():
             print("Layer failed to load!")  # TODO: something...
 
-        QgsMapLayerRegistry.instance().addMapLayer(rlayer)
+        QgsProject.instance().addMapLayer(rlayer)
         self.updateCurrentWMSLayers()
 
     def getExtent(self):
@@ -387,11 +419,17 @@ class SentinelHub:
         """
 
         bbox = self.iface.mapCanvas().extent()
-        current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapRenderer().destinationCrs().authid())
+        if is_qgis_version_3():
+            current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapSettings().destinationCrs().authid())
+        else:
+            current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapRenderer().destinationCrs().authid())
         target_crs = QgsCoordinateReferenceSystem(self.parameters['crs'])
 
         if current_crs != target_crs:
-            xform = QgsCoordinateTransform(current_crs, target_crs)
+            if is_qgis_version_3():
+                xform = QgsCoordinateTransform(current_crs, target_crs, QgsProject.instance())
+            else:
+                xform = QgsCoordinateTransform(current_crs, target_crs)
             bbox = xform.transform(bbox)
 
         if target_crs.authid() == 'EPSG:4326':
@@ -413,8 +451,7 @@ class SentinelHub:
         if self.iface.activeLayer().type() == 0:
             features = self.iface.activeLayer().selectedFeatures()
             if len(features) == 0:
-                self.iface.messageBar().pushMessage("Info", "No feature selected",
-                                                    level=QgsMessageBar.INFO)
+                self.iface.messageBar().pushMessage("Info", "No feature selected", level=INFO_MSG)
             elif len(features) == 1:
                 bbox = features[0].geometry().boundingBox()
 
@@ -427,19 +464,18 @@ class SentinelHub:
 
                 if target_crs.authid() == 'EPSG:4326':
                     return [",".join(map(str, [round(bbox.yMinimum(), 6), round(bbox.xMinimum(), 6),
-                                               round(bbox.yMaximum(), 6), round(bbox.xMaximum(), 6)])), self.getWidthHeight(
-                        bbox,
-                        target_crs)]
+                                               round(bbox.yMaximum(), 6), round(bbox.xMaximum(), 6)])),
+                            self.getWidthHeight(bbox, target_crs)]
                 else:
                     return [",".join(map(str, [round(bbox.xMinimum(), 6), round(bbox.yMinimum(), 6),
                                                round(bbox.xMaximum(), 6), round(bbox.yMaximum(), 6)])), '']
             else:
                 self.iface.messageBar().pushMessage("Info", "More than one features selected. Please select only one!",
-                                                    level=QgsMessageBar.INFO)
+                                                    level=INFO_MSG)
         else:
             self.iface.messageBar().pushMessage("Info",
                                                 "Select vector layer from Layers panel, then select feature on map!",
-                                                level=QgsMessageBar.INFO)
+                                                level=INFO_MSG)
         return False
 
     def updateCustomExtent(self):
@@ -478,10 +514,13 @@ class SentinelHub:
         :param rlayer: rlayer that should be updated
         :return:
         """
-        layers = self.iface.legendInterface().layers()
+        if is_qgis_version_3():
+            layers = QgsProject.instance().mapLayers()
+        else:
+            layers = self.iface.legendInterface().layers()
         rlayer = layers[self.dockwidget.sentinelWMSlayers.currentIndex()]
         self.addWms()
-        QgsMapLayerRegistry.instance().removeMapLayer(rlayer)
+        QgsProject.instance().removeMapLayer(rlayer)
         self.updateCurrentWMSLayers()
 
     def updateParameters(self):
@@ -556,7 +595,7 @@ class SentinelHub:
         """
 
         self.clearAllCells()
-        for date, value in self.cloud_cover.iteritems():
+        for date, value in self.cloud_cover.items():
             if float(value) < int(self.parameters['maxcc']):
                 d = date.split('-')
                 style = QTextCharFormat()
@@ -589,7 +628,7 @@ class SentinelHub:
         :return:
         """
         if not self.instance_id:
-            self.iface.messageBar().pushMessage("Error", "Instance ID is not set.", level=QgsMessageBar.CRITICAL)
+            self.iface.messageBar().pushMessage("Error", "Instance ID is not set.", level=CRITICAL_MSG)
             return
 
         self.updateParameters()
@@ -611,8 +650,7 @@ class SentinelHub:
 
             self.downloadWCS(url, filename, destination)
         else:
-            self.iface.messageBar().pushMessage("Info", "Download canceled. No destination set",
-                                                level=QgsMessageBar.INFO)
+            self.iface.messageBar().pushMessage("Info", "Download canceled. No destination set", level=INFO_MSG)
 
     def getFileName(self, bbox):
         """
@@ -677,11 +715,11 @@ class SentinelHub:
             self.capabilities = capabilities
             self.updateLayers()
             self.iface.messageBar().pushMessage("Success", "New Instance ID and available renderer set",
-                                                level=QgsMessageBar.SUCCESS)
+                                                level=SUCCESS_MSG)
         else:
             self.dockwidget.instanceId.setText(self.instance_id)
             # self.iface.messageBar().pushMessage("Error", "Instance ID {} is not valid".format(new_instance_id),
-            #                                     level=QgsMessageBar.CRITICAL)
+            #                                     level=CRITICAL_MSG)
 
     def updateMonth(self):
         """
