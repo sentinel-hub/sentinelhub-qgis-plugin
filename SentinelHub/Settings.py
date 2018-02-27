@@ -47,8 +47,8 @@ parameters_wcs = {
     'format': 'image/png',
     'transparent': 'false',
     'version': '1.1.1',
-    'resx': '10m',
-    'resy': '10m'
+    'resx': '10',
+    'resy': '10'
 }
 
 # enum values of parameters
@@ -57,5 +57,4 @@ atmfilter_list = ['NONE', 'DOS1', 'ATMCOR']
 cloud_correction = ['NONE', 'REPLACE']
 img_formats = ['image/png', 'image/jpeg',
                'image/tiff', 'image/tiff;depth=8', 'image/tiff;depth=16', 'image/tiff;depth=32f']
-
-MAXCC_range = [0, 100]
+maxcc_range = [0, 100]
