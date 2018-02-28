@@ -3,6 +3,8 @@
 
 SentinelHub QGIS Plugin enables users to harness power of Sentinel Hub services directly from QGIS.
 
+The plugin currently supports QGIS versions 2.* and 3.0.
+
 ## Install
 
 SentinelHub QGIS Plugin is available in QGIS Official Plugin Repository. For install just open QGIS, select `Plugins -> Manage and Install Plugins` and search for the plugin.
