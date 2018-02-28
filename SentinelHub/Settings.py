@@ -63,3 +63,5 @@ cloud_correction = ['NONE', 'REPLACE']
 img_formats = ['image/png', 'image/jpeg',
                'image/tiff', 'image/tiff;depth=8', 'image/tiff;depth=16', 'image/tiff;depth=32f']
 maxcc_range = [0, 100]
+
+max_cloud_cover_image_size = 1000000

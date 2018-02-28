@@ -113,7 +113,6 @@ class SentinelHub:
         if self.download_folder is None:
             self.download_folder = ''
 
-        self.parameters = Settings.parameters
         self.qgis_layers = []
         self.capabilities = []
         self.active_time = 'time0'
@@ -182,7 +181,7 @@ class SentinelHub:
         Layers - Renderers
         Priority
         """
-        self.updateLayers()
+        self.update_available_layers()
 
         self.dockwidget.instanceId.setText(self.instance_id)
         self.dockwidget.destination.setText(self.download_folder)
@@ -222,7 +221,7 @@ class SentinelHub:
 
     # --------------------------------------------------------------------------
 
-    def updateLayers(self):
+    def update_available_layers(self):
         """
         Update list of Layers avalivale at Sentinel Hub Instance
         :return:
@@ -234,7 +233,7 @@ class SentinelHub:
             layer_list.append(layer['Title'])
         self.dockwidget.layers.addItems(layer_list)
 
-    def updateCurrentWMSLayers(self):
+    def update_current_wms_layers(self):
         """
         Updates List of Qgis layers
         :return:
@@ -271,48 +270,53 @@ class SentinelHub:
 
     # --------------------------------------------------------------------------
 
-    def getURIrequestWMS(self):
+    def get_wms_uri(self):
         """ Generate URI for WMS request from parameters """
 
         uri = ''
         request_parameters = list(Settings.parameters_wms.items()) + list(Settings.parameters.items())
         for parameter, value in request_parameters:
-            uri = uri + parameter + '=' + value + '&'
+            uri += '{}={}&'.format(parameter, value)
 
         # Every parameter that QGIS layer doesn't use by default must be in url
         # And url has to be encoded
-        url = Settings.url_base + 'wms/' + self.instance_id + '?TIME=' + self.getTime() + '&priority=' \
-            + Settings.parameters['priority'] + '&maxcc=' + Settings.parameters['maxcc']
-        return uri + 'url=' + quote_plus(url)
+        url = '{}wms/{}?TIME={}&priority={}&maxcc={}'.format(Settings.url_base, self.instance_id, self.get_time(),
+                                                             Settings.parameters['priority'],
+                                                             Settings.parameters['maxcc'])
+        return '{}url={}'.format(uri, quote_plus(url))
 
-    def getURLrequestWCS(self, bbox):
+    def get_wcs_url(self, bbox, crs=None):
         """ Generate URL for WCS request from parameters
 
         :param bbox: Bounding box in form of "xmin,ymin,xmax,ymax"
         :type bbox: str
+        :param crs: CRS of bounding box
+        :type crs: str or None
         """
-
-        url = Settings.url_base + 'wcs/' + self.instance_id + '?'
+        url = '{}wcs/{}?'.format(Settings.url_base, self.instance_id)
         request_parameters = list(Settings.parameters_wcs.items()) + list(Settings.parameters.items())
 
         for parameter, value in request_parameters:
             if parameter in ('resx', 'resy'):
                 value = value.strip('m') + 'm'
-            url += parameter + '=' + value + '&'
-        return url + 'bbox=' + bbox
+            if parameter == 'crs':
+                value = crs if crs else Settings.parameters['crs']
+            url += '{}={}&'.format(parameter, value)
+        return '{}bbox={}'.format(url, bbox)
 
-    def getURLrequestWFS(self, time_range):
+    def get_wfs_url(self, time_range):
         """ Generate URL for WFS request from parameters """
 
-        url = Settings.url_base + 'wfs/' + self.instance_id + '?'
+        url = '{}wfs/{}?'.format(Settings.url_base, self.instance_id)
         for parameter, value in Settings.parameters_wfs.items():
-            url = url + parameter + '=' + value + '&'
+            url += '{}={}&'.format(parameter, value)
 
-        return url + 'bbox=' + self.bbox_to_string(self.get_bbox()) + '&time=' + time_range
+        return '{}bbox={}&time={}&srsname={}&maxcc=100'.format(url, self.bbox_to_string(self.get_bbox()), time_range,
+                                                               Settings.parameters['crs'])
 
     # ---------------------------------------------------------------------------
 
-    def getCapabilities(self, service, instance_id):
+    def get_capabilities(self, service, instance_id):
         """ Get capabilities of desired service
 
         :param service: Service (wms, wfs, wcs)
@@ -335,7 +339,7 @@ class SentinelHub:
                               'Name': layer.find('Name').text})
         return props, response is not None
 
-    def getCloudCover(self, time_range):
+    def get_cloud_cover(self, time_range):
         """ Get cloud cover for current extent.
 
         :return:
@@ -345,25 +349,28 @@ class SentinelHub:
         if not self.instance_id:
             return
 
-        # First check
-        # width_height = self.custom_extent_width_height
+        # Check if area is too large
+        width, height = self.get_bbox_size(self.get_bbox())
+        if max(width, height) > Settings.max_cloud_cover_image_size:
+            return
 
-        response = self.download_from_url(self.getURLrequestWFS(time_range))
+        response = self.download_from_url(self.get_wfs_url(time_range))
 
         if response:
             area_info = response.json()
             for feature in area_info['features']:
                 self.cloud_cover.update(
-                    {str(feature['properties']['date']):feature['properties']['cloudCoverPercentage']})
-            self.updateCalendarFromCloudCover()
+                    {str(feature['properties']['date']): feature['properties']['cloudCoverPercentage']})
+            self.update_calendar_from_cloud_cover()
 
-    def downloadWCS(self, url, filename):
+    # ----------------------------------------------------------------------------
+
+    def download_wcs_data(self, url, filename):
         """
         Download image from provided URL WCS request
 
         :param url: WCS url request with specified bounding box
         :param filename: filename of image
-        :param destination: path to destination
         :return:
         """
         with open(os.path.join(self.download_folder, filename), "wb") as download_file:
@@ -423,7 +430,7 @@ class SentinelHub:
         return response
     # ----------------------------------------------------------------------------
 
-    def addWms(self):
+    def add_wms_layer(self):
         """
         Add WMS raster layer to canvas,
         :return:
@@ -431,12 +438,12 @@ class SentinelHub:
         if not self.instance_id:
             return self.missing_instance_id()
 
-        self.updateParameters()
-        name = '{} - {}'.format(self.parameters['prettyName'], self.parameters['title'])
-        new_layer = QgsRasterLayer(self.getURIrequestWMS(), name, 'wms')
+        self.update_parameters()
+        name = '{} - {}'.format(Settings.parameters['prettyName'], Settings.parameters['title'])
+        new_layer = QgsRasterLayer(self.get_wms_uri(), name, 'wms')
         if new_layer.isValid():
             QgsProject.instance().addMapLayer(new_layer)
-            self.updateCurrentWMSLayers()
+            self.update_current_wms_layers()
         else:
             self.show_message('Failed to create layer {}.'.format(name), MessageType.CRITICAL)
 
@@ -444,7 +451,7 @@ class SentinelHub:
         """
         Get window bbox
         """
-        target_crs = QgsCoordinateReferenceSystem(crs if crs else self.parameters['crs'])
+        target_crs = QgsCoordinateReferenceSystem(crs if crs else Settings.parameters['crs'])
 
         bbox = self.iface.mapCanvas().extent()
         if is_qgis_version_3():
@@ -461,8 +468,9 @@ class SentinelHub:
 
         return bbox
 
-    def bbox_to_string(self, bbox, crs=None):
-        target_crs = QgsCoordinateReferenceSystem(crs if crs else self.parameters['crs'])
+    @staticmethod
+    def bbox_to_string(bbox, crs=None):
+        target_crs = QgsCoordinateReferenceSystem(crs if crs else Settings.parameters['crs'])
 
         if target_crs.authid() == WGS84:
             precision = 6
@@ -494,23 +502,30 @@ class SentinelHub:
 
         self.set_values()
 
-    def getWidthHeight(self, bbox, bbox_crs):
+    def get_bbox_size(self, bbox, crs=None):
+        """ Returns approximate width and height of bounding box in meters
 
-        utm_crs = QgsCoordinateReferenceSystem(self.longitudeToUTMzone(
+        """
+        bbox_crs = QgsCoordinateReferenceSystem(crs if crs else Settings.parameters['crs'])
+        utm_crs = QgsCoordinateReferenceSystem(self.lng_to_utm_zone(
             (bbox.xMinimum() + bbox.xMaximum()) / 2,
             (bbox.yMinimum() + bbox.yMaximum()) / 2))
-        xform = QgsCoordinateTransform(bbox_crs, utm_crs)
+        if is_qgis_version_3():
+            xform = QgsCoordinateTransform(bbox_crs, utm_crs, QgsProject.instance())
+        else:
+            xform = QgsCoordinateTransform(bbox_crs, utm_crs)
         bbox = xform.transform(bbox)
-        width = int(math.fabs((bbox.xMaximum() - bbox.xMinimum()) / int(Settings.parameters_wcs['resx'].strip('m'))))
-        height = int(math.fabs((bbox.yMinimum() - bbox.yMaximum()) / int(Settings.parameters_wcs['resy'].strip('m'))))
-        return '&width={0}&height={1}'.format(width, height)
+        width = abs(bbox.xMaximum() - bbox.xMinimum())
+        height = abs(bbox.yMinimum() - bbox.yMaximum())
+        return width, height
 
-    def longitudeToUTMzone(self, longitude, latitude):
+    @staticmethod
+    def lng_to_utm_zone(longitude, latitude):
         zone = int(math.floor((longitude + 180) / 6) + 1)
         hemisphere = 6 if latitude > 0 else 7
         return 'EPSG:32{0}{1:02d}'.format(hemisphere, zone)
 
-    def updateQgisLayer(self):
+    def update_qgis_layer(self):
         """
         Updating layer in pyqgis somehow doesn't work therefore this method creates a new layer and deletes the old one
         :param rlayer: rlayer that should be updated
@@ -525,41 +540,39 @@ class SentinelHub:
 
         for layer in self.get_qgis_layers():
             if layer == self.qgis_layers[selected_index]:
-                self.addWms()
+                self.add_wms_layer()
                 QgsProject.instance().removeMapLayer(layer)
-                self.updateCurrentWMSLayers()
+                self.update_current_wms_layers()
                 return
         self.show_message('Chosen layer {} does not exist anymore.'
                           ''.format(self.dockwidget.sentinelWMSlayers.currentText()), MessageType.INFO)
-        self.updateCurrentWMSLayers()
+        self.update_current_wms_layers()
 
-    def updateParameters(self):
+    def update_parameters(self):
         """
         Update parameters from GUI
         :return:
         """
-        self.parameters['layers'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
-        self.parameters['coverage'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
-        self.parameters['title'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Title']
-        self.parameters['priority'] = self.dockwidget.priority.currentText()
-        self.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
-        self.parameters['time'] = str(self.getTime())
-        self.parameters['crs'] = self.dockwidget.epsg.currentText().replace(' ', '')
+        Settings.parameters['layers'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
+        Settings.parameters['coverage'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
+        Settings.parameters['title'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Title']
+        Settings.parameters['priority'] = self.dockwidget.priority.currentText()
+        Settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
+        Settings.parameters['time'] = str(self.get_time())
+        Settings.parameters['crs'] = self.dockwidget.epsg.currentText().replace(' ', '')
 
-    def updateMaxccLabel(self):
+    def update_maxcc_label(self):
         """
         Update Max Cloud Coverage Label when slider value change
         :return:
         """
-
         self.dockwidget.maxccLabel.setText('Cloud coverage ' + str(self.dockwidget.maxcc.value()) + ' %')
 
-    def getTime(self):
+    def get_time(self):
         """
         Format time parameter according to settings
         :return:
         """
-
         if self.dockwidget.time0.text() == '' and not self.dockwidget.exactDate.isChecked():
             return self.dockwidget.time1.text()
         elif self.dockwidget.exactDate.isChecked():
@@ -567,14 +580,13 @@ class SentinelHub:
         else:
             return self.dockwidget.time0.text() + '/' + self.dockwidget.time1.text() + '/P1D'
 
-    def addTime(self):
+    def add_time(self):
         """
         Add / update time parameter from calendar regrading which time was chosen and paint calander
         time0 - starting time
         time1 - ending time
         :return:
         """
-
         if self.active_time == 'time0':
             time_input = self.dockwidget.time0
         elif self.active_time == 'time1':
@@ -584,30 +596,29 @@ class SentinelHub:
 
     # ------------------------------------------------------------------------
 
-    def clearAllCells(self):
+    def clear_calendar_cells(self):
         """
         Clear all cells
         :return:
         """
-
         style = QTextCharFormat()
         style.setBackground(Qt.white)
         self.dockwidget.calendar.setDateTextFormat(QDate(), style)
 
-    def updateCalendarFromCloudCover(self):
+    def update_calendar_from_cloud_cover(self):
         """
         Update painted cells regrading Max Cloud Coverage
         :return:
         """
-        self.clearAllCells()
+        self.clear_calendar_cells()
         for date, value in self.cloud_cover.items():
-            if float(value) < int(self.parameters['maxcc']):
+            if float(value) <= int(Settings.parameters['maxcc']):
                 d = date.split('-')
                 style = QTextCharFormat()
                 style.setBackground(Qt.gray)
                 self.dockwidget.calendar.setDateTextFormat(QDate(int(d[0]), int(d[1]), int(d[2])), style)
 
-    def moveCalendar(self, active):
+    def move_calendar(self, active):
         """
         :param active:
         :return:
@@ -618,7 +629,7 @@ class SentinelHub:
             self.dockwidget.calendarSpacer.show()
         self.active_time = active
 
-    def selectDestination(self):
+    def select_destination(self):
         """
         Opens dialog to select destination folder
         :return:
@@ -642,20 +653,20 @@ class SentinelHub:
                 if value == '':
                     return self.show_message('Custom bounding box parameters are missing.', MessageType.CRITICAL)
 
-        self.updateParameters()
+        self.update_parameters()
 
         if not self.download_folder:
-            self.selectDestination()
+            self.select_destination()
             if not self.download_folder:
                 return self.show_message("Download canceled. No destination set.", MessageType.CRITICAL)
 
         bbox = self.get_bbox() if self.download_current_window else self.get_custom_bbox()
 
         bbox_str = self.bbox_to_string(bbox, None if self.download_current_window else WGS84)
-        url = self.getURLrequestWCS(bbox_str)
+        url = self.get_wcs_url(bbox_str, None if self.download_current_window else WGS84)
         filename = self.get_filename(bbox_str)
 
-        self.downloadWCS(url, filename)
+        self.download_wcs_data(url, filename)
 
     @staticmethod
     def get_filename(bbox):
@@ -671,29 +682,29 @@ class SentinelHub:
         return '.'.join(map(str, ['_'.join(map(str, info_list)),
                                   Settings.parameters_wcs['format'].split(';')[0].split('/')[1]]))
 
-    def updateMaxcc(self):
+    def update_maxcc(self):
         """
         Update max cloud cover
         :return:
         """
-        self.updateParameters()
-        self.updateCalendarFromCloudCover()
+        self.update_parameters()
+        self.update_calendar_from_cloud_cover()
 
-    def updateDownloadFormat(self):
+    def update_download_format(self):
         """
         Update image format
         :return:
         """
         Settings.parameters_wcs['format'] = self.dockwidget.format.currentText()
 
-    def changeExactDate(self):
+    def change_exact_date(self):
         """
         Change if using exact date or not
         :return:
         """
         if self.dockwidget.exactDate.isChecked():
             self.dockwidget.time1.hide()
-            self.moveCalendar('time0')
+            self.move_calendar('time0')
         else:
             self.dockwidget.time1.show()
 
@@ -709,12 +720,12 @@ class SentinelHub:
         if new_instance_id == '':
             capabilities, is_valid = [], True
         else:
-            capabilities, is_valid = self.getCapabilities('wms', new_instance_id)
+            capabilities, is_valid = self.get_capabilities('wms', new_instance_id)
 
         if is_valid:
             self.instance_id = new_instance_id
             self.capabilities = capabilities
-            self.updateLayers()
+            self.update_available_layers()
             if self.instance_id:
                 self.show_message("New Instance ID and layers set.", MessageType.SUCCESS)
             QSettings().setValue(Settings.instance_id_location, new_instance_id)
@@ -734,21 +745,22 @@ class SentinelHub:
             self.show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
                               MessageType.CRITICAL)
 
-    def updateMonth(self):
+    def update_month(self):
         """
         On Widget Month update, get first and last dates to get Cloud Cover
         :return:
         """
+        self.update_parameters()
+
         year = self.dockwidget.calendar.yearShown()
         month = self.dockwidget.calendar.monthShown()
         _, number_of_days = calendar.monthrange(year, month)
         first = datetime.date(year, month, 1)
         last = datetime.date(year, month, number_of_days)
 
-        # This is currently disabled
-        # self.getCloudCover(first.strftime('%Y-%m-%d') + '/' + last.strftime('%Y-%m-%d') + '/P1D')
+        self.get_cloud_cover(first.strftime('%Y-%m-%d') + '/' + last.strftime('%Y-%m-%d') + '/P1D')
 
-    def toggleExtent(self, setting):
+    def toggle_extent(self, setting):
         """
         Toggle Current / Custom extent
         :param setting:
@@ -801,28 +813,28 @@ class SentinelHub:
             if self.dockwidget is None:
                 # Initial function calls
                 self.dockwidget = SentinelHubDockWidget()
-                self.capabilities, _ = self.getCapabilities('wms', self.instance_id)
+                self.capabilities, _ = self.get_capabilities('wms', self.instance_id)
                 self.initGuiSettings()
-                self.updateMonth()
-                self.toggleExtent('current')
+                self.update_month()
+                self.toggle_extent('current')
                 self.dockwidget.calendarSpacer.hide()
-                self.updateCurrentWMSLayers()
+                self.update_current_wms_layers()
 
                 # Bind actions to buttons
-                self.dockwidget.buttonAddWms.clicked.connect(self.addWms)
-                self.dockwidget.buttonUpdateWms.clicked.connect(self.updateQgisLayer)
+                self.dockwidget.buttonAddWms.clicked.connect(self.add_wms_layer)
+                self.dockwidget.buttonUpdateWms.clicked.connect(self.update_qgis_layer)
                 self.dockwidget.buttonDownload.clicked.connect(self.download_caption)
                 self.dockwidget.refreshExtent.clicked.connect(self.take_window_bbox)
-                self.dockwidget.selectDestination.clicked.connect(self.selectDestination)
+                self.dockwidget.selectDestination.clicked.connect(self.select_destination)
 
                 # Render input fields changes and events
-                self.dockwidget.time0.selectionChanged.connect(lambda: self.moveCalendar('time0'))
-                self.dockwidget.time1.selectionChanged.connect(lambda: self.moveCalendar('time1'))
-                self.dockwidget.calendar.clicked.connect(self.addTime)
-                self.dockwidget.exactDate.stateChanged.connect(self.changeExactDate)
-                self.dockwidget.calendar.currentPageChanged.connect(self.updateMonth)
-                self.dockwidget.maxcc.valueChanged.connect(self.updateMaxccLabel)
-                self.dockwidget.maxcc.sliderReleased.connect(self.updateMaxcc)
+                self.dockwidget.time0.selectionChanged.connect(lambda: self.move_calendar('time0'))
+                self.dockwidget.time1.selectionChanged.connect(lambda: self.move_calendar('time1'))
+                self.dockwidget.calendar.clicked.connect(self.add_time)
+                self.dockwidget.exactDate.stateChanged.connect(self.change_exact_date)
+                self.dockwidget.calendar.currentPageChanged.connect(self.update_month)
+                self.dockwidget.maxcc.valueChanged.connect(self.update_maxcc_label)
+                self.dockwidget.maxcc.sliderReleased.connect(self.update_maxcc)
                 self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
                 self.dockwidget.destination.editingFinished.connect(self.change_download_folder)
 
@@ -834,9 +846,9 @@ class SentinelHub:
                 self.dockwidget.lngMax.editingFinished.connect(self.update_values)
 
                 # Download input fields changes and events
-                self.dockwidget.format.currentIndexChanged.connect(self.updateDownloadFormat)
-                self.dockwidget.radioCurrentExtent.clicked.connect(lambda: self.toggleExtent('current'))
-                self.dockwidget.radioCustomExtent.clicked.connect(lambda: self.toggleExtent('custom'))
+                self.dockwidget.format.currentIndexChanged.connect(self.update_download_format)
+                self.dockwidget.radioCurrentExtent.clicked.connect(lambda: self.toggle_extent('current'))
+                self.dockwidget.radioCustomExtent.clicked.connect(lambda: self.toggle_extent('custom'))
 
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
