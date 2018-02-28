@@ -21,14 +21,10 @@
  ***************************************************************************/
 """
 
-import os
+import os.path
+from sys import version_info
 
-try:
-    from qgis.utils import Qgis
-except ImportError:
-    from qgis.utils import QGis as Qgis
-
-if Qgis.QGIS_VERSION >= '3.0':
+if version_info[0] >= 3:
     from PyQt5.QtWidgets import QDockWidget
     from PyQt5.uic import loadUiType
     from PyQt5.QtCore import pyqtSignal

@@ -22,14 +22,15 @@
  This script initializes the plugin, making it known to QGIS.
 """
 
-
 # noinspection PyPep8Naming
-def classFactory(iface):  # pylint: disable=invalid-name
+# pylint: disable=invalid-name
+
+
+def classFactory(iface):
     """Load SentinelHub class from file SentinelHub.
 
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface
     """
-    #
     from .SentinelHub import SentinelHub
     return SentinelHub(iface)

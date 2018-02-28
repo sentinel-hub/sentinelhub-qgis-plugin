@@ -20,6 +20,11 @@
  *                                                                         *
  ***************************************************************************/
 """
+# This looks like the best way to make plugin compatible for QGIS versions 2.* and 3.0
+from sys import version_info
+def is_qgis_version_3():
+    return version_info[0] >= 3
+
 
 import os.path
 import requests
@@ -34,33 +39,27 @@ try:
 except ImportError:
     from urllib import quote_plus
 
-from . import resources  # this imports resources.qrc
+from . import resources  # this import is used because it imports resources.qrc
 from .SentinelHub_dockwidget import SentinelHubDockWidget
 from . import Settings
-
-try:
-    from qgis.utils import Qgis
-except ImportError:
-    from qgis.utils import QGis as Qgis
-
-def is_qgis_version_3():
-    return Qgis.QGIS_VERSION >= '3.0'
 
 from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle
 
 if is_qgis_version_3():
+    from qgis.utils import Qgis
     from qgis.core import QgsProject
-else:
-    from qgis.core import QgsMapLayerRegistry as QgsProject
-    from qgis.gui import QgsMessageBar
 
-if is_qgis_version_3():
     from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QDate
     from PyQt5.QtGui import QIcon, QTextCharFormat
     from PyQt5.QtWidgets import QAction, QFileDialog
 else:
+    from qgis.utils import QGis as Qgis
+    from qgis.core import QgsMapLayerRegistry as QgsProject
+    from qgis.gui import QgsMessageBar
+
     from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QDate
     from PyQt4.QtGui import QIcon, QAction, QTextCharFormat, QFileDialog
+
 
 WGS84 = 'EPSG:4326'
 
@@ -166,7 +165,7 @@ class SentinelHub:
 
         return action
 
-    def initGui(self):
+    def initGui(self):  # This method is called by QGIS
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
         icon_path = ':/plugins/SentinelHub/favicon.ico'
@@ -176,7 +175,7 @@ class SentinelHub:
             callback=self.run,
             parent=self.iface.mainWindow())
 
-    def initGuiSettings(self):
+    def init_gui_settings(self):
         """Fill combo boxes:
         Layers - Renderers
         Priority
@@ -251,11 +250,11 @@ class SentinelHub:
         return self.iface.legendInterface().layers()
     # --------------------------------------------------------------------------
 
-    def onClosePlugin(self):
+    def on_close_plugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
 
         # disconnects
-        self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
+        self.dockwidget.closingPlugin.disconnect(self.on_close_plugin)
         self.pluginIsActive = False
 
     def unload(self):
@@ -346,7 +345,7 @@ class SentinelHub:
         """
         self.cloud_cover = {}
 
-        if not self.instance_id:
+        if not self.instance_id or len(self.qgis_layers) == 0:
             return
 
         # Check if area is too large
@@ -528,7 +527,6 @@ class SentinelHub:
     def update_qgis_layer(self):
         """
         Updating layer in pyqgis somehow doesn't work therefore this method creates a new layer and deletes the old one
-        :param rlayer: rlayer that should be updated
         :return:
         """
         if not self.instance_id:
@@ -582,7 +580,7 @@ class SentinelHub:
 
     def add_time(self):
         """
-        Add / update time parameter from calendar regrading which time was chosen and paint calander
+        Add / update time parameter from calendar regrading which time was chosen and paint calendar
         time0 - starting time
         time1 - ending time
         :return:
@@ -814,7 +812,7 @@ class SentinelHub:
                 # Initial function calls
                 self.dockwidget = SentinelHubDockWidget()
                 self.capabilities, _ = self.get_capabilities('wms', self.instance_id)
-                self.initGuiSettings()
+                self.init_gui_settings()
                 self.update_month()
                 self.toggle_extent('current')
                 self.dockwidget.calendarSpacer.hide()
@@ -850,7 +848,7 @@ class SentinelHub:
                 self.dockwidget.radioCurrentExtent.clicked.connect(lambda: self.toggle_extent('current'))
                 self.dockwidget.radioCustomExtent.clicked.connect(lambda: self.toggle_extent('custom'))
 
-            self.dockwidget.closingPlugin.connect(self.onClosePlugin)
+            self.dockwidget.closingPlugin.connect(self.on_close_plugin)
 
             self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
