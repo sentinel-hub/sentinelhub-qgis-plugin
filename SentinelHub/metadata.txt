@@ -30,7 +30,7 @@ repository=https://github.com/sinergise/qgis_sentinel_hub.git
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=SentinelHub, Sinergise, remote sensing, satellite, images, viewer, download, Sentinel, Landsat, Envisat, Modis
+tags=SentinelHub, Sinergise, remote sensing, satellite, images, viewer, download, Sentinel, Landsat, Modis
 
 category=Web
 icon=favicon.ico
