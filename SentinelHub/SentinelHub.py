@@ -32,7 +32,6 @@ import time
 import calendar
 import datetime
 import math
-from enum import Enum
 from xml.etree import ElementTree
 try:
     from urllib.parse import quote_plus
@@ -63,12 +62,10 @@ else:
 
 WGS84 = 'EPSG:4326'
 
-
-class MessageType(Enum):
-    INFO = ('Info', Qgis.Info if is_qgis_version_3() else QgsMessageBar.INFO)
-    WARNING = ('Warning', Qgis.Warning if is_qgis_version_3() else QgsMessageBar.WARNING)
-    CRITICAL = ('Error', Qgis.Critical if is_qgis_version_3() else QgsMessageBar.CRITICAL)
-    SUCCESS = ('Success', Qgis.Success if is_qgis_version_3() else QgsMessageBar.SUCCESS)
+INFO_MSG = ('Info', Qgis.Info if is_qgis_version_3() else QgsMessageBar.INFO)
+WARNING_MSG = ('Warning', Qgis.Warning if is_qgis_version_3() else QgsMessageBar.WARNING)
+CRITICAL_MSG = ('Error', Qgis.Critical if is_qgis_version_3() else QgsMessageBar.CRITICAL)
+SUCCESS_MSG = ('Success', Qgis.Success if is_qgis_version_3() else QgsMessageBar.SUCCESS)
 
 
 class SentinelHub:
@@ -128,20 +125,10 @@ class SentinelHub:
         """
         return QCoreApplication.translate('SentinelHub', message)
 
-    def add_action(
-            self,
-            icon_path,
-            text,
-            callback,
-            enabled_flag=True,
-            add_to_menu=True,
-            add_to_toolbar=True,
-            status_tip=None,
-            whats_this=None,
-            parent=None):
+    def add_action(self, icon_path, text, callback, enabled_flag=True, add_to_menu=True, add_to_toolbar=True,
+                   status_tip=None, whats_this=None, parent=None):
         """Add a toolbar icon to the toolbar.
         """
-
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
@@ -211,12 +198,13 @@ class SentinelHub:
         :param message: Message for user
         :param message: str
         :param message_type: Type of message
-        :param message_type: MessageType
+        :param message_type: One of the constants INFO_MSG, WARNING_MSG, CRITICAL_MSG, SUCCESS_MSG
         """
-        self.iface.messageBar().pushMessage(message_type.value[0], message, level=message_type.value[1])
+        self.iface.messageBar().pushMessage(message_type[0], message, level=message_type[1])
 
     def missing_instance_id(self):
-        self.show_message("Please set Sentinel Hub Instance ID first.", MessageType.INFO)
+        """Show message about missing instance ID"""
+        self.show_message("Please set Sentinel Hub Instance ID first.", INFO_MSG)
 
     # --------------------------------------------------------------------------
 
@@ -271,7 +259,6 @@ class SentinelHub:
 
     def get_wms_uri(self):
         """ Generate URI for WMS request from parameters """
-
         uri = ''
         request_parameters = list(Settings.parameters_wms.items()) + list(Settings.parameters.items())
         for parameter, value in request_parameters:
@@ -387,10 +374,10 @@ class SentinelHub:
             else:
                 downloaded = False
         if downloaded:
-            self.show_message("Done downloading to {}".format(filename), MessageType.SUCCESS)
+            self.show_message("Done downloading to {}".format(filename), SUCCESS_MSG)
             time.sleep(1)
         else:
-            self.show_message("Failed to download from {} to {}".format(url, filename), MessageType.CRITICAL)
+            self.show_message("Failed to download from {} to {}".format(url, filename), CRITICAL_MSG)
 
     def download_from_url(self, url, stream=False):
         """ Downloads data from url and handles possible errors
@@ -423,7 +410,7 @@ class SentinelHub:
             else:
                 message += str(exception)
 
-            self.show_message(message, MessageType.CRITICAL)
+            self.show_message(message, CRITICAL_MSG)
             response = None
 
         return response
@@ -444,7 +431,7 @@ class SentinelHub:
             QgsProject.instance().addMapLayer(new_layer)
             self.update_current_wms_layers()
         else:
-            self.show_message('Failed to create layer {}.'.format(name), MessageType.CRITICAL)
+            self.show_message('Failed to create layer {}.'.format(name), CRITICAL_MSG)
 
     def get_bbox(self, crs=None):
         """
@@ -469,6 +456,8 @@ class SentinelHub:
 
     @staticmethod
     def bbox_to_string(bbox, crs=None):
+        """ Transforms BBox object into string
+        """
         target_crs = QgsCoordinateReferenceSystem(crs if crs else Settings.parameters['crs'])
 
         if target_crs.authid() == WGS84:
@@ -481,6 +470,8 @@ class SentinelHub:
         return ','.join(map(lambda coord: str(round(coord, precision)), bbox_list))
 
     def get_custom_bbox(self):
+        """ Creates BBox from values set by user
+        """
         lat_min = min(float(self.custom_bbox_params['latMin']), float(self.custom_bbox_params['latMax']))
         lat_max = max(float(self.custom_bbox_params['latMin']), float(self.custom_bbox_params['latMax']))
         lng_min = min(float(self.custom_bbox_params['lngMin']), float(self.custom_bbox_params['lngMax']))
@@ -520,6 +511,7 @@ class SentinelHub:
 
     @staticmethod
     def lng_to_utm_zone(longitude, latitude):
+        """ Calculates UTM zone from latitude and longitude"""
         zone = int(math.floor((longitude + 180) / 6) + 1)
         hemisphere = 6 if latitude > 0 else 7
         return 'EPSG:32{0}{1:02d}'.format(hemisphere, zone)
@@ -543,7 +535,7 @@ class SentinelHub:
                 self.update_current_wms_layers()
                 return
         self.show_message('Chosen layer {} does not exist anymore.'
-                          ''.format(self.dockwidget.sentinelWMSlayers.currentText()), MessageType.INFO)
+                          ''.format(self.dockwidget.sentinelWMSlayers.currentText()), INFO_MSG)
         self.update_current_wms_layers()
 
     def update_parameters(self):
@@ -645,18 +637,18 @@ class SentinelHub:
             return self.missing_instance_id()
 
         if Settings.parameters_wcs['resx'] == '' or Settings.parameters_wcs['resy'] == '':
-            return self.show_message('Spatial resolution parameters are not set.', MessageType.CRITICAL)
+            return self.show_message('Spatial resolution parameters are not set.', CRITICAL_MSG)
         if not self.download_current_window:
             for value in self.custom_bbox_params.values():
                 if value == '':
-                    return self.show_message('Custom bounding box parameters are missing.', MessageType.CRITICAL)
+                    return self.show_message('Custom bounding box parameters are missing.', CRITICAL_MSG)
 
         self.update_parameters()
 
         if not self.download_folder:
             self.select_destination()
             if not self.download_folder:
-                return self.show_message("Download canceled. No destination set.", MessageType.CRITICAL)
+                return self.show_message("Download canceled. No destination set.", CRITICAL_MSG)
 
         bbox = self.get_bbox() if self.download_current_window else self.get_custom_bbox()
 
@@ -725,12 +717,13 @@ class SentinelHub:
             self.capabilities = capabilities
             self.update_available_layers()
             if self.instance_id:
-                self.show_message("New Instance ID and layers set.", MessageType.SUCCESS)
+                self.show_message("New Instance ID and layers set.", SUCCESS_MSG)
             QSettings().setValue(Settings.instance_id_location, new_instance_id)
         else:
             self.dockwidget.instanceId.setText(self.instance_id)
 
     def change_download_folder(self):
+        """ Sets new download folder"""
         new_download_folder = self.dockwidget.destination.text()
         if new_download_folder == self.download_folder:
             return
@@ -741,7 +734,7 @@ class SentinelHub:
         else:
             self.dockwidget.destination.setText(self.download_folder)
             self.show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
-                              MessageType.CRITICAL)
+                              CRITICAL_MSG)
 
     def update_month(self):
         """
@@ -772,10 +765,11 @@ class SentinelHub:
             self.dockwidget.widgetCustomExtent.show()
 
     def update_values(self):
+        """ Updates numerical values from user input"""
         new_values = self.get_values()
 
         if not new_values:
-            self.show_message('Please input a numerical value.', MessageType.INFO)
+            self.show_message('Please input a numerical value.', INFO_MSG)
             self.set_values()
             return
 
@@ -786,6 +780,7 @@ class SentinelHub:
                 self.custom_bbox_params[name] = value
 
     def get_values(self):
+        """ Retrieves numerical values from user input"""
         new_values = {
             'resx': self.dockwidget.inputResX.text(),
             'resy': self.dockwidget.inputResY.text(),
