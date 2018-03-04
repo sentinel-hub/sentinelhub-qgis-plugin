@@ -543,9 +543,11 @@ class SentinelHub:
         Update parameters from GUI
         :return:
         """
-        Settings.parameters['layers'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
-        Settings.parameters['coverage'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Name']
-        Settings.parameters['title'] = self.capabilities[self.dockwidget.layers.currentIndex()]['Title']
+        layers_index = self.dockwidget.layers.currentIndex()
+        if 0 <= layers_index < len(self.capabilities):
+            Settings.parameters['layers'] = self.capabilities[layers_index]['Name']
+            Settings.parameters_wcs['coverage'] = self.capabilities[layers_index]['Name']
+            Settings.parameters['title'] = self.capabilities[layers_index]['Title']
         Settings.parameters['priority'] = self.dockwidget.priority.currentText()
         Settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
         Settings.parameters['time'] = str(self.get_time())
