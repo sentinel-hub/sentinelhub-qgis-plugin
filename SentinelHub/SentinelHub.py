@@ -68,6 +68,10 @@ CRITICAL_MSG = ('Error', Qgis.Critical if is_qgis_version_3() else QgsMessageBar
 SUCCESS_MSG = ('Success', Qgis.Success if is_qgis_version_3() else QgsMessageBar.SUCCESS)
 
 
+class InvalidInstanceId(ValueError):
+    pass
+
+
 class SentinelHub:
 
     def __init__(self, iface):
@@ -78,6 +82,7 @@ class SentinelHub:
 
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
+        self.plugin_version = self.get_plugin_version()
 
         # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
@@ -100,6 +105,8 @@ class SentinelHub:
         self.toolbar.setObjectName(u'SentinelHub')
         self.pluginIsActive = False
         self.dockwidget = None
+        self.base_url = None
+        self.data_source = None
 
         # Set value
         self.instance_id = QSettings().value(Settings.instance_id_location)
@@ -118,6 +125,7 @@ class SentinelHub:
         self.custom_bbox_params = {}
         for name in ['latMin', 'latMax', 'lngMin', 'lngMax']:
             self.custom_bbox_params[name] = ''
+
 
     @staticmethod
     def translate(message):
@@ -174,7 +182,7 @@ class SentinelHub:
         self.set_values()
 
         self.dockwidget.priority.clear()
-        self.dockwidget.priority.addItems(Settings.priority_list)
+        self.dockwidget.priority.addItems(sorted(Settings.priority_map.keys(), reverse=True))
 
         self.dockwidget.format.clear()
         self.dockwidget.format.addItems(Settings.img_formats)
@@ -189,6 +197,14 @@ class SentinelHub:
         self.dockwidget.latMax.setText(self.custom_bbox_params['latMax'])
         self.dockwidget.lngMin.setText(self.custom_bbox_params['lngMin'])
         self.dockwidget.lngMax.setText(self.custom_bbox_params['lngMax'])
+
+    def get_plugin_version(self):
+        try:
+            for line in open(os.path.join(self.plugin_dir, 'metadata.txt')):
+                if line.startswith('version'):
+                    return line.split("=")[1].strip()
+        except IOError:
+            return '?'
 
     # --------------------------------------------------------------------------
 
@@ -266,7 +282,7 @@ class SentinelHub:
 
         # Every parameter that QGIS layer doesn't use by default must be in url
         # And url has to be encoded
-        url = '{}wms/{}?TIME={}&priority={}&maxcc={}'.format(Settings.url_base, self.instance_id, self.get_time(),
+        url = '{}wms/{}?TIME={}&priority={}&maxcc={}'.format(self.base_url, self.instance_id, self.get_time(),
                                                              Settings.parameters['priority'],
                                                              Settings.parameters['maxcc'])
         return '{}url={}'.format(uri, quote_plus(url))
@@ -279,7 +295,7 @@ class SentinelHub:
         :param crs: CRS of bounding box
         :type crs: str or None
         """
-        url = '{}wcs/{}?'.format(Settings.url_base, self.instance_id)
+        url = '{}wcs/{}?'.format(self.base_url, self.instance_id)
         request_parameters = list(Settings.parameters_wcs.items()) + list(Settings.parameters.items())
 
         for parameter, value in request_parameters:
@@ -293,12 +309,21 @@ class SentinelHub:
     def get_wfs_url(self, time_range):
         """ Generate URL for WFS request from parameters """
 
-        url = '{}wfs/{}?'.format(Settings.url_base, self.instance_id)
+        url = '{}wfs/{}?'.format(self.base_url, self.instance_id)
         for parameter, value in Settings.parameters_wfs.items():
             url += '{}={}&'.format(parameter, value)
 
         return '{}bbox={}&time={}&srsname={}&maxcc=100'.format(url, self.bbox_to_string(self.get_bbox()), time_range,
                                                                Settings.parameters['crs'])
+
+    @staticmethod
+    def get_capabilities_url(base_url, service, instance_id, get_json=False):
+        """ Generates url for obtaining service capabilities
+        """
+        url = '{}{}/{}?service={}&request=GetCapabilities&version=1.1.1'.format(base_url, service, instance_id, service)
+        if get_json:
+            return url + '&format=application/json'
+        return url
 
     # ---------------------------------------------------------------------------
 
@@ -315,24 +340,44 @@ class SentinelHub:
         if not instance_id:
             return [], False
 
-        response = self.download_from_url('{}{}/{}?service={}&request=GetCapabilities'
-                                          '&version=1.1.1'.format(Settings.url_base, service, instance_id, service))
+        try:
+            response = self.download_from_url(self.get_capabilities_url(Settings.services_base_url, service,
+                                                                        instance_id), raise_invalid_id=True)
+            self.base_url = Settings.services_base_url
+        except InvalidInstanceId:
+            response = self.download_from_url(self.get_capabilities_url(Settings.ipt_base_url, service, instance_id))
+            self.base_url = Settings.ipt_base_url
+
         props = []
         if response:
             root = ElementTree.fromstring(response.content)
             for layer in root.findall('./Capability/Layer/Layer'):
                 props.append({'Title': layer.find('Title').text,
                               'Name': layer.find('Name').text})
+
+            if self.base_url == Settings.services_base_url:
+                json_response = self.download_from_url(self.get_capabilities_url(self.base_url, service, instance_id,
+                                                                                 get_json=True), raise_invalid_id=True)
+                try:
+                    layers = json_response.json()['layers']
+                    for prop, layer in zip(props, layers):
+                        if prop['Name'] == layer['id']:
+                            prop['Dataset'] = layer['dataset']
+                            # prop['Description'] = layer['description']
+                except (ValueError, KeyError):
+                    pass
+
         return props, response is not None
 
-    def get_cloud_cover(self, time_range):
+    def get_cloud_cover(self):
         """ Get cloud cover for current extent.
-
-        :return:
         """
         self.cloud_cover = {}
+        self.clear_calendar_cells()
 
         if not self.instance_id or len(self.qgis_layers) == 0:
+            return
+        if self.base_url != Settings.services_base_url:  # Uswest is too slow for this
             return
 
         # Check if area is too large
@@ -340,13 +385,14 @@ class SentinelHub:
         if max(width, height) > Settings.max_cloud_cover_image_size:
             return
 
-        response = self.download_from_url(self.get_wfs_url(time_range))
+        time_range = self.get_calendar_month_interval()
+        response = self.download_from_url(self.get_wfs_url(time_range), ignore_exception=True)
 
         if response:
             area_info = response.json()
             for feature in area_info['features']:
-                self.cloud_cover.update(
-                    {str(feature['properties']['date']): feature['properties']['cloudCoverPercentage']})
+                self.cloud_cover[str(feature['properties']['date'])] = feature['properties'].get('cloudCoverPercentage',
+                                                                                                 0)
             self.update_calendar_from_cloud_cover()
 
     # ----------------------------------------------------------------------------
@@ -379,41 +425,64 @@ class SentinelHub:
         else:
             self.show_message("Failed to download from {} to {}".format(url, filename), CRITICAL_MSG)
 
-    def download_from_url(self, url, stream=False):
+    def download_from_url(self, url, stream=False, raise_invalid_id=False, ignore_exception=False):
         """ Downloads data from url and handles possible errors
 
         :param url: download url
         :type url: str
         :param stream: True if download should be streamed and False otherwise
         :type stream: bool
+        :param raise_invalid_id: If True an InvalidInstanceId exception will be raised in case service returns HTTP 400
+        :type raise_invalid_id: bool
+        :param ignore_exception: If True no error messages will be shown in case of exceptions
+        :type ignore_exception: bool
         :return: download response or None if download failed
         :rtype: requests.response or None
         """
         try:
-            response = requests.get(url, stream=stream)
+            response = requests.get(url, stream=stream,
+                                    headers={'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)})
             response.raise_for_status()
         except requests.RequestException as exception:
-            message = '{}: '.format(exception.__class__.__name__)
+            if ignore_exception:
+                return
+            if raise_invalid_id and isinstance(exception, requests.HTTPError) and exception.response.status_code == 400:
+                raise InvalidInstanceId()
 
-            if isinstance(exception, requests.ConnectionError):
-                message += 'Cannot access service, check your internet connection.'
-            elif isinstance(exception, requests.HTTPError):
-                try:
-                    server_message = ''
-                    for elem in ElementTree.fromstring(exception.response.content):
-                        if 'ServiceException' in elem.tag:
-                            server_message += elem.text.strip('\n\t ')
-                except ElementTree.ParseError:
-                    server_message = exception.response.text.strip('\n\t ')
-                server_message = server_message.encode('ascii', errors='ignore').decode('utf-8')
-                message += 'server response: "{}"'.format(server_message)
-            else:
-                message += str(exception)
-
-            self.show_message(message, CRITICAL_MSG)
+            self.show_message(self.get_error_message(exception), CRITICAL_MSG)
             response = None
 
         return response
+
+    @staticmethod
+    def get_error_message(exception):
+        """ Creates an error message from the given exception
+
+        :param exception: Exception obtained during download
+        :type exception: requests.RequestException
+        :return: error message
+        :rtype: str
+        """
+        message = '{}: '.format(exception.__class__.__name__)
+
+        if isinstance(exception, requests.ConnectionError):
+            return message + 'Cannot access service, check your internet connection.'
+
+        if isinstance(exception, requests.HTTPError):
+            try:
+                server_message = ''
+                for elem in ElementTree.fromstring(exception.response.content):
+                    if 'ServiceException' in elem.tag:
+                        server_message += elem.text.strip('\n\t ')
+            except ElementTree.ParseError:
+                server_message = exception.response.text.strip('\n\t ')
+            server_message = server_message.encode('ascii', errors='ignore').decode('utf-8')
+            if 'Config instance "instance.' in server_message:
+                instance_id = server_message.split('"')[1][9:]
+                server_message = 'Invalid instance id: {}'.format(instance_id)
+            return message + 'server response: "{}"'.format(server_message)
+
+        return message + str(exception)
     # ----------------------------------------------------------------------------
 
     def add_wms_layer(self):
@@ -425,7 +494,7 @@ class SentinelHub:
             return self.missing_instance_id()
 
         self.update_parameters()
-        name = '{} - {}'.format(Settings.parameters['prettyName'], Settings.parameters['title'])
+        name = '{} - {}'.format(self.get_source_name(), Settings.parameters['title'])
         new_layer = QgsRasterLayer(self.get_wms_uri(), name, 'wms')
         if new_layer.isValid():
             QgsProject.instance().addMapLayer(new_layer)
@@ -543,15 +612,32 @@ class SentinelHub:
         Update parameters from GUI
         :return:
         """
+        Settings.parameters['priority'] = Settings.priority_map[self.dockwidget.priority.currentText()]
+        Settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
+        Settings.parameters['time'] = str(self.get_time())
+        Settings.parameters['crs'] = self.dockwidget.epsg.currentText().replace(' ', '')
+
+        self.update_selected_layer()
+
+    def update_selected_layer(self):
+        """ Updates properties of selected Sentinel Hub layer
+        """
         layers_index = self.dockwidget.layers.currentIndex()
+        old_data_source = self.data_source
         if 0 <= layers_index < len(self.capabilities):
             Settings.parameters['layers'] = self.capabilities[layers_index]['Name']
             Settings.parameters_wcs['coverage'] = self.capabilities[layers_index]['Name']
             Settings.parameters['title'] = self.capabilities[layers_index]['Title']
-        Settings.parameters['priority'] = self.dockwidget.priority.currentText()
-        Settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
-        Settings.parameters['time'] = str(self.get_time())
-        Settings.parameters['crs'] = self.dockwidget.epsg.currentText().replace(' ', '')
+
+            if self.base_url in [Settings.services_base_url, Settings.uswest_base_url]:
+                self.data_source = self.capabilities[layers_index].get('Dataset')
+                if self.data_source:
+                    self.base_url = Settings.data_source_props[self.data_source]['url']
+                    Settings.parameters_wfs['typenames'] = Settings.data_source_props[self.data_source]['wfs_name']
+
+                # TODO: if DEM, disable times
+        if old_data_source != self.data_source:
+            self.get_cloud_cover()
 
     def update_maxcc_label(self):
         """
@@ -660,19 +746,29 @@ class SentinelHub:
 
         self.download_wcs_data(url, filename)
 
-    @staticmethod
-    def get_filename(bbox):
+    def get_filename(self, bbox):
         """ Prepare filename which contains some metadata
-        sentinel2_LAYER_time0_time1_xmin_y_min_xmax_ymax_maxcc_priority.FORMAT
+        DataSource_LayerName_time0_time1_xmin_y_min_xmax_ymax_maxcc_priority.FORMAT
 
         :param bbox:
         :return:
         """
-        info_list = [Settings.parameters['name'], Settings.parameters['layers']] \
+        info_list = [self.get_source_name(), Settings.parameters['layers']] \
             + Settings.parameters['time'].split('/')[:2] + bbox.split(',') \
             + [Settings.parameters['maxcc'], Settings.parameters['priority']]
-        return '.'.join(map(str, ['_'.join(map(str, info_list)),
+        name = '.'.join(map(str, ['_'.join(map(str, info_list)),
                                   Settings.parameters_wcs['format'].split(';')[0].split('/')[1]]))
+        return name.replace(' ', '').replace(':', '_')
+
+    def get_source_name(self):
+        """ Returns name of the data source
+
+        :return: name
+        :rtype: string
+        """
+        if self.base_url == Settings.ipt_base_url:
+            return 'EO Cloud'
+        return Settings.data_source_props[self.data_source]['pretty_name']
 
     def update_maxcc(self):
         """
@@ -702,7 +798,7 @@ class SentinelHub:
 
     def change_instance_id(self):
         """
-        Change Instance ID, and validate that is valid
+        Change Instance ID, and check that it is valid
         :return:
         """
         new_instance_id = self.dockwidget.instanceId.text()
@@ -721,6 +817,8 @@ class SentinelHub:
             if self.instance_id:
                 self.show_message("New Instance ID and layers set.", SUCCESS_MSG)
             QSettings().setValue(Settings.instance_id_location, new_instance_id)
+            self.update_parameters()
+            self.get_cloud_cover()
         else:
             self.dockwidget.instanceId.setText(self.instance_id)
 
@@ -744,14 +842,16 @@ class SentinelHub:
         :return:
         """
         self.update_parameters()
+        self.get_cloud_cover()
 
+    def get_calendar_month_interval(self):
         year = self.dockwidget.calendar.yearShown()
         month = self.dockwidget.calendar.monthShown()
         _, number_of_days = calendar.monthrange(year, month)
         first = datetime.date(year, month, 1)
         last = datetime.date(year, month, number_of_days)
 
-        self.get_cloud_cover(first.strftime('%Y-%m-%d') + '/' + last.strftime('%Y-%m-%d') + '/P1D')
+        return '{}/{}/P1D'.format(first.strftime('%Y-%m-%d'), last.strftime('%Y-%m-%d'))
 
     def toggle_extent(self, setting):
         """
@@ -796,7 +896,7 @@ class SentinelHub:
                 try:
                     float(value)
                 except ValueError:
-                    return None
+                    return
         return new_values
 
     def run(self):
@@ -823,6 +923,7 @@ class SentinelHub:
                 self.dockwidget.selectDestination.clicked.connect(self.select_destination)
 
                 # Render input fields changes and events
+                self.dockwidget.layers.currentIndexChanged.connect(self.update_selected_layer)
                 self.dockwidget.time0.selectionChanged.connect(lambda: self.move_calendar('time0'))
                 self.dockwidget.time1.selectionChanged.connect(lambda: self.move_calendar('time1'))
                 self.dockwidget.calendar.clicked.connect(self.add_time)

@@ -905,7 +905,7 @@
                    </size>
                   </property>
                   <property name="text">
-                   <string>Cloud coverage 20%</string>
+                   <string>Cloud coverage 100%</string>
                   </property>
                   <property name="indent">
                    <number>-1</number>
@@ -930,10 +930,10 @@
                    <number>100</number>
                   </property>
                   <property name="value">
-                   <number>20</number>
+                   <number>100</number>
                   </property>
                   <property name="sliderPosition">
-                   <number>20</number>
+                   <number>100</number>
                   </property>
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>

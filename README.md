@@ -9,7 +9,7 @@ The plugin currently supports QGIS versions 2.* and 3.0.
 
 SentinelHub QGIS Plugin is available in QGIS Official Plugin Repository. For install just open QGIS, select `Plugins -> Manage and Install Plugins` and search for the plugin.
 
-In case of manual installation you can download [latest release](https://github.com/sinergise/qgis_sentinel_hub/releases/latest), unzip it into QGIS Plugin directory (`%userprofile%/.qgis/python/plugins/` for Windows users, `~/.qgis2/python/plugins/` for Linux and OS X users) and enable plugin under QGIS Installed Plugins.
+In case of manual installation you can download [latest release](https://github.com/sinergise/qgis_sentinel_hub/releases/latest), unzip it into QGIS Plugin directory and enable plugin under QGIS Installed Plugins.
 
 ## Development
 
