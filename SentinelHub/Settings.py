@@ -58,6 +58,19 @@ parameters_wcs = {
     'resy': '10'
 }
 
+# WMTS parameters
+parameters_wmts = {
+    'IgnoreGetFeatureInfoUrl': '1',
+    'IgnoreGetMapUrl': '1',
+    'contextualWMSLegend': '0',
+    'service': 'WMTS',
+    'styles': '',
+    'request': 'GetTile',
+    'format': 'image/jpeg',
+    'transparent': 'true',
+    'tileMatrixSet': 'PopularWebMercator512'
+}
+
 data_source_props = {'S2L1C': {'url': services_base_url,
                                'wfs_name': 'S2.TILE',
                                'pretty_name': 'Sentinel-2 L1C'},

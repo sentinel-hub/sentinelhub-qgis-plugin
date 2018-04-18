@@ -352,6 +352,17 @@ class SentinelHub:
                                                              Settings.parameters['maxcc'])
         return '{}url={}'.format(uri, quote_plus(url))
 
+    def get_wmts_uri(self):
+        """ Generate URI for WMTS request from parameters """
+        uri = ''
+        request_parameters = list(Settings.parameters_wmts.items()) + list(Settings.parameters.items())
+        for parameter, value in request_parameters:
+            uri += '{}={}&'.format(parameter, value)
+        url = '{}wmts/{}?TIME={}&priority={}&maxcc={}'.format(self.base_url, self.instance_id, self.get_time(),
+                                                              Settings.parameters['priority'],
+                                                              Settings.parameters['maxcc'])
+        return '{}url={}'.format(uri, quote_plus(url))
+
     def get_wcs_url(self, bbox, crs=None):
         """ Generate URL for WCS request from parameters
 
@@ -560,6 +571,7 @@ class SentinelHub:
         self.update_parameters()
         name = '{} - {}'.format(self.get_source_name(), Settings.parameters['title'])
         new_layer = QgsRasterLayer(self.get_wms_uri(), name, 'wms')
+        #new_layer = QgsRasterLayer(self.get_wmts_uri(), name, 'wms')
         if new_layer.isValid():
             if not current_position and self.get_qgis_layers():
                 self.iface.setActiveLayer(self.get_qgis_layers()[0])
@@ -1025,6 +1037,9 @@ class SentinelHub:
                 self.dockwidget.format.currentIndexChanged.connect(self.update_download_format)
                 self.dockwidget.radioCurrentExtent.clicked.connect(lambda: self.toggle_extent('current'))
                 self.dockwidget.radioCustomExtent.clicked.connect(lambda: self.toggle_extent('custom'))
+
+            # Tracks which layer is selected in left menu
+            # self.iface.currentLayerChanged.connect(self.update_current_wms_layers)
 
             self.dockwidget.closingPlugin.connect(self.on_close_plugin)
 
