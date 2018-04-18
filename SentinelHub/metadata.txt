@@ -6,7 +6,7 @@ name=SentinelHub
 qgisMinimumVersion=2.0
 qgisMaximumVersion=3.99
 description=SentinelHub plugin enables users to harness power of Sentinel Hub services directly from QGIS.
-version=1.1.0
+version=1.2.0
 author=Sinergise
 email=info@sentinel-hub.com
 

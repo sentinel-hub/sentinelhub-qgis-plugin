@@ -25,7 +25,6 @@ from sys import version_info
 def is_qgis_version_3():
     return version_info[0] >= 3
 
-
 import os.path
 import requests
 import time
@@ -42,7 +41,7 @@ from . import resources  # this import is used because it imports resources.qrc
 from .SentinelHub_dockwidget import SentinelHubDockWidget
 from . import Settings
 
-from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle
+from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsMessageLog
 
 if is_qgis_version_3():
     from qgis.utils import Qgis
@@ -60,16 +59,82 @@ else:
     from PyQt4.QtGui import QIcon, QAction, QTextCharFormat, QFileDialog
 
 
+POP_WEB = 'EPSG:3857'
 WGS84 = 'EPSG:4326'
-
-INFO_MSG = ('Info', Qgis.Info if is_qgis_version_3() else QgsMessageBar.INFO)
-WARNING_MSG = ('Warning', Qgis.Warning if is_qgis_version_3() else QgsMessageBar.WARNING)
-CRITICAL_MSG = ('Error', Qgis.Critical if is_qgis_version_3() else QgsMessageBar.CRITICAL)
-SUCCESS_MSG = ('Success', Qgis.Success if is_qgis_version_3() else QgsMessageBar.SUCCESS)
 
 
 class InvalidInstanceId(ValueError):
     pass
+
+
+class Message:  # Don't use Enum classes as some older Python versions don't have them
+    INFO = ('Info', Qgis.Info if is_qgis_version_3() else QgsMessageBar.INFO)
+    WARNING = ('Warning', Qgis.Warning if is_qgis_version_3() else QgsMessageBar.WARNING)
+    CRITICAL = ('Error', Qgis.Critical if is_qgis_version_3() else QgsMessageBar.CRITICAL)
+    SUCCESS = ('Success', Qgis.Success if is_qgis_version_3() else QgsMessageBar.SUCCESS)
+
+
+class Capabilities:
+
+    class Layer:
+        def __init__(self, layer_id, name, info='', data_source=None):
+            self.id = layer_id
+            self.name = name
+            self.info = info
+            self.data_source = data_source
+
+    class CRS:
+        def __init__(self, crs_id, name):
+            self.id = crs_id
+            self.name = name
+
+    def __init__(self, instance_id, base_url=Settings.services_base_url):
+        self.instance_id = instance_id
+        self.base_url = base_url
+
+        self.layers = []
+        self.crs_list = []
+
+    def load_xml(self, xml_root):
+        if xml_root.tag.startswith('{'):
+            namespace = '{}}}'.format(xml_root.tag.split('}')[0])
+        else:
+            namespace = ''
+
+        self.layers = []
+        for layer in xml_root.findall('./{0}Capability/{0}Layer/{0}Layer'.format(namespace)):
+            info_node = layer.find('{}Abstract'.format(namespace))
+            self.layers.append(self.Layer(layer.find('{}Name'.format(namespace)).text,
+                                          layer.find('{}Title'.format(namespace)).text,
+                                          info_node.text if info_node else ''))
+        self.layers.sort(key=lambda l: l.name)
+
+        self.crs_list = []
+        for crs in xml_root.findall('./{0}Capability/{0}Layer/{0}CRS'.format(namespace)):
+            self.crs_list.append(self.CRS(crs.text, crs.text.replace(':', ': ')))
+        self._sort_crs_list()
+
+    def load_json(self, json_dict):
+        try:
+            json_layers = {json_layer['id']: json_layer for json_layer in json_dict['layers']}
+            for layer in self.layers:
+                json_layer = json_layers.get(layer.id)
+                if json_layer:
+                    layer.data_source = json_layer['dataset']
+        except KeyError:
+            pass
+
+    def _sort_crs_list(self):
+        new_crs_list = []
+        for main_crs in [POP_WEB, WGS84]:
+            for index, crs in enumerate(self.crs_list):
+                if crs and crs.id == main_crs:
+                    new_crs_list.append(crs)
+                    self.crs_list[index] = None
+        for crs in self.crs_list:
+            if crs:
+                new_crs_list.append(crs)
+        self.crs_list = new_crs_list
 
 
 class SentinelHub:
@@ -117,7 +182,7 @@ class SentinelHub:
             self.download_folder = ''
 
         self.qgis_layers = []
-        self.capabilities = []
+        self.capabilities = Capabilities('')
         self.active_time = 'time0'
         self.cloud_cover = {}
 
@@ -125,7 +190,6 @@ class SentinelHub:
         self.custom_bbox_params = {}
         for name in ['latMin', 'latMax', 'lngMin', 'lngMax']:
             self.custom_bbox_params[name] = ''
-
 
     @staticmethod
     def translate(message):
@@ -175,7 +239,7 @@ class SentinelHub:
         Layers - Renderers
         Priority
         """
-        self.update_available_layers()
+        self.update_instance_props()
 
         self.dockwidget.instanceId.setText(self.instance_id)
         self.dockwidget.destination.setText(self.download_folder)
@@ -186,9 +250,6 @@ class SentinelHub:
 
         self.dockwidget.format.clear()
         self.dockwidget.format.addItems(Settings.img_formats)
-
-        self.dockwidget.epsg.clear()
-        self.dockwidget.epsg.addItems(Settings.epsg)
 
     def set_values(self):
         self.dockwidget.inputResX.setText(Settings.parameters_wcs['resx'])
@@ -214,29 +275,28 @@ class SentinelHub:
         :param message: Message for user
         :param message: str
         :param message_type: Type of message
-        :param message_type: One of the constants INFO_MSG, WARNING_MSG, CRITICAL_MSG, SUCCESS_MSG
+        :param message_type: Attributes of Message class
         """
         self.iface.messageBar().pushMessage(message_type[0], message, level=message_type[1])
 
     def missing_instance_id(self):
         """Show message about missing instance ID"""
-        self.show_message("Please set Sentinel Hub Instance ID first.", INFO_MSG)
+        self.show_message("Please set Sentinel Hub Instance ID first.", Message.INFO)
 
     # --------------------------------------------------------------------------
 
-    def update_available_layers(self):
+    def update_instance_props(self):
         """
-        Update list of Layers avalivale at Sentinel Hub Instance
-        :return:
+        Update lists of Layers and CRS available with current Sentinel Hub Instance
         """
-        self.dockwidget.layers.clear()
+        if self.capabilities:
+            self.dockwidget.layers.clear()
+            self.dockwidget.layers.addItems([layer.name for layer in self.capabilities.layers])
 
-        layer_list = []
-        for layer in self.capabilities:
-            layer_list.append(layer['Title'])
-        self.dockwidget.layers.addItems(layer_list)
+            self.dockwidget.epsg.clear()
+            self.dockwidget.epsg.addItems([crs.name for crs in self.capabilities.crs_list])
 
-    def update_current_wms_layers(self):
+    def update_current_wms_layers(self, selected_layer=None):
         """
         Updates List of Qgis layers
         :return:
@@ -248,15 +308,20 @@ class SentinelHub:
         self.dockwidget.sentinelWMSlayers.clear()
         self.dockwidget.sentinelWMSlayers.addItems(layer_names)
 
+        if selected_layer:
+            for index, layer in enumerate(self.qgis_layers):
+                if layer == selected_layer:
+                    self.dockwidget.sentinelWMSlayers.setCurrentIndex(index)
+
     def get_qgis_layers(self):
         if is_qgis_version_3():
-            return list(QgsProject.instance().mapLayers().values())
+            return list(QgsProject.instance().layerTreeRoot().findLayers())
         return self.iface.legendInterface().layers()
+
     # --------------------------------------------------------------------------
 
     def on_close_plugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
-
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.on_close_plugin)
         self.pluginIsActive = False
@@ -320,25 +385,25 @@ class SentinelHub:
     def get_capabilities_url(base_url, service, instance_id, get_json=False):
         """ Generates url for obtaining service capabilities
         """
-        url = '{}{}/{}?service={}&request=GetCapabilities&version=1.1.1'.format(base_url, service, instance_id, service)
+        url = '{}{}/{}?service={}&request=GetCapabilities&version=1.3.0'.format(base_url, service, instance_id, service)
         if get_json:
             return url + '&format=application/json'
         return url
 
     # ---------------------------------------------------------------------------
 
-    def get_capabilities(self, service, instance_id):
+    def get_capabilities(self, instance_id, service='wms'):
         """ Get capabilities of desired service
 
-        :param service: Service (wms, wfs, wcs)
-        :type service: str
         :param instance_id: Sentinel Hub instance id
         :type instance_id: str
-        :return: list of properties and flag if capabilities were obtained
-        :rtype: list(str), bool
+        :param service: Service (wms, wfs, wcs)
+        :type service: str
+        :return: Capabilities class or none
+        :rtype: Capabilities or None
         """
         if not instance_id:
-            return [], False
+            return None
 
         try:
             response = self.download_from_url(self.get_capabilities_url(Settings.services_base_url, service,
@@ -348,26 +413,23 @@ class SentinelHub:
             response = self.download_from_url(self.get_capabilities_url(Settings.ipt_base_url, service, instance_id))
             self.base_url = Settings.ipt_base_url
 
-        props = []
-        if response:
-            root = ElementTree.fromstring(response.content)
-            for layer in root.findall('./Capability/Layer/Layer'):
-                props.append({'Title': layer.find('Title').text,
-                              'Name': layer.find('Name').text})
+        if not response:
+            return None
 
-            if self.base_url == Settings.services_base_url:
-                json_response = self.download_from_url(self.get_capabilities_url(self.base_url, service, instance_id,
-                                                                                 get_json=True), raise_invalid_id=True)
-                try:
-                    layers = json_response.json()['layers']
-                    for prop, layer in zip(props, layers):
-                        if prop['Name'] == layer['id']:
-                            prop['Dataset'] = layer['dataset']
-                            # prop['Description'] = layer['description']
-                except (ValueError, KeyError):
-                    pass
+        capabilities = Capabilities(instance_id, self.base_url)
 
-        return props, response is not None
+        xml_root = ElementTree.fromstring(response.content)
+        capabilities.load_xml(xml_root)
+
+        if self.base_url == Settings.services_base_url:
+            json_response = self.download_from_url(self.get_capabilities_url(self.base_url, service, instance_id,
+                                                                             get_json=True), raise_invalid_id=True)
+            try:
+                capabilities.load_json(json_response.json())
+            except ValueError:
+                pass
+
+        return capabilities
 
     def get_cloud_cover(self):
         """ Get cloud cover for current extent.
@@ -375,7 +437,7 @@ class SentinelHub:
         self.cloud_cover = {}
         self.clear_calendar_cells()
 
-        if not self.instance_id or len(self.qgis_layers) == 0:
+        if not self.capabilities or len(self.qgis_layers) == 0:
             return
         if self.base_url != Settings.services_base_url:  # Uswest is too slow for this
             return
@@ -420,10 +482,10 @@ class SentinelHub:
             else:
                 downloaded = False
         if downloaded:
-            self.show_message("Done downloading to {}".format(filename), SUCCESS_MSG)
+            self.show_message("Done downloading to {}".format(filename), Message.SUCCESS)
             time.sleep(1)
         else:
-            self.show_message("Failed to download from {} to {}".format(url, filename), CRITICAL_MSG)
+            self.show_message("Failed to download from {} to {}".format(url, filename), Message.CRITICAL)
 
     def download_from_url(self, url, stream=False, raise_invalid_id=False, ignore_exception=False):
         """ Downloads data from url and handles possible errors
@@ -449,7 +511,7 @@ class SentinelHub:
             if raise_invalid_id and isinstance(exception, requests.HTTPError) and exception.response.status_code == 400:
                 raise InvalidInstanceId()
 
-            self.show_message(self.get_error_message(exception), CRITICAL_MSG)
+            self.show_message(self.get_error_message(exception), Message.CRITICAL)
             response = None
 
         return response
@@ -485,22 +547,27 @@ class SentinelHub:
         return message + str(exception)
     # ----------------------------------------------------------------------------
 
-    def add_wms_layer(self):
+    def add_wms_layer(self, current_position=False):
         """
         Add WMS raster layer to canvas,
-        :return:
+        :param current_position: If True the layer will be added on top of currently selected layers, if False it will
+                                 be added on top of all layers
+        :return: new layer
         """
-        if not self.instance_id:
+        if not self.capabilities:
             return self.missing_instance_id()
 
         self.update_parameters()
         name = '{} - {}'.format(self.get_source_name(), Settings.parameters['title'])
         new_layer = QgsRasterLayer(self.get_wms_uri(), name, 'wms')
         if new_layer.isValid():
+            if not current_position and self.get_qgis_layers():
+                self.iface.setActiveLayer(self.get_qgis_layers()[0])
             QgsProject.instance().addMapLayer(new_layer)
             self.update_current_wms_layers()
         else:
-            self.show_message('Failed to create layer {}.'.format(name), CRITICAL_MSG)
+            self.show_message('Failed to create layer {}.'.format(name), Message.CRITICAL)
+        return new_layer
 
     def get_bbox(self, crs=None):
         """
@@ -590,7 +657,7 @@ class SentinelHub:
         Updating layer in pyqgis somehow doesn't work therefore this method creates a new layer and deletes the old one
         :return:
         """
-        if not self.instance_id:
+        if not self.capabilities:
             self.missing_instance_id()
 
         selected_index = self.dockwidget.sentinelWMSlayers.currentIndex()
@@ -598,13 +665,16 @@ class SentinelHub:
             return
 
         for layer in self.get_qgis_layers():
+            # QgsMessageLog.logMessage(str(layer.name()) + ' ' + str(self.qgis_layers[selected_index].name()))
             if layer == self.qgis_layers[selected_index]:
-                self.add_wms_layer()
-                QgsProject.instance().removeMapLayer(layer)
-                self.update_current_wms_layers()
+                self.iface.setActiveLayer(layer)
+                new_layer = self.add_wms_layer(current_position=True)
+                if new_layer.isValid():
+                    QgsProject.instance().removeMapLayer(layer)
+                    self.update_current_wms_layers(selected_layer=new_layer)
                 return
         self.show_message('Chosen layer {} does not exist anymore.'
-                          ''.format(self.dockwidget.sentinelWMSlayers.currentText()), INFO_MSG)
+                          ''.format(self.dockwidget.sentinelWMSlayers.currentText()), Message.INFO)
         self.update_current_wms_layers()
 
     def update_parameters(self):
@@ -615,22 +685,32 @@ class SentinelHub:
         Settings.parameters['priority'] = Settings.priority_map[self.dockwidget.priority.currentText()]
         Settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
         Settings.parameters['time'] = str(self.get_time())
-        Settings.parameters['crs'] = self.dockwidget.epsg.currentText().replace(' ', '')
 
-        self.update_selected_layer()
+        if self.capabilities:
+            self.update_selected_crs()
+            self.update_selected_layer()
+
+    def update_selected_crs(self):
+        """ Updates crs with selected Sentinel Hub CRS
+        """
+        crs_index = self.dockwidget.epsg.currentIndex()
+        wms_crs = self.capabilities.crs_list
+        if 0 <= crs_index < len(wms_crs):
+            Settings.parameters['crs'] = wms_crs[crs_index].id
 
     def update_selected_layer(self):
         """ Updates properties of selected Sentinel Hub layer
         """
         layers_index = self.dockwidget.layers.currentIndex()
         old_data_source = self.data_source
-        if 0 <= layers_index < len(self.capabilities):
-            Settings.parameters['layers'] = self.capabilities[layers_index]['Name']
-            Settings.parameters_wcs['coverage'] = self.capabilities[layers_index]['Name']
-            Settings.parameters['title'] = self.capabilities[layers_index]['Title']
+        wms_layers = self.capabilities.layers
+        if 0 <= layers_index < len(wms_layers):
+            Settings.parameters['layers'] = wms_layers[layers_index].id
+            Settings.parameters_wcs['coverage'] = wms_layers[layers_index].id
+            Settings.parameters['title'] = wms_layers[layers_index].name
 
             if self.base_url in [Settings.services_base_url, Settings.uswest_base_url]:
-                self.data_source = self.capabilities[layers_index].get('Dataset')
+                self.data_source = wms_layers[layers_index].data_source
                 if self.data_source:
                     self.base_url = Settings.data_source_props[self.data_source]['url']
                     Settings.parameters_wfs['typenames'] = Settings.data_source_props[self.data_source]['wfs_name']
@@ -654,9 +734,9 @@ class SentinelHub:
         if self.dockwidget.time0.text() == '' and not self.dockwidget.exactDate.isChecked():
             return self.dockwidget.time1.text()
         elif self.dockwidget.exactDate.isChecked():
-            return self.dockwidget.time0.text() + '/' + self.dockwidget.time0.text() + '/P1D'
+            return '{}/{}/P1D'.format(self.dockwidget.time0.text(), self.dockwidget.time0.text())
         else:
-            return self.dockwidget.time0.text() + '/' + self.dockwidget.time1.text() + '/P1D'
+            return '{}/{}/P1D'.format(self.dockwidget.time0.text(), self.dockwidget.time1.text())
 
     def add_time(self):
         """
@@ -725,18 +805,18 @@ class SentinelHub:
             return self.missing_instance_id()
 
         if Settings.parameters_wcs['resx'] == '' or Settings.parameters_wcs['resy'] == '':
-            return self.show_message('Spatial resolution parameters are not set.', CRITICAL_MSG)
+            return self.show_message('Spatial resolution parameters are not set.', Message.CRITICAL)
         if not self.download_current_window:
             for value in self.custom_bbox_params.values():
                 if value == '':
-                    return self.show_message('Custom bounding box parameters are missing.', CRITICAL_MSG)
+                    return self.show_message('Custom bounding box parameters are missing.', Message.CRITICAL)
 
         self.update_parameters()
 
         if not self.download_folder:
             self.select_destination()
             if not self.download_folder:
-                return self.show_message("Download canceled. No destination set.", CRITICAL_MSG)
+                return self.show_message("Download canceled. No destination set.", Message.CRITICAL)
 
         bbox = self.get_bbox() if self.download_current_window else self.get_custom_bbox()
 
@@ -806,16 +886,16 @@ class SentinelHub:
             return
 
         if new_instance_id == '':
-            capabilities, is_valid = [], True
+            capabilities = Capabilities(new_instance_id)
         else:
-            capabilities, is_valid = self.get_capabilities('wms', new_instance_id)
+            capabilities = self.get_capabilities(new_instance_id)
 
-        if is_valid:
+        if capabilities:
             self.instance_id = new_instance_id
             self.capabilities = capabilities
-            self.update_available_layers()
+            self.update_instance_props()
             if self.instance_id:
-                self.show_message("New Instance ID and layers set.", SUCCESS_MSG)
+                self.show_message("New Instance ID and layers set.", Message.SUCCESS)
             QSettings().setValue(Settings.instance_id_location, new_instance_id)
             self.update_parameters()
             self.get_cloud_cover()
@@ -834,7 +914,7 @@ class SentinelHub:
         else:
             self.dockwidget.destination.setText(self.download_folder)
             self.show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
-                              CRITICAL_MSG)
+                              Message.CRITICAL)
 
     def update_month(self):
         """
@@ -871,7 +951,7 @@ class SentinelHub:
         new_values = self.get_values()
 
         if not new_values:
-            self.show_message('Please input a numerical value.', INFO_MSG)
+            self.show_message('Please input a numerical value.', Message.INFO)
             self.set_values()
             return
 
@@ -908,7 +988,7 @@ class SentinelHub:
             if self.dockwidget is None:
                 # Initial function calls
                 self.dockwidget = SentinelHubDockWidget()
-                self.capabilities, _ = self.get_capabilities('wms', self.instance_id)
+                self.capabilities = self.get_capabilities(self.instance_id)
                 self.init_gui_settings()
                 self.update_month()
                 self.toggle_extent('current')

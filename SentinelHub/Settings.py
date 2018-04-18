@@ -13,12 +13,6 @@ ipt_base_url = 'http://services.eocloud.sentinel-hub.com/v1/'
 instance_id_location = "SentinelHub/instance_id"
 download_folder_location = "SentinelHub/download_folder"
 
-# Supported CRS
-epsg = [
-    'EPSG: 3857',
-    'EPSG: 4326'
-]
-
 # Main request parameters
 parameters = {
     'title': '',
