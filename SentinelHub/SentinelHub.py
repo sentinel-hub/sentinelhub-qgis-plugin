@@ -455,7 +455,10 @@ class SentinelHub:
             return
 
         # Check if area is too large
-        width, height = self.get_bbox_size(self.get_bbox())
+        try:
+            width, height = self.get_bbox_size(self.get_bbox())
+        except Exception:
+            return
         if max(width, height) > Settings.max_cloud_cover_image_size:
             return
 
@@ -586,20 +589,21 @@ class SentinelHub:
         """
         Get window bbox
         """
-        target_crs = QgsCoordinateReferenceSystem(crs if crs else Settings.parameters['crs'])
-
         bbox = self.iface.mapCanvas().extent()
+        target_crs = QgsCoordinateReferenceSystem(crs if crs else Settings.parameters['crs'])
         if is_qgis_version_3():
             current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapSettings().destinationCrs().authid())
         else:
             current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapRenderer().destinationCrs().authid())
-
+        QgsMessageLog.logMessage(str(current_crs))
+        QgsMessageLog.logMessage(str(target_crs))
+        QgsMessageLog.logMessage(str(bbox))
         if current_crs != target_crs:
             if is_qgis_version_3():
                 xform = QgsCoordinateTransform(current_crs, target_crs, QgsProject.instance())
             else:
                 xform = QgsCoordinateTransform(current_crs, target_crs)
-            bbox = xform.transform(bbox)
+            bbox = xform.transform(bbox)  # if target CRS is UTM and bbox is out of UTM bounds this fails, not sure how to fix
 
         return bbox
 
@@ -643,7 +647,6 @@ class SentinelHub:
 
     def get_bbox_size(self, bbox, crs=None):
         """ Returns approximate width and height of bounding box in meters
-
         """
         bbox_crs = QgsCoordinateReferenceSystem(crs if crs else Settings.parameters['crs'])
         utm_crs = QgsCoordinateReferenceSystem(self.lng_to_utm_zone(
@@ -831,7 +834,10 @@ class SentinelHub:
             if not self.download_folder:
                 return self.show_message("Download canceled. No destination set.", Message.CRITICAL)
 
-        bbox = self.get_bbox() if self.download_current_window else self.get_custom_bbox()
+        try:
+            bbox = self.get_bbox() if self.download_current_window else self.get_custom_bbox()
+        except Exception:
+            return self.show_message("Unable to transform to selected CRS, please zoom in or change CRS", Message.CRITICAL)
 
         bbox_str = self.bbox_to_string(bbox, None if self.download_current_window else WGS84)
         url = self.get_wcs_url(bbox_str, None if self.download_current_window else WGS84)
