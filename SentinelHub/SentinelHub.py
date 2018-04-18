@@ -261,9 +261,10 @@ class SentinelHub:
 
     def get_plugin_version(self):
         try:
-            for line in open(os.path.join(self.plugin_dir, 'metadata.txt')):
-                if line.startswith('version'):
-                    return line.split("=")[1].strip()
+            with open(os.path.join(self.plugin_dir, 'metadata.txt')) as metadata_file:
+                for line in metadata_file:
+                    if line.startswith('version'):
+                        return line.split("=")[1].strip()
         except IOError:
             return '?'
 
@@ -315,7 +316,7 @@ class SentinelHub:
 
     def get_qgis_layers(self):
         if is_qgis_version_3():
-            return list(QgsProject.instance().layerTreeRoot().findLayers())
+            return [tree_layer.layer() for tree_layer in QgsProject.instance().layerTreeRoot().findLayers()]
         return self.iface.legendInterface().layers()
 
     # --------------------------------------------------------------------------
