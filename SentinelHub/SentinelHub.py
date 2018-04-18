@@ -595,9 +595,6 @@ class SentinelHub:
             current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapSettings().destinationCrs().authid())
         else:
             current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapRenderer().destinationCrs().authid())
-        QgsMessageLog.logMessage(str(current_crs))
-        QgsMessageLog.logMessage(str(target_crs))
-        QgsMessageLog.logMessage(str(bbox))
         if current_crs != target_crs:
             if is_qgis_version_3():
                 xform = QgsCoordinateTransform(current_crs, target_crs, QgsProject.instance())
