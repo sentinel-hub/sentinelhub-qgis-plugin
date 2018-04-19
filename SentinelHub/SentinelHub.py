@@ -75,8 +75,12 @@ class Message:  # Don't use Enum classes as some older Python versions don't hav
 
 
 class Capabilities:
+    """ Stores info about capabilities of Sentinel Hub services
+    """
 
     class Layer:
+        """ Stores info about Sentinel Hub WMS layer
+        """
         def __init__(self, layer_id, name, info='', data_source=None):
             self.id = layer_id
             self.name = name
@@ -84,6 +88,8 @@ class Capabilities:
             self.data_source = data_source
 
     class CRS:
+        """ Stores info about available CRS at Sentinel Hub WMS
+        """
         def __init__(self, crs_id, name):
             self.id = crs_id
             self.name = name
@@ -96,6 +102,8 @@ class Capabilities:
         self.crs_list = []
 
     def load_xml(self, xml_root):
+        """ Loads info from getCapabilities.xml
+        """
         if xml_root.tag.startswith('{'):
             namespace = '{}}}'.format(xml_root.tag.split('}')[0])
         else:
@@ -115,6 +123,8 @@ class Capabilities:
         self._sort_crs_list()
 
     def load_json(self, json_dict):
+        """ Loads info from getCapabilities.json
+        """
         try:
             json_layers = {json_layer['id']: json_layer for json_layer in json_dict['layers']}
             for layer in self.layers:
@@ -125,6 +135,8 @@ class Capabilities:
             pass
 
     def _sort_crs_list(self):
+        """ Sorts list of CRS so that 3857 and 4326 are on the top
+        """
         new_crs_list = []
         for main_crs in [POP_WEB, WGS84]:
             for index, crs in enumerate(self.crs_list):
@@ -252,6 +264,8 @@ class SentinelHub:
         self.dockwidget.format.addItems(Settings.img_formats)
 
     def set_values(self):
+        """ Updates some values for the wcs download request
+        """
         self.dockwidget.inputResX.setText(Settings.parameters_wcs['resx'])
         self.dockwidget.inputResY.setText(Settings.parameters_wcs['resy'])
         self.dockwidget.latMin.setText(self.custom_bbox_params['latMin'])
@@ -260,6 +274,10 @@ class SentinelHub:
         self.dockwidget.lngMax.setText(self.custom_bbox_params['lngMax'])
 
     def get_plugin_version(self):
+        """
+        :return: Plugin version
+        :rtype: str
+        """
         try:
             with open(os.path.join(self.plugin_dir, 'metadata.txt')) as metadata_file:
                 for line in metadata_file:
@@ -315,6 +333,10 @@ class SentinelHub:
                     self.dockwidget.sentinelWMSlayers.setCurrentIndex(index)
 
     def get_qgis_layers(self):
+        """
+        :return: List of existing QGIS layers in the same order as they are in the QGIS menu
+        :rtype: list(QgsMapLayer)
+        """
         if is_qgis_version_3():
             return [tree_layer.layer() for tree_layer in QgsProject.instance().layerTreeRoot().findLayers()]
         return self.iface.legendInterface().layers()
