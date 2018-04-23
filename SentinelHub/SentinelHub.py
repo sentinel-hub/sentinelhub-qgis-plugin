@@ -539,6 +539,15 @@ class SentinelHub:
         :rtype: requests.response or None
         """
         try:
+            proxyDict, auth = self.getProxyDict()
+            if proxyDict and auth:
+                response = requests.get(url, stream=stream,
+                                        headers={'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)},
+                        proxies=proxyDict,
+                        auth=auth)
+            else:
+                response = requests.get(url, stream=stream,
+                                        headers={'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)})
             response = requests.get(url, stream=stream,
                                     headers={'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)})
             response.raise_for_status()
@@ -552,6 +561,47 @@ class SentinelHub:
             response = None
 
         return response
+
+    def getProxyDict(self):
+        """
+        Gets the proxy dict used in requests
+        """
+        http_proxy, https_proxy, auth = self.getProxyConfiguration()
+        if http_proxy and https_proxy and auth:
+            proxyDict = { 
+                "http" : http_proxy,
+                "https" : https_proxy
+                }
+            return proxyDict, auth
+        else:
+            return {}, None
+    
+    def getProxyConfiguration()
+        """
+        Get proxy config from QSettings and builds proxy parameters
+        """
+        enabled, host, port, user, password = self.getProxyFromQSettings()
+        if enabled and host and port and user and password:
+            http_proxy = 'http://{0}:{1}'.format(host, port)
+            https_proxy = 'https://{0}:{1}'.format(host, port)
+            auth = requests.auth.HTTPProxyAuth(user, password)
+            return http_proxy, https_proxy, auth
+        else:
+            return None, None, None
+
+    def getProxyFromQSettings(self):
+        """
+        Gets the proxy configuration from QSettings
+        """
+        settings = QSettings()
+        settings.beginGroup('proxy')
+        enabled = settings.value('proxyEnabled')
+        host = settings.value('proxyHost')
+        port = settings.value('proxyPort')
+        user = settings.value('proxyUser')
+        password = settings.value('proxyPassword')
+        settings.endGroup()
+        return enabled, host, port, user, password
 
     @staticmethod
     def get_error_message(exception):
