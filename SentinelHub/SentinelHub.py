@@ -560,7 +560,7 @@ class SentinelHub:
         """ Get proxy config from QSettings and builds proxy parameters
 
         :return: dictionary of transfer protocols mapped to addresses, also authentication if set in QSettings
-        :rtype: dict, ... or dict, None
+        :rtype: (dict, requests.auth.HTTPProxyAuth) or (dict, None)
         """
         enabled, host, port, user, password = SentinelHub.get_proxy_from_qsettings()
 
@@ -576,8 +576,10 @@ class SentinelHub:
 
     @staticmethod
     def get_proxy_from_qsettings():
-        """
-        Gets the proxy configuration from QSettings
+        """ Gets the proxy configuration from QSettings
+
+        :return: Proxy settings: flag specifying if proxy is enabled, host, port, user and password
+        :rtype: tuple(str)
         """
         settings = QSettings()
         settings.beginGroup('proxy')
@@ -642,7 +644,7 @@ class SentinelHub:
         self.update_parameters()
         name = '{} - {}'.format(self.get_source_name(), Settings.parameters['title'])
         new_layer = QgsRasterLayer(self.get_wms_uri(), name, 'wms')
-        #new_layer = QgsRasterLayer(self.get_wmts_uri(), name, 'wms')
+        # new_layer = QgsRasterLayer(self.get_wmts_uri(), name, 'wms')
         if new_layer.isValid():
             if not current_position and self.get_qgis_layers():
                 self.iface.setActiveLayer(self.get_qgis_layers()[0])
