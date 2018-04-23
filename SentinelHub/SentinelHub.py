@@ -539,8 +539,7 @@ class SentinelHub:
         :rtype: requests.response or None
         """
         try:
-            proxy_dict, auth = self.get_proxy_dict()
-            QgsMessageLog.logMessage(str(proxy_dict) + ' ' + str(auth))
+            proxy_dict, auth = self.get_proxy_config()
             response = requests.get(url, stream=stream,
                                     headers={'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)},
                                     proxies=proxy_dict, auth=auth)
@@ -557,33 +556,23 @@ class SentinelHub:
         return response
 
     @staticmethod
-    def get_proxy_dict():
-        """
-        Gets the proxy dict used in requests
-        """
-        http_proxy, https_proxy, auth = SentinelHub.get_proxy_configuration()
-        if http_proxy and https_proxy and auth:
-            proxy_dict = { 
-                "http": http_proxy,
-                "https": https_proxy
-                }
-            return proxy_dict, auth
-        else:
-            return {}, None
+    def get_proxy_config():
+        """ Get proxy config from QSettings and builds proxy parameters
 
-    @staticmethod
-    def get_proxy_configuration():
-        """
-        Get proxy config from QSettings and builds proxy parameters
+        :return: dictionary of transfer protocols mapped to addresses, also authentication if set in QSettings
+        :rtype: dict, ... or dict, None
         """
         enabled, host, port, user, password = SentinelHub.get_proxy_from_qsettings()
-        if enabled and host and port and user and password:
-            http_proxy = 'http://{}:{}'.format(host, port)
-            https_proxy = 'https://{}:{}'.format(host, port)
-            auth = requests.auth.HTTPProxyAuth(user, password)
-            return http_proxy, https_proxy, auth
-        else:
-            return None, None, None
+
+        proxy_dict = {}
+        if enabled and host:
+            port_str = ':{}'.format(port) if port else ''
+            for protocol in ['http', 'https', 'ftp']:
+                proxy_dict[protocol] = '{}://{}{}'.format(protocol, host, port_str)
+
+        auth = requests.auth.HTTPProxyAuth(user, password) if user and password else None
+
+        return proxy_dict, auth
 
     @staticmethod
     def get_proxy_from_qsettings():
@@ -593,7 +582,7 @@ class SentinelHub:
         settings = QSettings()
         settings.beginGroup('proxy')
         enabled = settings.value('proxyEnabled')
-        # TODO: settings.value("proxyType", "")
+        # proxy_type = settings.value("proxyType")
         host = settings.value('proxyHost')
         port = settings.value('proxyPort')
         user = settings.value('proxyUser')
@@ -613,7 +602,15 @@ class SentinelHub:
         message = '{}: '.format(exception.__class__.__name__)
 
         if isinstance(exception, requests.ConnectionError):
-            return message + 'Cannot access service, check your internet connection.'
+            message += 'Cannot access service, check your internet connection.'
+
+            enabled, host, port, _, _ = SentinelHub.get_proxy_from_qsettings()
+            if enabled:
+                message += ' QGIS is configured to use proxy: {}'.format(host)
+                if port:
+                    message += ':{}'.format(port)
+
+            return message
 
         if isinstance(exception, requests.HTTPError):
             try:
