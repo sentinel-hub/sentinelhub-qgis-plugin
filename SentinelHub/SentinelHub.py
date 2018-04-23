@@ -539,17 +539,11 @@ class SentinelHub:
         :rtype: requests.response or None
         """
         try:
-            proxyDict, auth = self.getProxyDict()
-            if proxyDict and auth:
-                response = requests.get(url, stream=stream,
-                                        headers={'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)},
-                        proxies=proxyDict,
-                        auth=auth)
-            else:
-                response = requests.get(url, stream=stream,
-                                        headers={'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)})
+            proxy_dict, auth = self.get_proxy_dict()
+            QgsMessageLog.logMessage(str(proxy_dict) + ' ' + str(auth))
             response = requests.get(url, stream=stream,
-                                    headers={'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)})
+                                    headers={'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)},
+                                    proxies=proxy_dict, auth=auth)
             response.raise_for_status()
         except requests.RequestException as exception:
             if ignore_exception:
@@ -562,40 +556,44 @@ class SentinelHub:
 
         return response
 
-    def getProxyDict(self):
+    @staticmethod
+    def get_proxy_dict():
         """
         Gets the proxy dict used in requests
         """
-        http_proxy, https_proxy, auth = self.getProxyConfiguration()
+        http_proxy, https_proxy, auth = SentinelHub.get_proxy_configuration()
         if http_proxy and https_proxy and auth:
-            proxyDict = { 
-                "http" : http_proxy,
-                "https" : https_proxy
+            proxy_dict = { 
+                "http": http_proxy,
+                "https": https_proxy
                 }
-            return proxyDict, auth
+            return proxy_dict, auth
         else:
             return {}, None
-    
-    def getProxyConfiguration()
+
+    @staticmethod
+    def get_proxy_configuration():
         """
         Get proxy config from QSettings and builds proxy parameters
         """
-        enabled, host, port, user, password = self.getProxyFromQSettings()
+        enabled, host, port, user, password = SentinelHub.get_proxy_from_qsettings()
         if enabled and host and port and user and password:
-            http_proxy = 'http://{0}:{1}'.format(host, port)
-            https_proxy = 'https://{0}:{1}'.format(host, port)
+            http_proxy = 'http://{}:{}'.format(host, port)
+            https_proxy = 'https://{}:{}'.format(host, port)
             auth = requests.auth.HTTPProxyAuth(user, password)
             return http_proxy, https_proxy, auth
         else:
             return None, None, None
 
-    def getProxyFromQSettings(self):
+    @staticmethod
+    def get_proxy_from_qsettings():
         """
         Gets the proxy configuration from QSettings
         """
         settings = QSettings()
         settings.beginGroup('proxy')
         enabled = settings.value('proxyEnabled')
+        # TODO: settings.value("proxyType", "")
         host = settings.value('proxyHost')
         port = settings.value('proxyPort')
         user = settings.value('proxyUser')
