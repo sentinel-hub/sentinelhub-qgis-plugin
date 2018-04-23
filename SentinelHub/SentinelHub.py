@@ -583,7 +583,7 @@ class SentinelHub:
         """
         settings = QSettings()
         settings.beginGroup('proxy')
-        enabled = settings.value('proxyEnabled').lower() == 'true'
+        enabled = str(settings.value('proxyEnabled')).lower() == 'true'  # to be compatible with QGIS 2 and 3
         # proxy_type = settings.value("proxyType")
         host = settings.value('proxyHost')
         port = settings.value('proxyPort')
