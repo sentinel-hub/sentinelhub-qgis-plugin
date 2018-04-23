@@ -570,7 +570,7 @@ class SentinelHub:
             for protocol in ['http', 'https', 'ftp']:
                 proxy_dict[protocol] = '{}://{}{}'.format(protocol, host, port_str)
 
-        auth = requests.auth.HTTPProxyAuth(user, password) if user and password else None
+        auth = requests.auth.HTTPProxyAuth(user, password) if enabled and user and password else None
 
         return proxy_dict, auth
 
@@ -583,7 +583,7 @@ class SentinelHub:
         """
         settings = QSettings()
         settings.beginGroup('proxy')
-        enabled = settings.value('proxyEnabled')
+        enabled = settings.value('proxyEnabled').lower() == 'true'
         # proxy_type = settings.value("proxyType")
         host = settings.value('proxyHost')
         port = settings.value('proxyPort')
