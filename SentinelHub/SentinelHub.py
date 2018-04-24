@@ -114,7 +114,7 @@ class Capabilities:
             info_node = layer.find('{}Abstract'.format(namespace))
             self.layers.append(self.Layer(layer.find('{}Name'.format(namespace)).text,
                                           layer.find('{}Title'.format(namespace)).text,
-                                          info_node.text if info_node else ''))
+                                          info_node.text if info_node is not None else ''))
         self.layers.sort(key=lambda l: l.name)
 
         self.crs_list = []
