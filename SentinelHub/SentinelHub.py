@@ -631,22 +631,22 @@ class SentinelHub:
         return message + str(exception)
     # ----------------------------------------------------------------------------
 
-    def add_wms_layer(self, current_position=False):
+    def add_qgis_layer(self, on_top=False):
         """
         Add WMS raster layer to canvas,
-        :param current_position: If True the layer will be added on top of currently selected layers, if False it will
-                                 be added on top of all layers
+        :param on_top: If True the layer will be added on top of all layers, if False it will be added on top of
+                       currently selected layer.
         :return: new layer
         """
         if not self.capabilities:
             return self.missing_instance_id()
 
         self.update_parameters()
-        name = '{} - {}'.format(self.get_source_name(), Settings.parameters['title'])
+        name = self.get_qgis_layer_name()
         new_layer = QgsRasterLayer(self.get_wms_uri(), name, 'wms')
         # new_layer = QgsRasterLayer(self.get_wmts_uri(), name, 'wms')
         if new_layer.isValid():
-            if not current_position and self.get_qgis_layers():
+            if on_top and self.get_qgis_layers():
                 self.iface.setActiveLayer(self.get_qgis_layers()[0])
             QgsProject.instance().addMapLayer(new_layer)
             self.update_current_wms_layers()
@@ -750,7 +750,7 @@ class SentinelHub:
             # QgsMessageLog.logMessage(str(layer.name()) + ' ' + str(self.qgis_layers[selected_index].name()))
             if layer == self.qgis_layers[selected_index]:
                 self.iface.setActiveLayer(layer)
-                new_layer = self.add_wms_layer(current_position=True)
+                new_layer = self.add_qgis_layer()
                 if new_layer.isValid():
                     QgsProject.instance().removeMapLayer(layer)
                     self.update_current_wms_layers(selected_layer=new_layer)
@@ -929,11 +929,35 @@ class SentinelHub:
         """ Returns name of the data source
 
         :return: name
-        :rtype: string
+        :rtype: str
         """
         if self.base_url == Settings.ipt_base_url:
             return 'EO Cloud'
         return Settings.data_source_props[self.data_source]['pretty_name']
+
+    def get_time_name(self):
+        time_interval = Settings.parameters['time'].split('/')[:2]
+        if self.dockwidget.exactDate.isChecked():
+            time_interval = time_interval[:1]
+        if len(time_interval) == 1:
+            if not time_interval[0]:
+                time_interval[0] = 'all times'
+        else:
+            if not time_interval[0]:
+                time_interval[0] = 'start'
+            if not time_interval[1]:
+                time_interval[1] = 'end'
+        return '/'.join(time_interval)
+
+    def get_qgis_layer_name(self):
+        """ Returns name of new qgis layer
+
+        :return: qgis layer name
+        :rtype: str
+        """
+        return '{} - {} ({})'.format(self.get_source_name(), Settings.parameters['title'],
+                                     ', '.join([self.get_time_name(), Settings.parameters['maxcc'] + '%',
+                                                Settings.parameters['priority'], Settings.parameters['crs']]))
 
     def update_maxcc(self):
         """
@@ -1081,7 +1105,7 @@ class SentinelHub:
                 self.update_current_wms_layers()
 
                 # Bind actions to buttons
-                self.dockwidget.buttonAddWms.clicked.connect(self.add_wms_layer)
+                self.dockwidget.buttonAddWms.clicked.connect(self.add_qgis_layer)
                 self.dockwidget.buttonUpdateWms.clicked.connect(self.update_qgis_layer)
                 self.dockwidget.buttonDownload.clicked.connect(self.download_caption)
                 self.dockwidget.refreshExtent.clicked.connect(self.take_window_bbox)
