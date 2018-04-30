@@ -832,12 +832,15 @@ class SentinelHub:
         """
         calendar_time = str(self.dockwidget.calendar.selectedDate().toPyDate())
 
-        if self.active_time == 'time0':
+        if self.active_time == 'time0' and (self.dockwidget.exactDate.isChecked() or not self.time1 or
+                                            calendar_time <= self.time1):
             self.time0 = calendar_time
             self.dockwidget.time0.setText(calendar_time)
-        elif self.active_time == 'time1':
+        elif self.active_time == 'time1' and (not self.time0 or self.time0 <= calendar_time):
             self.time1 = calendar_time
             self.dockwidget.time1.setText(calendar_time)
+        else:
+            self.show_message('Start date must not be larger than end date', Message.INFO)
 
     # ------------------------------------------------------------------------
 
@@ -994,6 +997,11 @@ class SentinelHub:
             self.dockwidget.time1.hide()
             self.move_calendar('time0')
         else:
+            if self.time0 and self.time1 and self.time0 > self.time1:
+                self.time1 = ''
+                Settings.parameters['time'] = self.get_time()
+                self.dockwidget.time1.setText(self.time1)
+
             self.dockwidget.time1.show()
 
     def change_instance_id(self):
@@ -1072,12 +1080,14 @@ class SentinelHub:
         new_time0 = self.parse_date(self.dockwidget.time0.text())
         new_time1 = self.parse_date(self.dockwidget.time1.text())
 
-        if new_time0 is not None and new_time1 is not None:
+        if new_time0 is None or new_time1 is None:
+            self.show_message('Please insert a valid date in format YYYY-MM-DD', Message.INFO)
+        elif new_time0 and new_time1 and new_time0 > new_time1 and not self.dockwidget.exactDate.isChecked():
+            self.show_message('Start date must not be larger than end date', Message.INFO)
+        else:
             self.time0 = new_time0
             self.time1 = new_time1
             Settings.parameters['time'] = self.get_time()
-        else:
-            self.show_message('Please insert a valid date in format YYYY-MM-DD', Message.INFO)
 
         self.dockwidget.time0.setText(self.time0)
         self.dockwidget.time1.setText(self.time1)
