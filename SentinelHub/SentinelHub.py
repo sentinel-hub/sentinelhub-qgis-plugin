@@ -941,12 +941,12 @@ class SentinelHub:
             time_interval = time_interval[:1]
         if len(time_interval) == 1:
             if not time_interval[0]:
-                time_interval[0] = 'all times'
+                time_interval[0] = '-/-'  # 'all times'
         else:
             if not time_interval[0]:
-                time_interval[0] = 'start'
+                time_interval[0] = '-'  # 'start'
             if not time_interval[1]:
-                time_interval[1] = 'end'
+                time_interval[1] = '-'  # 'end'
         return '/'.join(time_interval)
 
     def get_qgis_layer_name(self):
@@ -1113,8 +1113,8 @@ class SentinelHub:
 
                 # Render input fields changes and events
                 self.dockwidget.layers.currentIndexChanged.connect(self.update_selected_layer)
-                self.dockwidget.time0.selectionChanged.connect(lambda: self.move_calendar('time0'))
-                self.dockwidget.time1.selectionChanged.connect(lambda: self.move_calendar('time1'))
+                self.dockwidget.time0.mousePressEvent = lambda _: self.move_calendar('time0')
+                self.dockwidget.time1.mousePressEvent = lambda _: self.move_calendar('time1')
                 self.dockwidget.calendar.clicked.connect(self.add_time)
                 self.dockwidget.exactDate.stateChanged.connect(self.change_exact_date)
                 self.dockwidget.calendar.currentPageChanged.connect(self.update_month)
