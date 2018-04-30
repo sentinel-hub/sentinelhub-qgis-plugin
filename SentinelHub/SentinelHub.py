@@ -62,7 +62,6 @@ else:
 POP_WEB = 'EPSG:3857'
 WGS84 = 'EPSG:4326'
 
-
 class InvalidInstanceId(ValueError):
     pass
 
@@ -196,6 +195,9 @@ class SentinelHub:
         self.qgis_layers = []
         self.capabilities = Capabilities('')
         self.active_time = 'time0'
+        self.time0 = ''
+        self.time1 = ''
+        self.time1 = ''
         self.cloud_cover = {}
 
         self.download_current_window = True
@@ -766,7 +768,7 @@ class SentinelHub:
         """
         Settings.parameters['priority'] = Settings.priority_map[self.dockwidget.priority.currentText()]
         Settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
-        Settings.parameters['time'] = str(self.get_time())
+        Settings.parameters['time'] = self.get_time()
 
         if self.capabilities:
             self.update_selected_crs()
@@ -813,12 +815,13 @@ class SentinelHub:
         Format time parameter according to settings
         :return:
         """
-        if self.dockwidget.time0.text() == '' and not self.dockwidget.exactDate.isChecked():
-            return self.dockwidget.time1.text()
-        elif self.dockwidget.exactDate.isChecked():
-            return '{}/{}/P1D'.format(self.dockwidget.time0.text(), self.dockwidget.time0.text())
-        else:
-            return '{}/{}/P1D'.format(self.dockwidget.time0.text(), self.dockwidget.time1.text())
+        if self.dockwidget.exactDate.isChecked():
+            return '{}/{}/P1D'.format(self.time0, self.time0)
+        if self.time0 == '':
+            return self.time1
+        if self.time1 == '':
+            return '{}/{}/P1D'.format(self.time0, datetime.datetime.now().strftime("%Y-%m-%d"))
+        return '{}/{}/P1D'.format(self.time0, self.time1)
 
     def add_time(self):
         """
@@ -827,12 +830,14 @@ class SentinelHub:
         time1 - ending time
         :return:
         """
-        if self.active_time == 'time0':
-            time_input = self.dockwidget.time0
-        elif self.active_time == 'time1':
-            time_input = self.dockwidget.time1
+        calendar_time = str(self.dockwidget.calendar.selectedDate().toPyDate())
 
-        time_input.setText(str(self.dockwidget.calendar.selectedDate().toPyDate()))
+        if self.active_time == 'time0':
+            self.time0 = calendar_time
+            self.dockwidget.time0.setText(calendar_time)
+        elif self.active_time == 'time1':
+            self.time1 = calendar_time
+            self.dockwidget.time1.setText(calendar_time)
 
     # ------------------------------------------------------------------------
 
@@ -903,7 +908,8 @@ class SentinelHub:
         try:
             bbox = self.get_bbox() if self.download_current_window else self.get_custom_bbox()
         except Exception:
-            return self.show_message("Unable to transform to selected CRS, please zoom in or change CRS", Message.CRITICAL)
+            return self.show_message("Unable to transform to selected CRS, please zoom in or change CRS",
+                                     Message.CRITICAL)
 
         bbox_str = self.bbox_to_string(bbox, None if self.download_current_window else WGS84)
         url = self.get_wcs_url(bbox_str, None if self.download_current_window else WGS84)
@@ -936,6 +942,11 @@ class SentinelHub:
         return Settings.data_source_props[self.data_source]['pretty_name']
 
     def get_time_name(self):
+        """ Returns time interval in a form that will be displayed in qgis layer name
+
+        :return: string describing time interval
+        :rtype: str
+        """
         time_interval = Settings.parameters['time'].split('/')[:2]
         if self.dockwidget.exactDate.isChecked():
             time_interval = time_interval[:1]
@@ -1055,6 +1066,42 @@ class SentinelHub:
             self.download_current_window = False
             self.dockwidget.widgetCustomExtent.show()
 
+    def update_dates(self):
+        """ Checks if newly inserted dates are valid and updates date attributes
+        """
+        new_time0 = self.parse_date(self.dockwidget.time0.text())
+        new_time1 = self.parse_date(self.dockwidget.time1.text())
+
+        if new_time0 is not None and new_time1 is not None:
+            self.time0 = new_time0
+            self.time1 = new_time1
+            Settings.parameters['time'] = self.get_time()
+        else:
+            self.show_message('Please insert a valid date in format YYYY-MM-DD', Message.INFO)
+
+        self.dockwidget.time0.setText(self.time0)
+        self.dockwidget.time1.setText(self.time1)
+
+    @staticmethod
+    def parse_date(date):
+        """Checks if string represents a valid date and puts it into form YYYY-MM-DD
+
+        :param date: string describing a date
+        :type date: str
+        :return:
+        """
+        date = date.strip()
+        if date == '':
+            return date
+        props = date.split('-')
+        if len(props) >= 3:
+            try:
+                parsed_date = datetime.datetime(year=int(props[0]), month=int(props[1]), day=int(props[2]))
+                return parsed_date.strftime("%Y-%m-%d")
+            except ValueError:
+                pass
+        return None
+
     def update_values(self):
         """ Updates numerical values from user input"""
         new_values = self.get_values()
@@ -1112,15 +1159,18 @@ class SentinelHub:
                 self.dockwidget.selectDestination.clicked.connect(self.select_destination)
 
                 # Render input fields changes and events
+                self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
                 self.dockwidget.layers.currentIndexChanged.connect(self.update_selected_layer)
+
                 self.dockwidget.time0.mousePressEvent = lambda _: self.move_calendar('time0')
                 self.dockwidget.time1.mousePressEvent = lambda _: self.move_calendar('time1')
+                self.dockwidget.time0.editingFinished.connect(self.update_dates)
+                self.dockwidget.time1.editingFinished.connect(self.update_dates)
                 self.dockwidget.calendar.clicked.connect(self.add_time)
                 self.dockwidget.exactDate.stateChanged.connect(self.change_exact_date)
                 self.dockwidget.calendar.currentPageChanged.connect(self.update_month)
                 self.dockwidget.maxcc.valueChanged.connect(self.update_maxcc_label)
                 self.dockwidget.maxcc.sliderReleased.connect(self.update_maxcc)
-                self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
                 self.dockwidget.destination.editingFinished.connect(self.change_download_folder)
 
                 self.dockwidget.inputResX.editingFinished.connect(self.update_values)
