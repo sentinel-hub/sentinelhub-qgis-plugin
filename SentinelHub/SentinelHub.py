@@ -1178,6 +1178,11 @@ class SentinelHub:
                     return
         return new_values
 
+    def change_show_logo(self):
+        """Determines if Sentinel Hub logo will be shown in downloaded image
+        """
+        Settings.parameters_wcs['showLogo'] = 'true' if self.dockwidget.showLogoBox.isChecked() else 'false'
+
     def run(self):
         """Run method that loads and starts the plugin and binds all UI actions"""
 
@@ -1217,17 +1222,19 @@ class SentinelHub:
                 self.dockwidget.maxcc.sliderReleased.connect(self.update_maxcc)
                 self.dockwidget.destination.editingFinished.connect(self.change_download_folder)
 
+                # Download input fields changes and events
+                self.dockwidget.format.currentIndexChanged.connect(self.update_download_format)
                 self.dockwidget.inputResX.editingFinished.connect(self.update_values)
                 self.dockwidget.inputResY.editingFinished.connect(self.update_values)
+
+                self.dockwidget.radioCurrentExtent.clicked.connect(lambda: self.toggle_extent('current'))
+                self.dockwidget.radioCustomExtent.clicked.connect(lambda: self.toggle_extent('custom'))
                 self.dockwidget.latMin.editingFinished.connect(self.update_values)
                 self.dockwidget.latMax.editingFinished.connect(self.update_values)
                 self.dockwidget.lngMin.editingFinished.connect(self.update_values)
                 self.dockwidget.lngMax.editingFinished.connect(self.update_values)
 
-                # Download input fields changes and events
-                self.dockwidget.format.currentIndexChanged.connect(self.update_download_format)
-                self.dockwidget.radioCurrentExtent.clicked.connect(lambda: self.toggle_extent('current'))
-                self.dockwidget.radioCustomExtent.clicked.connect(lambda: self.toggle_extent('custom'))
+                self.dockwidget.showLogoBox.stateChanged.connect(self.change_show_logo)
 
             # Tracks which layer is selected in left menu
             # self.iface.currentLayerChanged.connect(self.update_current_wms_layers)

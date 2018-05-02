@@ -1,7 +1,6 @@
-#!/usr/bin/env python
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 """
-This script contains all
+This script contains parameters and settings for Sentinel Hub services
 """
 
 # Base url
@@ -18,7 +17,6 @@ service_types = ['WMS', 'WMTS']
 # Main request parameters
 parameters = {
     'title': '',
-    'showLogo': 'false',
     'layers': '',
     'maxcc': '100',
     'priority': 'mostRecent',
@@ -36,6 +34,7 @@ parameters_wms = {
     'request': 'GetMap',
     'format': 'image/jpeg',
     'transparent': 'true',
+    'showLogo': 'false',
     'version': '1.3.0',
 }
 
@@ -54,6 +53,7 @@ parameters_wcs = {
     'service': 'wcs',
     'request': 'GetCoverage',
     'format': 'image/png',
+    'showLogo': 'false',
     'transparent': 'false',
     'version': '1.1.1',
     'resx': '10',
@@ -69,6 +69,7 @@ parameters_wmts = {
     'styles': '',
     'request': 'GetTile',
     'format': 'image/jpeg',
+    'showLogo': 'false',
     'transparent': 'true',
     'tileMatrixSet': 'PopularWebMercator512'
 }
@@ -97,8 +98,8 @@ priorities = [('mostRecent', 'Most recent'),
               ('leastRecent', 'Least recent'),
               ('leastCC', 'Least cloud coverage')]
 
-atmfilter_list = ['NONE', 'DOS1', 'ATMCOR']
-cloud_correction = ['NONE', 'REPLACE']
+atmfilter_list = ['NONE', 'DOS1', 'ATMCOR']  # Not yet implemented
+cloud_correction = ['NONE', 'REPLACE']  # Not yet implemented
 
 image_formats = [('image/png', 'PNG'),
                  ('image/jpeg', 'JPEG'),
