@@ -91,13 +91,13 @@
                </property>
                <property name="minimumSize">
                 <size>
-                 <width>214</width>
+                 <width>167</width>
                  <height>0</height>
                 </size>
                </property>
                <property name="maximumSize">
                 <size>
-                 <width>214</width>
+                 <width>167</width>
                  <height>16777215</height>
                 </size>
                </property>
@@ -846,7 +846,7 @@
               <item row="1" column="0">
                <widget class="QLabel" name="instanceIdLabel">
                 <property name="text">
-                 <string>Sentinel Hub Instance ID</string>
+                 <string>Sentinel Hub instance ID</string>
                 </property>
                </widget>
               </item>

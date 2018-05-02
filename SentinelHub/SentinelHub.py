@@ -317,6 +317,7 @@ class SentinelHub:
         :type instance_changed: bool
         """
         self.service_type = self.dockwidget.serviceType.currentText().lower()
+        self.dockwidget.createLayerLabel.setText('Create new {} layer'.format(self.service_type.upper()))
 
         if self.capabilities:
             layer_index = self.dockwidget.layers.currentIndex()
@@ -830,7 +831,7 @@ class SentinelHub:
         Update Max Cloud Coverage Label when slider value change
         :return:
         """
-        self.dockwidget.maxccLabel.setText('Cloud coverage ' + str(self.dockwidget.maxcc.value()) + ' %')
+        self.dockwidget.maxccLabel.setText('Cloud coverage {}%'.format(self.dockwidget.maxcc.value()))
 
     def get_time(self):
         """
