@@ -330,7 +330,7 @@ class SentinelHub:
             if self.service_type == 'wms':
                 self.dockwidget.epsg.addItems([crs.name for crs in self.capabilities.crs_list])
             if self.service_type == 'wmts':
-                self.dockwidget.epsg.addItems([self.capabilities.crs_list[0].name])
+                self.dockwidget.epsg.addItems([crs.name for crs in self.capabilities.crs_list[:1]])
 
     def update_current_wms_layers(self, selected_layer=None):
         """
@@ -783,13 +783,13 @@ class SentinelHub:
         Update parameters from GUI
         :return:
         """
-        Settings.parameters['priority'] = Settings.priority_map[self.dockwidget.priority.currentText()]
-        Settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
-        Settings.parameters['time'] = self.get_time()
-
         if self.capabilities:
             self.update_selected_crs()
             self.update_selected_layer()
+
+        Settings.parameters['priority'] = Settings.priority_map[self.dockwidget.priority.currentText()]
+        Settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
+        Settings.parameters['time'] = self.get_time()
 
     def update_selected_crs(self):
         """ Updates crs with selected Sentinel Hub CRS
@@ -812,11 +812,20 @@ class SentinelHub:
 
             if self.base_url in [Settings.services_base_url, Settings.uswest_base_url]:
                 self.data_source = wms_layers[layers_index].data_source
-                if self.data_source:
-                    self.base_url = Settings.data_source_props[self.data_source]['url']
-                    Settings.parameters_wfs['typenames'] = Settings.data_source_props[self.data_source]['wfs_name']
+            else:
+                self.data_source = None
 
-                # TODO: if DEM, disable times
+            if self.data_source:
+                self.base_url = Settings.data_source_props[self.data_source]['url']
+                Settings.parameters_wfs['typenames'] = Settings.data_source_props[self.data_source]['wfs_name']
+
+            if self.data_source in ['S1GRD', 'DEM']:
+                self.dockwidget.maxcc.setValue(100)
+                self.update_maxcc_label()
+                self.dockwidget.maxcc.setEnabled(False)
+            else:
+                self.dockwidget.maxcc.setEnabled(True)
+
         if old_data_source != self.data_source:
             self.get_cloud_cover()
 
