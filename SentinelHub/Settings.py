@@ -32,7 +32,7 @@ parameters_wms = {
     'service': 'WMS',
     'styles': '',
     'request': 'GetMap',
-    'format': 'image/jpeg',
+    'format': 'image/png',
     'transparent': 'true',
     'showLogo': 'false',
     'version': '1.3.0',
@@ -68,7 +68,7 @@ parameters_wmts = {
     'service': 'WMTS',
     'styles': '',
     'request': 'GetTile',
-    'format': 'image/jpeg',
+    'format': 'image/png',
     'showLogo': 'false',
     'transparent': 'true',
     'tileMatrixSet': 'PopularWebMercator512'

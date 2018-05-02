@@ -818,13 +818,15 @@ class SentinelHub:
             if self.data_source:
                 self.base_url = Settings.data_source_props[self.data_source]['url']
                 Settings.parameters_wfs['typenames'] = Settings.data_source_props[self.data_source]['wfs_name']
+        else:
+            self.data_source = None
 
-            if self.data_source in ['S1GRD', 'DEM']:
-                self.dockwidget.maxcc.setValue(100)
-                self.update_maxcc_label()
-                self.dockwidget.maxcc.setEnabled(False)
-            else:
-                self.dockwidget.maxcc.setEnabled(True)
+        if self.data_source in ['S1GRD', 'DEM']:
+            self.dockwidget.maxcc.setValue(100)
+            self.update_maxcc_label()
+            self.dockwidget.maxcc.setEnabled(False)
+        else:
+            self.dockwidget.maxcc.setEnabled(True)
 
         if old_data_source != self.data_source:
             self.get_cloud_cover()
