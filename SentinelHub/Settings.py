@@ -93,13 +93,17 @@ data_source_props = {'S2L1C': {'url': services_base_url,
                              'pretty_name': 'DEM'}}
 
 # values for UI selections
-priority_map = {'Most recent': 'mostRecent',
-                'Least recent': 'leastRecent',
-                'Least cloud coverage': 'leastCC'}
+priorities = [('mostRecent', 'Most recent'),
+              ('leastRecent', 'Least recent'),
+              ('leastCC', 'Least cloud coverage')]
+
 atmfilter_list = ['NONE', 'DOS1', 'ATMCOR']
 cloud_correction = ['NONE', 'REPLACE']
-img_formats = ['image/png', 'image/jpeg',
-               'image/tiff', 'image/tiff;depth=8', 'image/tiff;depth=16', 'image/tiff;depth=32f']
-maxcc_range = [0, 100]
+
+image_formats = [('image/png', 'PNG'),
+                 ('image/jpeg', 'JPEG'),
+                 ('image/tiff;depth=8', '8-bit TIFF'),
+                 ('image/tiff;depth=16', '16-bit TIFF'),
+                 ('image/tiff;depth=32f', '32-bit float TIFF')]
 
 max_cloud_cover_image_size = 1000000

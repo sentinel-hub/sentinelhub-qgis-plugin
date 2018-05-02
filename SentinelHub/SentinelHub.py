@@ -264,10 +264,10 @@ class SentinelHub:
         self.set_values()
 
         self.dockwidget.priority.clear()
-        self.dockwidget.priority.addItems(sorted(Settings.priority_map.keys(), reverse=True))
+        self.dockwidget.priority.addItems([priority[1] for priority in Settings.priorities])
 
         self.dockwidget.format.clear()
-        self.dockwidget.format.addItems(Settings.img_formats)
+        self.dockwidget.format.addItems([image_format[1] for image_format in Settings.image_formats])
 
     def set_values(self):
         """ Updates some values for the wcs download request
@@ -787,7 +787,7 @@ class SentinelHub:
             self.update_selected_crs()
             self.update_selected_layer()
 
-        Settings.parameters['priority'] = Settings.priority_map[self.dockwidget.priority.currentText()]
+        Settings.parameters['priority'] = Settings.priorities[self.dockwidget.priority.currentIndex()][0]
         Settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
         Settings.parameters['time'] = self.get_time()
 
@@ -1019,7 +1019,7 @@ class SentinelHub:
         Update image format
         :return:
         """
-        Settings.parameters_wcs['format'] = self.dockwidget.format.currentText()
+        Settings.parameters_wcs['format'] = Settings.image_formats[self.dockwidget.format.currentIndex()][0]
 
     def change_exact_date(self):
         """
