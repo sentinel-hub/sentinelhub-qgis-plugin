@@ -82,7 +82,7 @@
             </property>
             <layout class="QGridLayout" name="gridLayout_7">
              <item row="0" column="0">
-              <widget class="QLabel" name="label_8">
+              <widget class="QLabel" name="createLayerLabel">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                  <horstretch>0</horstretch>
@@ -102,7 +102,7 @@
                 </size>
                </property>
                <property name="text">
-                <string>Create new WMS layer</string>
+                <string>Create new layer</string>
                </property>
               </widget>
              </item>
@@ -126,9 +126,9 @@
               </widget>
              </item>
              <item row="1" column="0">
-              <widget class="QLabel" name="label_9">
+              <widget class="QLabel" name="updateLayerLabel">
                <property name="text">
-                <string>Update existing WMS layer</string>
+                <string>Update existing layer</string>
                </property>
               </widget>
              </item>
@@ -185,8 +185,8 @@
               </layout>
              </item>
             </layout>
-            <zorder>label_8</zorder>
-            <zorder>label_9</zorder>
+            <zorder>createLayerLabel</zorder>
+            <zorder>updateLayerLabel</zorder>
             <zorder>buttonAddWms</zorder>
            </widget>
           </item>
@@ -217,28 +217,8 @@
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_4">
-              <item row="9" column="2">
-               <spacer name="verticalSpacer">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item row="8" column="0">
-               <widget class="QLabel" name="label_6">
-                <property name="text">
-                 <string>Image priority</string>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="2">
-               <widget class="QComboBox" name="priority">
+              <item row="5" column="2">
+               <widget class="QComboBox" name="layers">
                 <property name="minimumSize">
                  <size>
                   <width>400</width>
@@ -253,8 +233,28 @@
                 </property>
                </widget>
               </item>
-              <item row="2" column="2">
-               <widget class="QComboBox" name="layers">
+              <item row="12" column="2">
+               <spacer name="verticalSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="11" column="0">
+               <widget class="QLabel" name="priorityLabel">
+                <property name="text">
+                 <string>Image priority</string>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="2">
+               <widget class="QComboBox" name="priority">
                 <property name="minimumSize">
                  <size>
                   <width>400</width>
@@ -294,7 +294,7 @@
                 </property>
                </widget>
               </item>
-              <item row="6" column="2">
+              <item row="9" column="2">
                <layout class="QHBoxLayout" name="horizontalLayout_6">
                 <item>
                  <widget class="QLabel" name="calendarSpacer">
@@ -827,7 +827,7 @@
                 </item>
                </layout>
               </item>
-              <item row="3" column="2">
+              <item row="6" column="2">
                <widget class="QComboBox" name="epsg">
                 <property name="minimumSize">
                  <size>
@@ -844,27 +844,27 @@
                </widget>
               </item>
               <item row="1" column="0">
-               <widget class="QLabel" name="label_10">
+               <widget class="QLabel" name="instanceIdLabel">
                 <property name="text">
                  <string>Sentinel Hub Instance ID</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="labelCRS">
+              <item row="6" column="0">
+               <widget class="QLabel" name="crsLabel">
                 <property name="text">
                  <string>CRS</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="label">
+              <item row="5" column="0">
+               <widget class="QLabel" name="layerLabel">
                 <property name="text">
                  <string>Layer</string>
                 </property>
                </widget>
               </item>
-              <item row="7" column="2">
+              <item row="10" column="2">
                <layout class="QHBoxLayout" name="horizontalLayout_3">
                 <item>
                  <widget class="QLabel" name="maxccLabel">
@@ -931,7 +931,7 @@
                 </item>
                </layout>
               </item>
-              <item row="5" column="2">
+              <item row="8" column="2">
                <layout class="QHBoxLayout" name="horizontalLayout">
                 <item>
                  <widget class="QLineEdit" name="time0">
@@ -1029,14 +1029,7 @@
                 </item>
                </layout>
               </item>
-              <item row="5" column="0">
-               <widget class="QLabel" name="label_2">
-                <property name="text">
-                 <string>Time range</string>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="0">
+              <item row="9" column="0">
                <layout class="QVBoxLayout" name="verticalLayout_2">
                 <item>
                  <layout class="QHBoxLayout" name="horizontalLayout_4">
@@ -1066,6 +1059,36 @@
                  </spacer>
                 </item>
                </layout>
+              </item>
+              <item row="8" column="0">
+               <widget class="QLabel" name="timeRangeLabel">
+                <property name="text">
+                 <string>Time range</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="2">
+               <widget class="QComboBox" name="serviceType">
+                <property name="minimumSize">
+                 <size>
+                  <width>400</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>400</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLabel" name="serviceTypeLabel">
+                <property name="text">
+                 <string>Service type</string>
+                </property>
+               </widget>
               </item>
              </layout>
             </widget>
@@ -1136,14 +1159,14 @@
                </widget>
               </item>
               <item row="2" column="0">
-               <widget class="QLabel" name="label_13">
+               <widget class="QLabel" name="bboxLabel">
                 <property name="text">
                  <string>Bounding box</string>
                 </property>
                </widget>
               </item>
               <item row="1" column="0">
-               <widget class="QLabel" name="label_7">
+               <widget class="QLabel" name="resolutionLabel">
                 <property name="text">
                  <string>Resolution</string>
                 </property>
@@ -1173,7 +1196,7 @@
                </widget>
               </item>
               <item row="0" column="0">
-               <widget class="QLabel" name="label_4">
+               <widget class="QLabel" name="fileFormatLabel">
                 <property name="text">
                  <string>File format</string>
                 </property>
@@ -1182,7 +1205,7 @@
               <item row="1" column="1">
                <layout class="QHBoxLayout" name="horizontalLayout_8">
                 <item>
-                 <widget class="QLabel" name="label_12">
+                 <widget class="QLabel" name="xLabel">
                   <property name="minimumSize">
                    <size>
                     <width>40</width>
@@ -1220,7 +1243,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLabel" name="label_11">
+                 <widget class="QLabel" name="yLabel">
                   <property name="minimumSize">
                    <size>
                     <width>40</width>
@@ -1288,14 +1311,14 @@
                 </property>
                 <layout class="QGridLayout" name="gridLayout_9">
                  <item row="0" column="0">
-                  <widget class="QLabel" name="label_14">
+                  <widget class="QLabel" name="latitudeLabel">
                    <property name="text">
                     <string>Latitude</string>
                    </property>
                   </widget>
                  </item>
                  <item row="1" column="0">
-                  <widget class="QLabel" name="label_15">
+                  <widget class="QLabel" name="longitudeLabel">
                    <property name="text">
                     <string>Longitude</string>
                    </property>
@@ -1407,10 +1430,10 @@
                   </widget>
                  </item>
                 </layout>
-                <zorder>label_14</zorder>
+                <zorder>latitudeLabel</zorder>
                 <zorder>latMin</zorder>
                 <zorder>latMax</zorder>
-                <zorder>label_15</zorder>
+                <zorder>longitudeLabel</zorder>
                 <zorder>lngMin</zorder>
                 <zorder>lngMax</zorder>
                 <zorder>horizontalSpacer_8</zorder>
@@ -1418,7 +1441,7 @@
                </widget>
               </item>
               <item row="6" column="0">
-               <widget class="QLabel" name="label_5">
+               <widget class="QLabel" name="downloadLabel">
                 <property name="text">
                  <string>Download folder</string>
                 </property>

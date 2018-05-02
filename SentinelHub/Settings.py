@@ -13,6 +13,8 @@ ipt_base_url = 'http://services.eocloud.sentinel-hub.com/v1/'
 instance_id_location = "SentinelHub/instance_id"
 download_folder_location = "SentinelHub/download_folder"
 
+service_types = ['WMS', 'WMTS']
+
 # Main request parameters
 parameters = {
     'title': '',

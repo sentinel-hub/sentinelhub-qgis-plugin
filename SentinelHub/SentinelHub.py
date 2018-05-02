@@ -193,6 +193,8 @@ class SentinelHub:
         if self.download_folder is None:
             self.download_folder = ''
 
+        self.service_type = None
+
         self.qgis_layers = []
         self.capabilities = Capabilities('')
         self.active_time = 'time0'
@@ -254,7 +256,8 @@ class SentinelHub:
         Layers - Renderers
         Priority
         """
-        self.update_instance_props()
+        self.dockwidget.serviceType.addItems(Settings.service_types)
+        self.update_instance_props(instance_changed=True)
 
         self.dockwidget.instanceId.setText(self.instance_id)
         self.dockwidget.destination.setText(self.download_folder)
@@ -307,16 +310,26 @@ class SentinelHub:
 
     # --------------------------------------------------------------------------
 
-    def update_instance_props(self):
+    def update_instance_props(self, instance_changed=False):
+        """ Update lists of service type, layers and CRS available with current Sentinel Hub Instance
+
+        :param instance_changed: True if instance id has changed, False otherwise
+        :type instance_changed: bool
         """
-        Update lists of Layers and CRS available with current Sentinel Hub Instance
-        """
+        self.service_type = self.dockwidget.serviceType.currentText().lower()
+
         if self.capabilities:
+            layer_index = self.dockwidget.layers.currentIndex()
             self.dockwidget.layers.clear()
             self.dockwidget.layers.addItems([layer.name for layer in self.capabilities.layers])
+            if not instance_changed:
+                self.dockwidget.layers.setCurrentIndex(layer_index)
 
             self.dockwidget.epsg.clear()
-            self.dockwidget.epsg.addItems([crs.name for crs in self.capabilities.crs_list])
+            if self.service_type == 'wms':
+                self.dockwidget.epsg.addItems([crs.name for crs in self.capabilities.crs_list])
+            if self.service_type == 'wmts':
+                self.dockwidget.epsg.addItems([self.capabilities.crs_list[0].name])
 
     def update_current_wms_layers(self, selected_layer=None):
         """
@@ -646,8 +659,10 @@ class SentinelHub:
 
         self.update_parameters()
         name = self.get_qgis_layer_name()
-        new_layer = QgsRasterLayer(self.get_wms_uri(), name, 'wms')
-        # new_layer = QgsRasterLayer(self.get_wmts_uri(), name, 'wms')
+        if self.service_type == 'wms':
+            new_layer = QgsRasterLayer(self.get_wms_uri(), name, 'wms')
+        else:
+            new_layer = QgsRasterLayer(self.get_wmts_uri(), name, 'wms')
         if new_layer.isValid():
             if on_top and self.get_qgis_layers():
                 self.iface.setActiveLayer(self.get_qgis_layers()[0])
@@ -803,6 +818,12 @@ class SentinelHub:
                 # TODO: if DEM, disable times
         if old_data_source != self.data_source:
             self.get_cloud_cover()
+
+    def update_service_type(self):
+        """ Updates service type and parameters
+        """
+        self.update_instance_props()
+        self.update_parameters()
 
     def update_maxcc_label(self):
         """
@@ -971,8 +992,9 @@ class SentinelHub:
         :rtype: str
         """
         return '{} - {} ({})'.format(self.get_source_name(), Settings.parameters['title'],
-                                     ', '.join([self.get_time_name(), Settings.parameters['maxcc'] + '%',
-                                                Settings.parameters['priority'], Settings.parameters['crs']]))
+                                     ', '.join([self.service_type.upper(), self.get_time_name(),
+                                                Settings.parameters['maxcc'] + '%', Settings.parameters['priority'],
+                                                Settings.parameters['crs']]))
 
     def update_maxcc(self):
         """
@@ -1022,7 +1044,7 @@ class SentinelHub:
         if capabilities:
             self.instance_id = new_instance_id
             self.capabilities = capabilities
-            self.update_instance_props()
+            self.update_instance_props(instance_changed=True)
             if self.instance_id:
                 self.show_message("New Instance ID and layers set.", Message.SUCCESS)
             QSettings().setValue(Settings.instance_id_location, new_instance_id)
@@ -1171,6 +1193,7 @@ class SentinelHub:
 
                 # Render input fields changes and events
                 self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
+                self.dockwidget.serviceType.currentIndexChanged.connect(self.update_service_type)
                 self.dockwidget.layers.currentIndexChanged.connect(self.update_selected_layer)
 
                 self.dockwidget.time0.mousePressEvent = lambda _: self.move_calendar('time0')
