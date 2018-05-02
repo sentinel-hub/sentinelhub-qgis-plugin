@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1029</width>
-    <height>706</height>
+    <width>868</width>
+    <height>601</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -194,8 +194,8 @@
               <rect>
                <x>0</x>
                <y>0</y>
-               <width>1009</width>
-               <height>546</height>
+               <width>848</width>
+               <height>441</height>
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_4">
@@ -282,8 +282,14 @@
                  <widget class="QLabel" name="calendarSpacer">
                   <property name="minimumSize">
                    <size>
-                    <width>400</width>
+                    <width>242</width>
                     <height>0</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>242</width>
+                    <height>16777215</height>
                    </size>
                   </property>
                   <property name="text">
@@ -795,7 +801,7 @@
                  </widget>
                 </item>
                 <item>
-                 <spacer name="horizontalSpacer_6">
+                 <spacer name="horizontalSpacer_4">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
                   </property>
@@ -919,13 +925,13 @@
                  <widget class="QLineEdit" name="time0">
                   <property name="minimumSize">
                    <size>
-                    <width>250</width>
+                    <width>230</width>
                     <height>0</height>
                    </size>
                   </property>
                   <property name="maximumSize">
                    <size>
-                    <width>250</width>
+                    <width>230</width>
                     <height>16777215</height>
                    </size>
                   </property>
@@ -947,32 +953,23 @@
                  </widget>
                 </item>
                 <item>
-                 <spacer name="horizontalSpacer_4">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                 <widget class="QLabel" name="label">
+                  <property name="text">
+                   <string>-</string>
                   </property>
-                  <property name="sizeType">
-                   <enum>QSizePolicy::Maximum</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>150</width>
-                    <height>25</height>
-                   </size>
-                  </property>
-                 </spacer>
+                 </widget>
                 </item>
                 <item>
                  <widget class="QLineEdit" name="time1">
                   <property name="minimumSize">
                    <size>
-                    <width>250</width>
+                    <width>230</width>
                     <height>0</height>
                    </size>
                   </property>
                   <property name="maximumSize">
                    <size>
-                    <width>250</width>
+                    <width>230</width>
                     <height>25</height>
                    </size>
                   </property>
@@ -1103,8 +1100,8 @@
               <rect>
                <x>0</x>
                <y>0</y>
-               <width>554</width>
-               <height>294</height>
+               <width>848</width>
+               <height>494</height>
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_6">
