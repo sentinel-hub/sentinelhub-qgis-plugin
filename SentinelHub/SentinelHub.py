@@ -208,6 +208,8 @@ class SentinelHub:
         for name in ['latMin', 'latMax', 'lngMin', 'lngMax']:
             self.custom_bbox_params[name] = ''
 
+        self.layer_selection_event = None
+
     @staticmethod
     def translate(message):
         """Get the translation for a string using Qt translation API.
@@ -341,13 +343,13 @@ class SentinelHub:
         layer_names = []
         for layer in self.qgis_layers:
             layer_names.append(layer.name())
-        self.dockwidget.sentinelWMSlayers.clear()
-        self.dockwidget.sentinelWMSlayers.addItems(layer_names)
+        self.dockwidget.qgisLayerList.clear()
+        self.dockwidget.qgisLayerList.addItems(layer_names)
 
         if selected_layer:
             for index, layer in enumerate(self.qgis_layers):
                 if layer == selected_layer:
-                    self.dockwidget.sentinelWMSlayers.setCurrentIndex(index)
+                    self.dockwidget.qgisLayerList.setCurrentIndex(index)
 
     def get_qgis_layers(self):
         """
@@ -488,7 +490,7 @@ class SentinelHub:
         self.cloud_cover = {}
         self.clear_calendar_cells()
 
-        if not self.capabilities or len(self.qgis_layers) == 0:
+        if not self.instance_id or len(self.qgis_layers) == 0:
             return
         if self.base_url != Settings.services_base_url:  # Uswest is too slow for this
             return
@@ -655,7 +657,7 @@ class SentinelHub:
                        currently selected layer.
         :return: new layer
         """
-        if not self.capabilities:
+        if not self.instance_id:
             return self.missing_instance_id()
 
         self.update_parameters()
@@ -754,14 +756,13 @@ class SentinelHub:
         return 'EPSG:32{0}{1:02d}'.format(hemisphere, zone)
 
     def update_qgis_layer(self):
+        """ Updating layer in pyqgis somehow doesn't work therefore this method creates a new layer and deletes the
+            old one
         """
-        Updating layer in pyqgis somehow doesn't work therefore this method creates a new layer and deletes the old one
-        :return:
-        """
-        if not self.capabilities:
-            self.missing_instance_id()
+        if not self.instance_id:
+            return self.missing_instance_id()
 
-        selected_index = self.dockwidget.sentinelWMSlayers.currentIndex()
+        selected_index = self.dockwidget.qgisLayerList.currentIndex()
         if selected_index < 0:
             return
 
@@ -775,7 +776,7 @@ class SentinelHub:
                     self.update_current_wms_layers(selected_layer=new_layer)
                 return
         self.show_message('Chosen layer {} does not exist anymore.'
-                          ''.format(self.dockwidget.sentinelWMSlayers.currentText()), Message.INFO)
+                          ''.format(self.dockwidget.qgisLayerList.currentText()), Message.INFO)
         self.update_current_wms_layers()
 
     def update_parameters(self):
@@ -1204,9 +1205,16 @@ class SentinelHub:
                 # Bind actions to buttons
                 self.dockwidget.buttonAddWms.clicked.connect(self.add_qgis_layer)
                 self.dockwidget.buttonUpdateWms.clicked.connect(self.update_qgis_layer)
-                self.dockwidget.buttonDownload.clicked.connect(self.download_caption)
-                self.dockwidget.refreshExtent.clicked.connect(self.take_window_bbox)
-                self.dockwidget.selectDestination.clicked.connect(self.select_destination)
+                QgsMessageLog.logMessage(str(dir(self.dockwidget.qgisLayerList)))
+
+                # This overrides a press event, better solution would be to detect changes of qgis layers
+                self.layer_selection_event = self.dockwidget.qgisLayerList.mousePressEvent
+
+                def new_layer_selection_event(event):
+                    self.update_current_wms_layers()
+                    self.layer_selection_event(event)
+
+                self.dockwidget.qgisLayerList.mousePressEvent = new_layer_selection_event
 
                 # Render input fields changes and events
                 self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
@@ -1237,6 +1245,10 @@ class SentinelHub:
                 self.dockwidget.lngMax.editingFinished.connect(self.update_values)
 
                 self.dockwidget.showLogoBox.stateChanged.connect(self.change_show_logo)
+
+                self.dockwidget.buttonDownload.clicked.connect(self.download_caption)
+                self.dockwidget.refreshExtent.clicked.connect(self.take_window_bbox)
+                self.dockwidget.selectDestination.clicked.connect(self.select_destination)
 
             # Tracks which layer is selected in left menu
             # self.iface.currentLayerChanged.connect(self.update_current_wms_layers)
