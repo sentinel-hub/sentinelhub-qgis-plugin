@@ -490,7 +490,7 @@ class SentinelHub:
         self.cloud_cover = {}
         self.clear_calendar_cells()
 
-        if not self.instance_id or len(self.qgis_layers) == 0:
+        if not self.instance_id:
             return
         if self.base_url != Settings.services_base_url:  # Uswest is too slow for this
             return
@@ -822,15 +822,47 @@ class SentinelHub:
         else:
             self.data_source = None
 
-        if self.data_source in ['S1GRD', 'DEM']:
-            self.dockwidget.maxcc.setValue(100)
-            self.update_maxcc_label()
-            self.dockwidget.maxcc.setEnabled(False)
-        else:
-            self.dockwidget.maxcc.setEnabled(True)
+        if self.is_cloudless_source() and not self.dockwidget.maxcc.isHidden():
+            self.dockwidget.maxcc.hide()
+            self.dockwidget.maxccLabel.hide()
+        if not self.is_cloudless_source() and self.dockwidget.maxcc.isHidden():
+            self.dockwidget.maxcc.show()
+            self.dockwidget.maxccLabel.show()
+
+        """
+        # This doesn't hide vertical spacer and therefore doesn't look good
+        if self.is_timeless_source() and not self.dockwidget.calendar.isHidden():
+            self.dockwidget.calendar.hide()
+            self.dockwidget.exactDate.hide()
+            self.dockwidget.timeRangeLabel.hide()
+            self.dockwidget.timeLabel.hide()
+            self.dockwidget.time0.hide()
+            self.dockwidget.time1.hide()
+        if not self.is_timeless_source() and self.dockwidget.calendar.isHidden():
+            self.dockwidget.calendar.show()
+            self.dockwidget.exactDate.show()
+            self.dockwidget.timeRangeLabel.show()
+            self.dockwidget.timeLabel.show()
+            self.dockwidget.time0.show()
+            self.dockwidget.time1.show()
+        """
 
         if old_data_source != self.data_source:
             self.get_cloud_cover()
+
+    def is_cloudless_source(self):
+        """
+        :return: True if data source has no clouds and False otherwise
+        :rtype: bool
+        """
+        return self.data_source in ['S1GRD', 'DEM']
+
+    def is_timeless_source(self):
+        """
+        :return: True if data source is time independent and False otherwise
+        :rtype: bool
+        """
+        return self.data_source == 'DEM'
 
     def update_service_type(self):
         """ Updates service type and parameters
@@ -1004,10 +1036,14 @@ class SentinelHub:
         :return: qgis layer name
         :rtype: str
         """
-        return '{} - {} ({})'.format(self.get_source_name(), Settings.parameters['title'],
-                                     ', '.join([self.service_type.upper(), self.get_time_name(),
-                                                Settings.parameters['maxcc'] + '%', Settings.parameters['priority'],
-                                                Settings.parameters['crs']]))
+        plugin_params = [self.service_type.upper()]
+        if not self.is_timeless_source():
+            plugin_params.append(self.get_time_name())
+        if not self.is_cloudless_source():
+            plugin_params.append('{}%'.format(Settings.parameters['maxcc']))
+        plugin_params.extend([Settings.parameters['priority'], Settings.parameters['crs']])
+
+        return '{} - {} ({})'.format(self.get_source_name(), Settings.parameters['title'], ', '.join(plugin_params))
 
     def update_maxcc(self):
         """
@@ -1205,9 +1241,8 @@ class SentinelHub:
                 # Bind actions to buttons
                 self.dockwidget.buttonAddWms.clicked.connect(self.add_qgis_layer)
                 self.dockwidget.buttonUpdateWms.clicked.connect(self.update_qgis_layer)
-                QgsMessageLog.logMessage(str(dir(self.dockwidget.qgisLayerList)))
 
-                # This overrides a press event, better solution would be to detect changes of qgis layers
+                # This overrides a press event, better solution would be to detect changes of QGIS layers
                 self.layer_selection_event = self.dockwidget.qgisLayerList.mousePressEvent
 
                 def new_layer_selection_event(event):
