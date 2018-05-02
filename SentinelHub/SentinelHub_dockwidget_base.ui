@@ -15,16 +15,7 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
-    <property name="leftMargin">
-     <number>1</number>
-    </property>
-    <property name="topMargin">
-     <number>1</number>
-    </property>
-    <property name="rightMargin">
-     <number>1</number>
-    </property>
-    <property name="bottomMargin">
+    <property name="margin">
      <number>1</number>
     </property>
     <item row="0" column="0">
@@ -45,16 +36,7 @@
           <string>Renderer</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_2">
-          <property name="leftMargin">
-           <number>5</number>
-          </property>
-          <property name="topMargin">
-           <number>5</number>
-          </property>
-          <property name="rightMargin">
-           <number>5</number>
-          </property>
-          <property name="bottomMargin">
+          <property name="margin">
            <number>5</number>
           </property>
           <item row="2" column="0" alignment="Qt::AlignLeft">
@@ -154,13 +136,13 @@
                 <widget class="QPushButton" name="buttonUpdateWms">
                  <property name="minimumSize">
                   <size>
-                   <width>95</width>
+                   <width>94</width>
                    <height>0</height>
                   </size>
                  </property>
                  <property name="maximumSize">
                   <size>
-                   <width>95</width>
+                   <width>94</width>
                    <height>16777215</height>
                   </size>
                  </property>
@@ -213,7 +195,7 @@
                <x>0</x>
                <y>0</y>
                <width>1009</width>
-               <height>554</height>
+               <height>546</height>
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_4">
@@ -1101,16 +1083,7 @@
           <string>Download</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_3">
-          <property name="leftMargin">
-           <number>5</number>
-          </property>
-          <property name="topMargin">
-           <number>5</number>
-          </property>
-          <property name="rightMargin">
-           <number>5</number>
-          </property>
-          <property name="bottomMargin">
+          <property name="margin">
            <number>5</number>
           </property>
           <item row="1" column="0">
@@ -1130,8 +1103,8 @@
               <rect>
                <x>0</x>
                <y>0</y>
-               <width>1009</width>
-               <height>609</height>
+               <width>554</width>
+               <height>294</height>
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_6">
