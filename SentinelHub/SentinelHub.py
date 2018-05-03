@@ -998,12 +998,17 @@ class SentinelHub:
         :param bbox:
         :return:
         """
-        info_list = [self.get_source_name(), Settings.parameters['layers']] \
-            + Settings.parameters['time'].split('/')[:2] + bbox.split(',') \
-            + [Settings.parameters['maxcc'], Settings.parameters['priority']]
+        info_list = [self.get_source_name(), Settings.parameters['layers']]
+        if not self.is_timeless_source():
+            info_list.append(self.get_time_name())
+        info_list.extend(bbox.split(','))
+        if not self.is_cloudless_source():
+            info_list.append(Settings.parameters['maxcc'])
+        info_list.append(Settings.parameters['priority'])
+
         name = '.'.join(map(str, ['_'.join(map(str, info_list)),
                                   Settings.parameters_wcs['format'].split(';')[0].split('/')[1]]))
-        return name.replace(' ', '').replace(':', '_')
+        return name.replace(' ', '').replace(':', '_').replace('/', '_')
 
     def get_source_name(self):
         """ Returns name of the data source
