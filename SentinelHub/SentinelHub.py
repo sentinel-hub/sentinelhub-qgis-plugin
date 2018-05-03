@@ -389,9 +389,11 @@ class SentinelHub:
 
         # Every parameter that QGIS layer doesn't use by default must be in url
         # And url has to be encoded
-        url = '{}wms/{}?TIME={}&priority={}&maxcc={}'.format(self.base_url, self.instance_id, self.get_time(),
-                                                             Settings.parameters['priority'],
-                                                             Settings.parameters['maxcc'])
+        url = '{}wms/{}?showLogo={}&TIME={}&priority={}&maxcc={}'.format(self.base_url, self.instance_id,
+                                                                         Settings.parameters_wms['showLogo'],
+                                                                         self.get_time(),
+                                                                         Settings.parameters['priority'],
+                                                                         Settings.parameters['maxcc'])
         return '{}url={}'.format(uri, quote_plus(url))
 
     def get_wmts_uri(self):
@@ -400,9 +402,11 @@ class SentinelHub:
         request_parameters = list(Settings.parameters_wmts.items()) + list(Settings.parameters.items())
         for parameter, value in request_parameters:
             uri += '{}={}&'.format(parameter, value)
-        url = '{}wmts/{}?TIME={}&priority={}&maxcc={}'.format(self.base_url, self.instance_id, self.get_time(),
-                                                              Settings.parameters['priority'],
-                                                              Settings.parameters['maxcc'])
+        url = '{}wmts/{}?showLogo={}&TIME={}&priority={}&maxcc={}'.format(self.base_url, self.instance_id,
+                                                                          Settings.parameters_wmts['showLogo'],
+                                                                          self.get_time(),
+                                                                          Settings.parameters['priority'],
+                                                                          Settings.parameters['maxcc'])
         return '{}url={}'.format(uri, quote_plus(url))
 
     def get_wcs_url(self, bbox, crs=None):
@@ -1067,6 +1071,7 @@ class SentinelHub:
         """
         if self.dockwidget.exactDate.isChecked():
             self.dockwidget.time1.hide()
+            self.dockwidget.timeLabel.hide()
             self.move_calendar('time0')
         else:
             if self.time0 and self.time1 and self.time0 > self.time1:
@@ -1075,6 +1080,7 @@ class SentinelHub:
                 self.dockwidget.time1.setText(self.time1)
 
             self.dockwidget.time1.show()
+            self.dockwidget.timeLabel.show()
 
     def change_instance_id(self):
         """
