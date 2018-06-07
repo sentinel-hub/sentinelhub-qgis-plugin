@@ -161,8 +161,10 @@ class SentinelHub:
         self.plugin_dir = os.path.dirname(__file__)
         self.plugin_version = self.get_plugin_version()
 
-        # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
+        """
+        # This could be used for translating plugin into user's local language
+        locale = QSettings().value('locale/userLocale')  # Some OS will return None
+        locale = locale[0:2] if locale else 'en'
         locale_path = os.path.join(
             self.plugin_dir,
             'i18n',
@@ -174,6 +176,7 @@ class SentinelHub:
 
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
+        """
 
         # Declare instance attributes
         self.actions = []
