@@ -189,12 +189,9 @@ class SentinelHub:
         self.data_source = None
 
         # Set value
-        self.instance_id = QSettings().value(Settings.instance_id_location)
-        if self.instance_id is None:
-            self.instance_id = ''
-        self.download_folder = QSettings().value(Settings.download_folder_location)
-        if self.download_folder is None:
-            self.download_folder = ''
+        self.instance_id = QSettings().value(Settings.instance_id_location, '')
+        self.download_folder = QSettings().value(Settings.download_folder_location, '')
+        self._check_local_variables()
 
         self.service_type = None
 
@@ -273,6 +270,18 @@ class SentinelHub:
 
         self.dockwidget.format.clear()
         self.dockwidget.format.addItems([image_format[1] for image_format in Settings.image_formats])
+
+    def _check_local_variables(self):
+        """ Checks if local variables are of type string or unicode. If they are not it sets them to ''
+        """
+        valid_types = str if is_qgis_version_3() else (str, unicode)
+
+        if not isinstance(self.instance_id, valid_types):
+            self.instance_id = ''
+            QSettings().setValue(Settings.instance_id_location, self.instance_id)
+        if not isinstance(self.download_folder, valid_types):
+            self.download_folder = ''
+            QSettings().setValue(Settings.instance_id_location, self.download_folder)
 
     def set_values(self):
         """ Updates some values for the wcs download request
