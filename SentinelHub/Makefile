@@ -38,13 +38,15 @@ LOCALES =
 # translation
 SOURCES = \
 	__init__.py \
-	SentinelHub.py SentinelHub_dockwidget.py
+	SentinelHub.py \
+	SentinelHub_dockwidget.py
 
 PLUGINNAME = SentinelHub
 
 PY_FILES = \
 	__init__.py \
-	SentinelHub.py SentinelHub_dockwidget.py
+	SentinelHub.py \
+	SentinelHub_dockwidget.py
 
 UI_FILES = SentinelHub_dockwidget_base.ui
 
@@ -72,7 +74,8 @@ QGISDIR=.local/share/QGIS/QGIS3/profiles/default
 
 default: compile
 
-compile: $(COMPILED_RESOURCE_FILES)
+compile: clean $(COMPILED_RESOURCE_FILES)
+	python makefile_helper.py
 
 %.py : %.qrc $(RESOURCES_SRC)
 	pyrcc5 -o $*.py  $<
@@ -98,7 +101,7 @@ test: compile transcompile
 	@echo "e.g. source run-env-linux.sh <path to qgis install>; make test"
 	@echo "----------------------"
 
-deploy: compile doc transcompile
+deploy: compile doc transcompile dclean
 	@echo
 	@echo "------------------------------------------"
 	@echo "Deploying plugin to your .qgis2 directory."
