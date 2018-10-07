@@ -401,11 +401,10 @@ class SentinelHub:
 
         # Every parameter that QGIS layer doesn't use by default must be in url
         # And url has to be encoded
-        url = '{}wms/{}?showLogo={}&TIME={}&priority={}&maxcc={}'.format(self.base_url, self.instance_id,
-                                                                         Settings.parameters_wms['showLogo'],
-                                                                         self.get_time(),
-                                                                         Settings.parameters['priority'],
-                                                                         Settings.parameters['maxcc'])
+        url = '{}wms/{}?showLogo={}&TIME={}&priority={}&maxcc={}' \
+              '&preview={}'.format(self.base_url, self.instance_id, Settings.parameters_wms['showLogo'],
+                                   self.get_time(), Settings.parameters['priority'], Settings.parameters['maxcc'],
+                                   Settings.parameters_wms['preview'])
         return '{}url={}'.format(uri, quote_plus(url))
 
     def get_wmts_uri(self):
@@ -414,11 +413,11 @@ class SentinelHub:
         request_parameters = list(Settings.parameters_wmts.items()) + list(Settings.parameters.items())
         for parameter, value in request_parameters:
             uri += '{}={}&'.format(parameter, value)
-        url = '{}wmts/{}?showLogo={}&TIME={}&priority={}&maxcc={}'.format(self.base_url, self.instance_id,
-                                                                          Settings.parameters_wmts['showLogo'],
-                                                                          self.get_time(),
-                                                                          Settings.parameters['priority'],
-                                                                          Settings.parameters['maxcc'])
+        url = '{}wmts/{}?showLogo={}&TIME={}&priority={}&maxcc={}' \
+              '&preview={}'.format(self.base_url, self.instance_id, Settings.parameters_wmts['showLogo'],
+                                   self.get_time(), Settings.parameters['priority'], Settings.parameters['maxcc'],
+                                   Settings.parameters_wmts['preview'])
+
         return '{}url={}'.format(uri, quote_plus(url))
 
     def get_wcs_url(self, bbox, crs=None):
@@ -678,10 +677,10 @@ class SentinelHub:
 
         self.update_parameters()
         name = self.get_qgis_layer_name()
-        if self.service_type == 'wms':
-            new_layer = QgsRasterLayer(self.get_wms_uri(), name, 'wms')
-        else:
-            new_layer = QgsRasterLayer(self.get_wmts_uri(), name, 'wms')
+
+        new_layer = QgsRasterLayer(self.get_wms_uri() if self.service_type == 'wms' else self.get_wmts_uri(),
+                                   name, 'wms')
+
         if new_layer.isValid():
             if on_top and self.get_qgis_layers():
                 self.iface.setActiveLayer(self.get_qgis_layers()[0])

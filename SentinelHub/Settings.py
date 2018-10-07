@@ -36,6 +36,7 @@ parameters_wms = {
     'transparent': 'true',
     'showLogo': 'false',
     'version': '1.3.0',
+    'preview': '1'
 }
 
 # WFS parameters
@@ -71,7 +72,8 @@ parameters_wmts = {
     'format': 'image/png',
     'showLogo': 'false',
     'transparent': 'true',
-    'tileMatrixSet': 'PopularWebMercator512'
+    'tileMatrixSet': 'PopularWebMercator512',
+    'preview': '1'
 }
 
 data_source_props = {'S2L1C': {'url': services_base_url,
