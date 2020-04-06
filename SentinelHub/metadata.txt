@@ -21,7 +21,15 @@ repository=https://github.com/sinergise/qgis_sentinel_hub
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-# changelog=
+changelog=
+1.1.0
+- added support for all datasources and other minor improvements
+1.0.3
+- bug fix
+1.0.1
+- imports improved, cloud cover fix, developer readme added
+1.0.0
+- porting to qgis 3.0
 
 # Tags are comma separated with spaces allowed
 tags=SentinelHub, Sinergise, remote sensing, satellite, images, viewer, download, Sentinel, Landsat, Modis, DEM, Envisat
