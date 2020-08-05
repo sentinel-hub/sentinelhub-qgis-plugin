@@ -39,7 +39,7 @@ pbt deploy -y
 ```bash
 pylint SentinelHub
 ```
-- Install [Plugin reloader](https://plugins.qgis.org/plugins/plugin_reloader/) in QGIS in order to dynamically reload your plugin every time you redeploy it.
+- Install [Plugin Reloader](https://plugins.qgis.org/plugins/plugin_reloader/) in QGIS in order to dynamically reload your plugin every time you redeploy it.
 
 ### Release
 
