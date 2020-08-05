@@ -32,11 +32,12 @@ export PYTHONPATH=/usr/lib/python3/dist-packages
 
 - Use `pb_tool` to package and deploy the code to your local QGIS repository
 ```bash
+cd ./Sentinelhub
 pbt deploy -y
 ```
 - Use `pylint` to check code style
 ```bash
-pylint
+pylint SentinelHub
 ```
 - Install [Plugin reloader](https://plugins.qgis.org/plugins/plugin_reloader/) in QGIS in order to dynamically reload your plugin every time you redeploy it.
 
@@ -44,6 +45,7 @@ pylint
 
 - Package code into a zip file using `pb_tool`
 ```bash
+cd ./Sentinelhub
 pbt zip
 ```
 - Release the plugin on [GitHub](https://github.com/sentinel-hub/sentinelhub-qgis-plugin/releases) and attach the generated zip file.

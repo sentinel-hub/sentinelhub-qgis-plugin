@@ -28,5 +28,10 @@ def classFactory(iface):
     """
     # pylint: disable=invalid-name
     # pylint: disable=import-outside-toplevel
-    from .SentinelHub import SentinelHub
+    # pylint: disable=unused-import
+
+    # The following initializes UI
+    from . import resources
+
+    from .sentinelhub import SentinelHub
     return SentinelHub(iface)

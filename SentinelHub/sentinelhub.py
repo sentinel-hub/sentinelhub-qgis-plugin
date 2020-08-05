@@ -34,9 +34,8 @@ from PyQt5.QtCore import QSettings, QCoreApplication, Qt, QDate
 from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
-from . import resources  # this import is used because it imports resources.qrc
-from .SentinelHub_dockwidget import SentinelHubDockWidget
-from . import Settings
+from .dockwidget import SentinelHubDockWidget
+from . import settings
 
 
 POP_WEB = 'EPSG:3857'
@@ -74,7 +73,7 @@ class Capabilities:
             self.id = crs_id
             self.name = name
 
-    def __init__(self, instance_id, base_url=Settings.services_base_url):
+    def __init__(self, instance_id, base_url=settings.services_base_url):
         self.instance_id = instance_id
         self.base_url = base_url
 
@@ -152,8 +151,8 @@ class SentinelHub:
         self.data_source = None
 
         # Set value
-        self.instance_id = QSettings().value(Settings.instance_id_location, '')
-        self.download_folder = QSettings().value(Settings.download_folder_location, '')
+        self.instance_id = QSettings().value(settings.instance_id_location, '')
+        self.download_folder = QSettings().value(settings.download_folder_location, '')
         self._check_local_variables()
 
         self.service_type = None
@@ -221,7 +220,7 @@ class SentinelHub:
         Layers - Renderers
         Priority
         """
-        self.dockwidget.serviceType.addItems(Settings.service_types)
+        self.dockwidget.serviceType.addItems(settings.service_types)
         self.update_instance_props(instance_changed=True)
 
         self.dockwidget.instanceId.setText(self.instance_id)
@@ -229,26 +228,26 @@ class SentinelHub:
         self.set_values()
 
         self.dockwidget.priority.clear()
-        self.dockwidget.priority.addItems([priority[1] for priority in Settings.priorities])
+        self.dockwidget.priority.addItems([priority[1] for priority in settings.priorities])
 
         self.dockwidget.format.clear()
-        self.dockwidget.format.addItems([image_format[1] for image_format in Settings.image_formats])
+        self.dockwidget.format.addItems([image_format[1] for image_format in settings.image_formats])
 
     def _check_local_variables(self):
         """ Checks if local variables are of type string or unicode. If they are not it sets them to ''
         """
         if not isinstance(self.instance_id, str):
             self.instance_id = ''
-            QSettings().setValue(Settings.instance_id_location, self.instance_id)
+            QSettings().setValue(settings.instance_id_location, self.instance_id)
         if not isinstance(self.download_folder, str):
             self.download_folder = ''
-            QSettings().setValue(Settings.instance_id_location, self.download_folder)
+            QSettings().setValue(settings.instance_id_location, self.download_folder)
 
     def set_values(self):
         """ Updates some values for the wcs download request
         """
-        self.dockwidget.inputResX.setText(Settings.parameters_wcs['resx'])
-        self.dockwidget.inputResY.setText(Settings.parameters_wcs['resy'])
+        self.dockwidget.inputResX.setText(settings.parameters_wcs['resx'])
+        self.dockwidget.inputResY.setText(settings.parameters_wcs['resy'])
         self.dockwidget.latMin.setText(self.custom_bbox_params['latMin'])
         self.dockwidget.latMax.setText(self.custom_bbox_params['latMax'])
         self.dockwidget.lngMin.setText(self.custom_bbox_params['lngMin'])
@@ -354,28 +353,28 @@ class SentinelHub:
     def get_wms_uri(self):
         """ Generate URI for WMS request from parameters """
         uri = ''
-        request_parameters = list(Settings.parameters_wms.items()) + list(Settings.parameters.items())
+        request_parameters = list(settings.parameters_wms.items()) + list(settings.parameters.items())
         for parameter, value in request_parameters:
             uri += '{}={}&'.format(parameter, value)
 
         # Every parameter that QGIS layer doesn't use by default must be in url
         # And url has to be encoded
         url = '{}wms/{}?showLogo={}&TIME={}&priority={}&maxcc={}' \
-              '&preview={}'.format(self.base_url, self.instance_id, Settings.parameters_wms['showLogo'],
-                                   self.get_time(), Settings.parameters['priority'], Settings.parameters['maxcc'],
-                                   Settings.parameters_wms['preview'])
+              '&preview={}'.format(self.base_url, self.instance_id, settings.parameters_wms['showLogo'],
+                                   self.get_time(), settings.parameters['priority'], settings.parameters['maxcc'],
+                                   settings.parameters_wms['preview'])
         return '{}url={}'.format(uri, quote_plus(url))
 
     def get_wmts_uri(self):
         """ Generate URI for WMTS request from parameters """
         uri = ''
-        request_parameters = list(Settings.parameters_wmts.items()) + list(Settings.parameters.items())
+        request_parameters = list(settings.parameters_wmts.items()) + list(settings.parameters.items())
         for parameter, value in request_parameters:
             uri += '{}={}&'.format(parameter, value)
         url = '{}wmts/{}?showLogo={}&TIME={}&priority={}&maxcc={}' \
-              '&preview={}'.format(self.base_url, self.instance_id, Settings.parameters_wmts['showLogo'],
-                                   self.get_time(), Settings.parameters['priority'], Settings.parameters['maxcc'],
-                                   Settings.parameters_wmts['preview'])
+              '&preview={}'.format(self.base_url, self.instance_id, settings.parameters_wmts['showLogo'],
+                                   self.get_time(), settings.parameters['priority'], settings.parameters['maxcc'],
+                                   settings.parameters_wmts['preview'])
 
         return '{}url={}'.format(uri, quote_plus(url))
 
@@ -388,13 +387,13 @@ class SentinelHub:
         :type crs: str or None
         """
         url = '{}wcs/{}?'.format(self.base_url, self.instance_id)
-        request_parameters = list(Settings.parameters_wcs.items()) + list(Settings.parameters.items())
+        request_parameters = list(settings.parameters_wcs.items()) + list(settings.parameters.items())
 
         for parameter, value in request_parameters:
             if parameter in ('resx', 'resy'):
                 value = value.strip('m') + 'm'
             if parameter == 'crs':
-                value = crs if crs else Settings.parameters['crs']
+                value = crs if crs else settings.parameters['crs']
             url += '{}={}&'.format(parameter, value)
         return '{}bbox={}'.format(url, bbox)
 
@@ -402,11 +401,11 @@ class SentinelHub:
         """ Generate URL for WFS request from parameters """
 
         url = '{}wfs/{}?'.format(self.base_url, self.instance_id)
-        for parameter, value in Settings.parameters_wfs.items():
+        for parameter, value in settings.parameters_wfs.items():
             url += '{}={}&'.format(parameter, value)
 
         return '{}bbox={}&time={}&srsname={}&maxcc=100'.format(url, self.bbox_to_string(self.get_bbox()), time_range,
-                                                               Settings.parameters['crs'])
+                                                               settings.parameters['crs'])
 
     @staticmethod
     def get_capabilities_url(base_url, service, instance_id, get_json=False):
@@ -433,12 +432,12 @@ class SentinelHub:
             return None
 
         try:
-            response = self.download_from_url(self.get_capabilities_url(Settings.services_base_url, service,
+            response = self.download_from_url(self.get_capabilities_url(settings.services_base_url, service,
                                                                         instance_id), raise_invalid_id=True)
-            self.base_url = Settings.services_base_url
+            self.base_url = settings.services_base_url
         except InvalidInstanceId:
-            response = self.download_from_url(self.get_capabilities_url(Settings.ipt_base_url, service, instance_id))
-            self.base_url = Settings.ipt_base_url
+            response = self.download_from_url(self.get_capabilities_url(settings.ipt_base_url, service, instance_id))
+            self.base_url = settings.ipt_base_url
 
         if not response:
             return None
@@ -448,7 +447,7 @@ class SentinelHub:
         xml_root = ElementTree.fromstring(response.content)
         capabilities.load_xml(xml_root)
 
-        if self.base_url == Settings.services_base_url:
+        if self.base_url == settings.services_base_url:
             json_response = self.download_from_url(self.get_capabilities_url(self.base_url, service, instance_id,
                                                                              get_json=True), raise_invalid_id=True)
             try:
@@ -466,7 +465,7 @@ class SentinelHub:
 
         if not self.instance_id:
             return
-        if self.base_url != Settings.services_base_url:  # Uswest is too slow for this
+        if self.base_url != settings.services_base_url:  # Uswest is too slow for this
             return
 
         # Check if area is too large
@@ -474,7 +473,7 @@ class SentinelHub:
             width, height = self.get_bbox_size(self.get_bbox())
         except Exception:
             return
-        if max(width, height) > Settings.max_cloud_cover_image_size:
+        if max(width, height) > settings.max_cloud_cover_image_size:
             return
 
         time_range = self.get_calendar_month_interval()
@@ -574,15 +573,14 @@ class SentinelHub:
         :return: Proxy settings: flag specifying if proxy is enabled, host, port, user and password
         :rtype: tuple(str)
         """
-        settings = QSettings()
-        settings.beginGroup('proxy')
-        enabled = str(settings.value('proxyEnabled')).lower() == 'true'  # to be compatible with QGIS 2 and 3
-        # proxy_type = settings.value("proxyType")
-        host = settings.value('proxyHost')
-        port = settings.value('proxyPort')
-        user = settings.value('proxyUser')
-        password = settings.value('proxyPassword')
-        settings.endGroup()
+        qsettings = QSettings()
+        qsettings.beginGroup('proxy')
+        enabled = str(qsettings.value('proxyEnabled')).lower() == 'true'  # to be compatible with QGIS 2 and 3
+        host = qsettings.value('proxyHost')
+        port = qsettings.value('proxyPort')
+        user = qsettings.value('proxyUser')
+        password = qsettings.value('proxyPassword')
+        qsettings.endGroup()
         return enabled, host, port, user, password
 
     @staticmethod
@@ -654,7 +652,7 @@ class SentinelHub:
         Get window bbox
         """
         bbox = self.iface.mapCanvas().extent()
-        target_crs = QgsCoordinateReferenceSystem(crs if crs else Settings.parameters['crs'])
+        target_crs = QgsCoordinateReferenceSystem(crs if crs else settings.parameters['crs'])
         current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapSettings().destinationCrs().authid())
 
         if current_crs != target_crs:
@@ -667,7 +665,7 @@ class SentinelHub:
     def bbox_to_string(bbox, crs=None):
         """ Transforms BBox object into string
         """
-        target_crs = QgsCoordinateReferenceSystem(crs if crs else Settings.parameters['crs'])
+        target_crs = QgsCoordinateReferenceSystem(crs if crs else settings.parameters['crs'])
 
         if target_crs.authid() == WGS84:
             precision = 6
@@ -704,7 +702,7 @@ class SentinelHub:
     def get_bbox_size(self, bbox, crs=None):
         """ Returns approximate width and height of bounding box in meters
         """
-        bbox_crs = QgsCoordinateReferenceSystem(crs if crs else Settings.parameters['crs'])
+        bbox_crs = QgsCoordinateReferenceSystem(crs if crs else settings.parameters['crs'])
         utm_crs = QgsCoordinateReferenceSystem(self.lng_to_utm_zone(
             (bbox.xMinimum() + bbox.xMaximum()) / 2,
             (bbox.yMinimum() + bbox.yMaximum()) / 2))
@@ -754,9 +752,9 @@ class SentinelHub:
             self.update_selected_crs()
             self.update_selected_layer()
 
-        Settings.parameters['priority'] = Settings.priorities[self.dockwidget.priority.currentIndex()][0]
-        Settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
-        Settings.parameters['time'] = self.get_time()
+        settings.parameters['priority'] = settings.priorities[self.dockwidget.priority.currentIndex()][0]
+        settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
+        settings.parameters['time'] = self.get_time()
 
     def update_selected_crs(self):
         """ Updates crs with selected Sentinel Hub CRS
@@ -764,7 +762,7 @@ class SentinelHub:
         crs_index = self.dockwidget.epsg.currentIndex()
         wms_crs = self.capabilities.crs_list
         if 0 <= crs_index < len(wms_crs):
-            Settings.parameters['crs'] = wms_crs[crs_index].id
+            settings.parameters['crs'] = wms_crs[crs_index].id
 
     def update_selected_layer(self):
         """ Updates properties of selected Sentinel Hub layer
@@ -773,18 +771,18 @@ class SentinelHub:
         old_data_source = self.data_source
         wms_layers = self.capabilities.layers
         if 0 <= layers_index < len(wms_layers):
-            Settings.parameters['layers'] = wms_layers[layers_index].id
-            Settings.parameters_wcs['coverage'] = wms_layers[layers_index].id
-            Settings.parameters['title'] = wms_layers[layers_index].name
+            settings.parameters['layers'] = wms_layers[layers_index].id
+            settings.parameters_wcs['coverage'] = wms_layers[layers_index].id
+            settings.parameters['title'] = wms_layers[layers_index].name
 
-            if self.base_url in [Settings.services_base_url, Settings.uswest_base_url]:
+            if self.base_url in [settings.services_base_url, settings.uswest_base_url]:
                 self.data_source = wms_layers[layers_index].data_source
             else:
                 self.data_source = None
 
             if self.data_source:
-                self.base_url = Settings.data_source_props[self.data_source]['url']
-                Settings.parameters_wfs['typenames'] = Settings.data_source_props[self.data_source]['wfs_name']
+                self.base_url = settings.data_source_props[self.data_source]['url']
+                settings.parameters_wfs['typenames'] = settings.data_source_props[self.data_source]['wfs_name']
         else:
             self.data_source = None
 
@@ -893,7 +891,7 @@ class SentinelHub:
         """
         self.clear_calendar_cells()
         for date, value in self.cloud_cover.items():
-            if float(value) <= int(Settings.parameters['maxcc']):
+            if float(value) <= int(settings.parameters['maxcc']):
                 d = date.split('-')
                 style = QTextCharFormat()
                 style.setBackground(Qt.gray)
@@ -927,7 +925,7 @@ class SentinelHub:
         if not self.instance_id:
             return self.missing_instance_id()
 
-        if Settings.parameters_wcs['resx'] == '' or Settings.parameters_wcs['resy'] == '':
+        if settings.parameters_wcs['resx'] == '' or settings.parameters_wcs['resy'] == '':
             return self.show_message('Spatial resolution parameters are not set.', Message.CRITICAL)
         if not self.download_current_window:
             for value in self.custom_bbox_params.values():
@@ -960,16 +958,16 @@ class SentinelHub:
         :param bbox:
         :return:
         """
-        info_list = [self.get_source_name(), Settings.parameters['layers']]
+        info_list = [self.get_source_name(), settings.parameters['layers']]
         if not self.is_timeless_source():
             info_list.append(self.get_time_name())
         info_list.extend(bbox.split(','))
         if not self.is_cloudless_source():
-            info_list.append(Settings.parameters['maxcc'])
-        info_list.append(Settings.parameters['priority'])
+            info_list.append(settings.parameters['maxcc'])
+        info_list.append(settings.parameters['priority'])
 
         name = '.'.join(map(str, ['_'.join(map(str, info_list)),
-                                  Settings.parameters_wcs['format'].split(';')[0].split('/')[1]]))
+                                  settings.parameters_wcs['format'].split(';')[0].split('/')[1]]))
         return name.replace(' ', '').replace(':', '_').replace('/', '_')
 
     def get_source_name(self):
@@ -978,9 +976,9 @@ class SentinelHub:
         :return: name
         :rtype: str
         """
-        if self.base_url == Settings.ipt_base_url:
+        if self.base_url == settings.ipt_base_url:
             return 'EO Cloud'
-        return Settings.data_source_props[self.data_source]['pretty_name']
+        return settings.data_source_props[self.data_source]['pretty_name']
 
     def get_time_name(self):
         """ Returns time interval in a form that will be displayed in qgis layer name
@@ -988,7 +986,7 @@ class SentinelHub:
         :return: string describing time interval
         :rtype: str
         """
-        time_interval = Settings.parameters['time'].split('/')[:2]
+        time_interval = settings.parameters['time'].split('/')[:2]
         if self.dockwidget.exactDate.isChecked():
             time_interval = time_interval[:1]
         if len(time_interval) == 1:
@@ -1011,10 +1009,10 @@ class SentinelHub:
         if not self.is_timeless_source():
             plugin_params.append(self.get_time_name())
         if not self.is_cloudless_source():
-            plugin_params.append('{}%'.format(Settings.parameters['maxcc']))
-        plugin_params.extend([Settings.parameters['priority'], Settings.parameters['crs']])
+            plugin_params.append('{}%'.format(settings.parameters['maxcc']))
+        plugin_params.extend([settings.parameters['priority'], settings.parameters['crs']])
 
-        return '{} - {} ({})'.format(self.get_source_name(), Settings.parameters['title'], ', '.join(plugin_params))
+        return '{} - {} ({})'.format(self.get_source_name(), settings.parameters['title'], ', '.join(plugin_params))
 
     def update_maxcc(self):
         """
@@ -1029,7 +1027,7 @@ class SentinelHub:
         Update image format
         :return:
         """
-        Settings.parameters_wcs['format'] = Settings.image_formats[self.dockwidget.format.currentIndex()][0]
+        settings.parameters_wcs['format'] = settings.image_formats[self.dockwidget.format.currentIndex()][0]
 
     def change_exact_date(self):
         """
@@ -1043,7 +1041,7 @@ class SentinelHub:
         else:
             if self.time0 and self.time1 and self.time0 > self.time1:
                 self.time1 = ''
-                Settings.parameters['time'] = self.get_time()
+                settings.parameters['time'] = self.get_time()
                 self.dockwidget.time1.setText(self.time1)
 
             self.dockwidget.time1.show()
@@ -1069,7 +1067,7 @@ class SentinelHub:
             self.update_instance_props(instance_changed=True)
             if self.instance_id:
                 self.show_message("New Instance ID and layers set.", Message.SUCCESS)
-            QSettings().setValue(Settings.instance_id_location, new_instance_id)
+            QSettings().setValue(settings.instance_id_location, new_instance_id)
             self.update_parameters()
             self.get_cloud_cover()
         else:
@@ -1083,7 +1081,7 @@ class SentinelHub:
 
         if new_download_folder == '' or os.path.exists(new_download_folder):
             self.download_folder = new_download_folder
-            QSettings().setValue(Settings.download_folder_location, new_download_folder)
+            QSettings().setValue(settings.download_folder_location, new_download_folder)
         else:
             self.dockwidget.destination.setText(self.download_folder)
             self.show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
@@ -1132,7 +1130,7 @@ class SentinelHub:
         else:
             self.time0 = new_time0
             self.time1 = new_time1
-            Settings.parameters['time'] = self.get_time()
+            settings.parameters['time'] = self.get_time()
 
         self.dockwidget.time0.setText(self.time0)
         self.dockwidget.time1.setText(self.time1)
@@ -1168,7 +1166,7 @@ class SentinelHub:
 
         for name, value in new_values.items():
             if name in ['resx', 'resy']:
-                Settings.parameters_wcs[name] = value
+                settings.parameters_wcs[name] = value
             else:
                 self.custom_bbox_params[name] = value
 
@@ -1193,7 +1191,7 @@ class SentinelHub:
     def change_show_logo(self):
         """Determines if Sentinel Hub logo will be shown in downloaded image
         """
-        Settings.parameters_wcs['showLogo'] = 'true' if self.dockwidget.showLogoBox.isChecked() else 'false'
+        settings.parameters_wcs['showLogo'] = 'true' if self.dockwidget.showLogoBox.isChecked() else 'false'
 
     def run(self):
         """Run method that loads and starts the plugin and binds all UI actions"""

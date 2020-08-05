@@ -12,8 +12,8 @@ email=info@sentinel-hub.com
 
 about=SentinelHub plugin transforms any layer created in Sentinel Hub Configuration Utility into QGIS layer. It allows exploration, customization and image download. An instance ID for Sentinel Hub services is required (http://www.sentinel-hub.com/). Trial (http://www.sentinel-hub.com/create_account) and free accounts are available (https://medium.com/sentinel-hub/sentinel-hub-at-the-eo-cloud-free-accounts-for-r-d-projects-eccb3e3d0659 and https://medium.com/sentinel-hub/sentinel-hub-free-accounts-within-esa-business-applications-b0046c0595f0)
 
-homepage=https://github.com/sentinel-hub/sentinelhub-qgis-plugin /blob/master/README.md
-tracker=https://github.com/sentinel-hub/sentinelhub-qgis-plugin /issues
+homepage=https://github.com/sentinel-hub/sentinelhub-qgis-plugin/blob/master/README.md
+tracker=https://github.com/sentinel-hub/sentinelhub-qgis-plugin/issues
 repository=https://github.com/sentinel-hub/sentinelhub-qgis-plugin
 
 # Recommended items:
