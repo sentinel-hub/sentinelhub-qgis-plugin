@@ -28,10 +28,9 @@ from xml.etree import ElementTree
 from urllib.parse import quote_plus
 
 import requests
-from qgis.core import QgsProject, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, \
-    QgsMessageLog
-from qgis.utils import Qgis
-from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QDate
+from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
+    QgsRectangle, QgsMessageLog
+from PyQt5.QtCore import QSettings, QCoreApplication, Qt, QDate
 from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
@@ -141,23 +140,6 @@ class SentinelHub:
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         self.plugin_version = self.get_plugin_version()
-
-        """
-        # This could be used for translating plugin into user's local language
-        locale = QSettings().value('locale/userLocale')  # Some OS will return None
-        locale = locale[0:2] if locale else 'en'
-        locale_path = os.path.join(
-            self.plugin_dir,
-            'i18n',
-            'SentinelHub_{}.qm'.format(locale))
-
-        if os.path.exists(locale_path):
-            self.translator = QTranslator()
-            self.translator.load(locale_path)
-
-            if qVersion() > '4.3.3':
-                QCoreApplication.installTranslator(self.translator)
-        """
 
         # Declare instance attributes
         self.actions = []
