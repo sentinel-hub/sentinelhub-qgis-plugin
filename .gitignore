@@ -106,6 +106,9 @@ ENV/
 # PyTest cache
 .pytest_cache
 
+# Pipfiles
+Pipfile*
+
 # Files created during plugin deploy
 resources.py
 
