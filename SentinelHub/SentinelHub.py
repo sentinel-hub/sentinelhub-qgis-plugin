@@ -20,43 +20,26 @@
  *                                                                         *
  ***************************************************************************/
 """
-# This looks like the best way to make plugin compatible for QGIS versions 2.* and 3.0
-from sys import version_info
-def is_qgis_version_3():
-    return version_info[0] >= 3
 
-import os.path
-import requests
+import os
 import time
 import calendar
 import datetime
 import math
 from xml.etree import ElementTree
-try:
-    from urllib.parse import quote_plus
-except ImportError:
-    from urllib import quote_plus
+from urllib.parse import quote_plus
+
+import requests
+from qgis.core import QgsProject, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, \
+    QgsMessageLog
+from qgis.utils import Qgis
+from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QDate
+from PyQt5.QtGui import QIcon, QTextCharFormat
+from PyQt5.QtWidgets import QAction, QFileDialog
 
 from . import resources  # this import is used because it imports resources.qrc
 from .SentinelHub_dockwidget import SentinelHubDockWidget
 from . import Settings
-
-from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsMessageLog
-
-if is_qgis_version_3():
-    from qgis.utils import Qgis
-    from qgis.core import QgsProject
-
-    from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QDate
-    from PyQt5.QtGui import QIcon, QTextCharFormat
-    from PyQt5.QtWidgets import QAction, QFileDialog
-else:
-    from qgis.utils import QGis as Qgis
-    from qgis.core import QgsMapLayerRegistry as QgsProject
-    from qgis.gui import QgsMessageBar
-
-    from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt, QDate
-    from PyQt4.QtGui import QIcon, QAction, QTextCharFormat, QFileDialog
 
 
 POP_WEB = 'EPSG:3857'
@@ -67,11 +50,11 @@ class InvalidInstanceId(ValueError):
     pass
 
 
-class Message:  # Don't use Enum classes as some older Python versions don't have them
-    INFO = ('Info', Qgis.Info if is_qgis_version_3() else QgsMessageBar.INFO)
-    WARNING = ('Warning', Qgis.Warning if is_qgis_version_3() else QgsMessageBar.WARNING)
-    CRITICAL = ('Error', Qgis.Critical if is_qgis_version_3() else QgsMessageBar.CRITICAL)
-    SUCCESS = ('Success', Qgis.Success if is_qgis_version_3() else QgsMessageBar.SUCCESS)
+class Message:
+    INFO = 'Info', Qgis.Info
+    WARNING = 'Warning', Qgis.Warning
+    CRITICAL = 'Error', Qgis.Critical
+    SUCCESS = 'Success', Qgis.Success
 
 
 class Capabilities:
@@ -274,12 +257,10 @@ class SentinelHub:
     def _check_local_variables(self):
         """ Checks if local variables are of type string or unicode. If they are not it sets them to ''
         """
-        valid_types = str if is_qgis_version_3() else (str, unicode)
-
-        if not isinstance(self.instance_id, valid_types):
+        if not isinstance(self.instance_id, str):
             self.instance_id = ''
             QSettings().setValue(Settings.instance_id_location, self.instance_id)
-        if not isinstance(self.download_folder, valid_types):
+        if not isinstance(self.download_folder, str):
             self.download_folder = ''
             QSettings().setValue(Settings.instance_id_location, self.download_folder)
 
@@ -368,9 +349,7 @@ class SentinelHub:
         :return: List of existing QGIS layers in the same order as they are in the QGIS menu
         :rtype: list(QgsMapLayer)
         """
-        if is_qgis_version_3():
-            return [tree_layer.layer() for tree_layer in QgsProject.instance().layerTreeRoot().findLayers()]
-        return self.iface.legendInterface().layers()
+        return [tree_layer.layer() for tree_layer in QgsProject.instance().layerTreeRoot().findLayers()]
 
     # --------------------------------------------------------------------------
 
@@ -696,15 +675,10 @@ class SentinelHub:
         """
         bbox = self.iface.mapCanvas().extent()
         target_crs = QgsCoordinateReferenceSystem(crs if crs else Settings.parameters['crs'])
-        if is_qgis_version_3():
-            current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapSettings().destinationCrs().authid())
-        else:
-            current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapRenderer().destinationCrs().authid())
+        current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapSettings().destinationCrs().authid())
+
         if current_crs != target_crs:
-            if is_qgis_version_3():
-                xform = QgsCoordinateTransform(current_crs, target_crs, QgsProject.instance())
-            else:
-                xform = QgsCoordinateTransform(current_crs, target_crs)
+            xform = QgsCoordinateTransform(current_crs, target_crs, QgsProject.instance())
             bbox = xform.transform(bbox)  # if target CRS is UTM and bbox is out of UTM bounds this fails, not sure how to fix
 
         return bbox
@@ -754,10 +728,7 @@ class SentinelHub:
         utm_crs = QgsCoordinateReferenceSystem(self.lng_to_utm_zone(
             (bbox.xMinimum() + bbox.xMaximum()) / 2,
             (bbox.yMinimum() + bbox.yMaximum()) / 2))
-        if is_qgis_version_3():
-            xform = QgsCoordinateTransform(bbox_crs, utm_crs, QgsProject.instance())
-        else:
-            xform = QgsCoordinateTransform(bbox_crs, utm_crs)
+        xform = QgsCoordinateTransform(bbox_crs, utm_crs, QgsProject.instance())
         bbox = xform.transform(bbox)
         width = abs(bbox.xMaximum() - bbox.xMinimum())
         height = abs(bbox.yMinimum() - bbox.yMaximum())

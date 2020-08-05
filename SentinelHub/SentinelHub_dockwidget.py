@@ -21,20 +21,14 @@
  ***************************************************************************/
 """
 
-import os.path
-from sys import version_info
+import os
 
-if version_info[0] >= 3:
-    from PyQt5.QtWidgets import QDockWidget
-    from PyQt5.uic import loadUiType
-    from PyQt5.QtCore import pyqtSignal
-else:
-    from PyQt4.QtGui import QDockWidget
-    from PyQt4.uic import loadUiType
-    from PyQt4.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QDockWidget
+from PyQt5.uic import loadUiType
+from PyQt5.QtCore import pyqtSignal
 
-FORM_CLASS, _ = loadUiType(os.path.join(os.path.dirname(__file__),
-                                        'SentinelHub_dockwidget_base.ui'))
+
+FORM_CLASS, _ = loadUiType(os.path.join(os.path.dirname(__file__), 'SentinelHub_dockwidget_base.ui'))
 
 
 class SentinelHubDockWidget(QDockWidget, FORM_CLASS):
@@ -54,4 +48,3 @@ class SentinelHubDockWidget(QDockWidget, FORM_CLASS):
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
-
