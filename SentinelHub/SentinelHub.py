@@ -2,12 +2,9 @@
 """
 /***************************************************************************
  SentinelHub
-                                 A QGIS plugin
- SentinelHub
-                              -------------------
+                             -------------------
         begin                : 2017-07-07
-        git sha              : $Format:%H$
-        copyright            : (C) 2017 by Sentinel Hub, Sinergise ltd.
+        copyright            : (C) 2020 by Sinergise
         email                : info@sentinel-hub.com
  ***************************************************************************/
 
@@ -19,6 +16,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+ The main module
 """
 
 import os

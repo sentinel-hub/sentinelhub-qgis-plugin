@@ -2,13 +2,10 @@
 """
 /***************************************************************************
  SentinelHub
-                                 A QGIS plugin
- SentinelHub
                              -------------------
         begin                : 2017-07-07
-        copyright            : (C) 2017 by s
-        email                : s
-        git sha              : $Format:%H$
+        copyright            : (C) 2020 by Sinergise
+        email                : info@sentinel-hub.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -27,7 +24,7 @@
 
 
 def classFactory(iface):
-    """Load SentinelHub class from file SentinelHub.
+    """ Load SentinelHub class from file SentinelHub.
 
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface

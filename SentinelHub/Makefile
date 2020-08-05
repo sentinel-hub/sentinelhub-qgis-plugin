@@ -1,21 +1,20 @@
 #/***************************************************************************
 # SentinelHub
 #
-# SentinelHub
-#							 -------------------
-#		begin				: 2017-07-07
-#		git sha				: $Format:%H$
-#		copyright			: (C) 2017 by s
-#		email				: s
+# Makefile
+#                            -------------------
+#       begin               : 2017-07-07
+#       copyright           : (C) 2020 by Sinergise
+#       email               : info@sentinel-hub.com
 # ***************************************************************************/
 #
 #/***************************************************************************
-# *																		 *
+# *                                                                         *
 # *   This program is free software; you can redistribute it and/or modify  *
 # *   it under the terms of the GNU General Public License as published by  *
-# *   the Free Software Foundation; either version 2 of the License, or	 *
-# *   (at your option) any later version.								   *
-# *																		 *
+# *   the Free Software Foundation; either version 2 of the License, or     *
+# *   (at your option) any later version.                                   *
+# *                                                                         *
 # ***************************************************************************/
 
 #################################################
@@ -46,18 +45,27 @@ PLUGINNAME = SentinelHub
 PY_FILES = \
 	__init__.py \
 	SentinelHub.py \
-	SentinelHub_dockwidget.py
+	SentinelHub_dockwidget.py \
+	Settings.py
 
 UI_FILES = SentinelHub_dockwidget_base.ui
 
 EXTRAS = metadata.txt favicon.ico Settings.py
 
-EXTRA_DIRS =
-
 COMPILED_RESOURCE_FILES = resources.py
 
 PEP8EXCLUDE=pydev,resources.py,conf.py,third_party,ui
 
+# QGISDIR points to the location where your plugin should be installed.
+# This varies by platform, relative to your HOME directory:
+#	* Linux:
+#	  .local/share/QGIS/QGIS3/profiles/default/python/plugins/
+#	* Mac OS X:
+#	  Library/Application Support/QGIS/QGIS3/profiles/default/python/plugins
+#	* Windows:
+#	  AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins'
+
+QGISDIR=.local/share/QGIS/QGIS3/profiles/default
 
 #################################################
 # Normally you would not need to edit below here
@@ -65,15 +73,20 @@ PEP8EXCLUDE=pydev,resources.py,conf.py,third_party,ui
 
 HELP = help/build/html
 
-PLUGIN_UPLOAD = python2 plugin_upload.py
+PLUGIN_UPLOAD = python plugin_upload.py
 
 RESOURCE_SRC=$(shell grep '^ *<file' resources.qrc | sed 's@</file>@@g;s/.*>//g' | tr '\n' ' ')
 
-QGISDIR=.local/share/QGIS/QGIS3/profiles/default
+.PHONY: default
+default:
+	@echo While you can use make to build and deploy your plugin, pb_tool
+	@echo is a much better solution.
+	@echo A Python script, pb_tool provides platform independent management of
+	@echo your plugins and runs anywhere.
+	@echo You can install pb_tool using: pip install pb_tool
+	@echo See https://g-sherman.github.io/plugin_build_tool/ for info.
 
-default: compile
-
-compile: clean $(COMPILED_RESOURCE_FILES)
+compile: $(COMPILED_RESOURCE_FILES)
 
 %.py : %.qrc $(RESOURCES_SRC)
 	pyrcc5 -o $*.py  $<
@@ -99,7 +112,7 @@ test: compile transcompile
 	@echo "e.g. source run-env-linux.sh <path to qgis install>; make test"
 	@echo "----------------------"
 
-deploy: compile doc transcompile dclean
+deploy: compile doc transcompile
 	@echo
 	@echo "------------------------------------------"
 	@echo "Deploying plugin to your .qgis2 directory."
@@ -114,9 +127,6 @@ deploy: compile doc transcompile dclean
 	cp -vf $(EXTRAS) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vfr i18n $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vfr $(HELP) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)/help
-	# Copy extra directories if any
-  # (temporarily removed)
-
 
 # The dclean target removes compiled python files from plugin directory
 # also deletes any .git entry
@@ -127,7 +137,6 @@ dclean:
 	@echo "-----------------------------------"
 	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname "*.pyc" -delete
 	find $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME) -iname ".git" -prune -exec rm -Rf {} \;
-
 
 derase:
 	@echo
@@ -217,9 +226,6 @@ pylint:
 	@echo "e.g. source run-env-linux.sh <path to qgis install>; make pylint"
 	@echo "----------------------"
 
-
-# Run pep8 style checking
-#http://pypi.python.org/pypi/pep8
 pep8:
 	@echo
 	@echo "-----------"

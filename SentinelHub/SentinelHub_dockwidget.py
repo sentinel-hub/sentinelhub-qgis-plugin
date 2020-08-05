@@ -2,13 +2,10 @@
 """
 /***************************************************************************
  SentinelHubDockWidget
-                                 A QGIS plugin
- SentinelHub
                              -------------------
         begin                : 2017-07-07
-        git sha              : $Format:%H$
-        copyright            : (C) 2017 by s
-        email                : s
+        copyright            : (C) 2020 by Sinergise
+        email                : info@sentinel-hub.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -19,6 +16,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+ Module wrapping the widget interface
 """
 
 import os
@@ -36,15 +34,13 @@ class SentinelHubDockWidget(QDockWidget, FORM_CLASS):
     closingPlugin = pyqtSignal()
 
     def __init__(self, parent=None):
-        """Constructor."""
-        super(SentinelHubDockWidget, self).__init__(parent)
-        # Set up the user interface from Designer.
-        # After setupUI you can access any designer object by doing
-        # self.<objectname>, and you can use autoconnect slots - see
-        # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
-        # #widgets-and-dialogs-with-auto-connect
+        """ Constructor
+        """
+        super().__init__(parent)
         self.setupUi(self)
 
     def closeEvent(self, event):
+        """ When plugin is closed
+        """
         self.closingPlugin.emit()
         event.accept()

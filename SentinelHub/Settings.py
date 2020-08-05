@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This script contains parameters and settings for Sentinel Hub services
+Module containing parameters and settings for Sentinel Hub services
 """
 
 # Base url
