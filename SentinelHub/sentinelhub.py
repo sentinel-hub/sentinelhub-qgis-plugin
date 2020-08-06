@@ -780,9 +780,13 @@ class SentinelHub:
             else:
                 self.data_source = None
 
-            if self.data_source:
+            if self.data_source in settings.data_source_props:
                 self.base_url = settings.data_source_props[self.data_source]['url']
                 settings.parameters_wfs['typenames'] = settings.data_source_props[self.data_source]['wfs_name']
+            else:
+                if self.base_url != settings.ipt_base_url:
+                    self.base_url = settings.services_base_url
+                settings.parameters_wfs['typenames'] = None
         else:
             self.data_source = None
 
@@ -971,14 +975,16 @@ class SentinelHub:
         return name.replace(' ', '').replace(':', '_').replace('/', '_')
 
     def get_source_name(self):
-        """ Returns name of the data source
+        """ Returns name of the data source or a service name
 
-        :return: name
+        :return: A name
         :rtype: str
         """
         if self.base_url == settings.ipt_base_url:
             return 'EO Cloud'
-        return settings.data_source_props[self.data_source]['pretty_name']
+        if self.data_source in settings.data_source_props:
+            return settings.data_source_props[self.data_source]['pretty_name']
+        return 'SH'
 
     def get_time_name(self):
         """ Returns time interval in a form that will be displayed in qgis layer name
