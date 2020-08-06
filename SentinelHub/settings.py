@@ -12,7 +12,10 @@ ipt_base_url = 'http://services.eocloud.sentinel-hub.com/v1/'
 instance_id_location = 'SentinelHub/instance_id'
 download_folder_location = 'SentinelHub/download_folder'
 
-service_types = ['WMS', 'WMTS']
+service_types = [
+    'WMS',
+    'WMTS'
+]
 
 # Main request parameters
 parameters = {
@@ -76,37 +79,50 @@ parameters_wmts = {
     'preview': '1'
 }
 
-data_source_props = {'S2L1C': {'url': services_base_url,
-                               'wfs_name': 'S2.TILE',
-                               'pretty_name': 'Sentinel-2 L1C'},
-                     'S2L2A': {'url': services_base_url,
-                               'wfs_name': 'DSS2',
-                               'pretty_name': 'Sentinel-2 L2A'},
-                     'S1GRD': {'url': services_base_url,
-                               'wfs_name': 'DSS3',
-                               'pretty_name': 'Sentinel-1'},
-                     'L8L1C': {'url': uswest_base_url,
-                               'wfs_name': 'DSS6',
-                               'pretty_name': 'Landsat 8'},
-                     'MODIS': {'url': uswest_base_url,
-                               'wfs_name': 'DSS5',
-                               'pretty_name': 'MODIS'},
-                     'DEM': {'url': uswest_base_url,
-                             'wfs_name': 'DSS4',
-                             'pretty_name': 'DEM'}}
+data_source_props = {
+    'S2L1C': {
+        'url': services_base_url,
+        'wfs_name': 'S2.TILE',
+        'pretty_name': 'Sentinel-2 L1C'
+    },
+    'S2L2A': {
+        'url': services_base_url,
+        'wfs_name': 'DSS2',
+        'pretty_name': 'Sentinel-2 L2A'
+    },
+    'S1GRD': {
+        'url': services_base_url,
+        'wfs_name': 'DSS3',
+        'pretty_name': 'Sentinel-1'
+    },
+    'L8L1C': {
+        'url': uswest_base_url,
+        'wfs_name': 'DSS6',
+        'pretty_name': 'Landsat 8'
+    },
+    'MODIS': {
+        'url': uswest_base_url,
+        'wfs_name': 'DSS5',
+        'pretty_name': 'MODIS'
+    },
+    'DEM': {
+        'url': uswest_base_url,
+        'wfs_name': 'DSS4',
+        'pretty_name': 'DEM'
+    }
+}
 
 # values for UI selections
-priorities = [('mostRecent', 'Most recent'),
-              ('leastRecent', 'Least recent'),
-              ('leastCC', 'Least cloud coverage')]
+priorities = [
+    ('mostRecent', 'Most recent'),
+    ('leastRecent', 'Least recent'),
+    ('leastCC', 'Least cloud coverage')
+]
 
-atmfilter_list = ['NONE', 'DOS1', 'ATMCOR']  # Not yet implemented
-cloud_correction = ['NONE', 'REPLACE']  # Not yet implemented
-
-image_formats = [('image/png', 'PNG'),
-                 ('image/jpeg', 'JPEG'),
-                 ('image/tiff;depth=8', '8-bit TIFF'),
-                 ('image/tiff;depth=16', '16-bit TIFF'),
-                 ('image/tiff;depth=32f', '32-bit float TIFF')]
+image_formats = [
+    ('image/png', 'PNG'),
+    ('image/jpeg', 'JPEG'),
+    ('image/tiff', 'TIFF'),
+]
 
 max_cloud_cover_image_size = 1000000
