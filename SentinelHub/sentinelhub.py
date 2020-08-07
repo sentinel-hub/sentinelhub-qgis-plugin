@@ -34,23 +34,13 @@ from PyQt5.QtCore import QSettings, QCoreApplication, Qt, QDate
 from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
+from .constants import MessageType, CRS
 from .dockwidget import SentinelHubDockWidget
 from . import settings
 
 
-POP_WEB = 'EPSG:3857'
-WGS84 = 'EPSG:4326'
-
-
 class InvalidInstanceId(ValueError):
     pass
-
-
-class Message:
-    INFO = 'Info', Qgis.Info
-    WARNING = 'Warning', Qgis.Warning
-    CRITICAL = 'Error', Qgis.Critical
-    SUCCESS = 'Success', Qgis.Success
 
 
 class Capabilities:
@@ -117,7 +107,7 @@ class Capabilities:
         """ Sorts list of CRS so that 3857 and 4326 are on the top
         """
         new_crs_list = []
-        for main_crs in [POP_WEB, WGS84]:
+        for main_crs in [CRS.POP_WEB, CRS.WGS84]:
             for index, crs in enumerate(self.crs_list):
                 if crs and crs.id == main_crs:
                     new_crs_list.append(crs)
@@ -131,7 +121,9 @@ class Capabilities:
 class SentinelHub:
 
     def __init__(self, iface):
-        """Constructor.
+        """
+        :param iface: A QGIS interface instance.
+        :type iface: QgsInterface
         """
         # Save reference to the QGIS interface
         self.iface = iface
@@ -274,13 +266,13 @@ class SentinelHub:
         :param message: Message for user
         :param message: str
         :param message_type: Type of message
-        :param message_type: Attributes of Message class
+        :param message_type: MessageType
         """
-        self.iface.messageBar().pushMessage(message_type[0], message, level=message_type[1])
+        self.iface.messageBar().pushMessage(message_type.nice_name, message, level=message_type.level)
 
     def missing_instance_id(self):
         """Show message about missing instance ID"""
-        self.show_message("Please set Sentinel Hub Instance ID first.", Message.INFO)
+        self.show_message("Please set Sentinel Hub Instance ID first.", MessageType.INFO)
 
     # --------------------------------------------------------------------------
 
@@ -511,10 +503,10 @@ class SentinelHub:
             else:
                 downloaded = False
         if downloaded:
-            self.show_message("Done downloading to {}".format(filename), Message.SUCCESS)
+            self.show_message("Done downloading to {}".format(filename), MessageType.SUCCESS)
             time.sleep(1)
         else:
-            self.show_message("Failed to download from {} to {}".format(url, filename), Message.CRITICAL)
+            self.show_message("Failed to download from {} to {}".format(url, filename), MessageType.CRITICAL)
 
     def download_from_url(self, url, stream=False, raise_invalid_id=False, ignore_exception=False):
         """ Downloads data from url and handles possible errors
@@ -542,7 +534,7 @@ class SentinelHub:
             if raise_invalid_id and isinstance(exception, requests.HTTPError) and exception.response.status_code == 400:
                 raise InvalidInstanceId()
 
-            self.show_message(self.get_error_message(exception), Message.CRITICAL)
+            self.show_message(self.get_error_message(exception), MessageType.CRITICAL)
             response = None
 
         return response
@@ -644,7 +636,7 @@ class SentinelHub:
             QgsProject.instance().addMapLayer(new_layer)
             self.update_current_wms_layers()
         else:
-            self.show_message('Failed to create layer {}.'.format(name), Message.CRITICAL)
+            self.show_message('Failed to create layer {}.'.format(name), MessageType.CRITICAL)
         return new_layer
 
     def get_bbox(self, crs=None):
@@ -667,7 +659,7 @@ class SentinelHub:
         """
         target_crs = QgsCoordinateReferenceSystem(crs if crs else settings.parameters['crs'])
 
-        if target_crs.authid() == WGS84:
+        if target_crs.authid() == CRS.WGS84:
             precision = 6
             bbox_list = [bbox.yMinimum(), bbox.xMinimum(), bbox.yMaximum(), bbox.xMaximum()]
         else:
@@ -690,8 +682,8 @@ class SentinelHub:
         From Custom extent get values, save them and show them in UI
         :return:
         """
-        bbox = self.get_bbox(crs=WGS84)
-        bbox_list = self.bbox_to_string(bbox, crs=WGS84).split(',')
+        bbox = self.get_bbox(crs=CRS.WGS84)
+        bbox_list = self.bbox_to_string(bbox, crs=CRS.WGS84).split(',')
         self.custom_bbox_params['latMin'] = bbox_list[0]
         self.custom_bbox_params['lngMin'] = bbox_list[1]
         self.custom_bbox_params['latMax'] = bbox_list[2]
@@ -740,7 +732,7 @@ class SentinelHub:
                     self.update_current_wms_layers(selected_layer=new_layer)
                 return
         self.show_message('Chosen layer {} does not exist anymore.'
-                          ''.format(self.dockwidget.qgisLayerList.currentText()), Message.INFO)
+                          ''.format(self.dockwidget.qgisLayerList.currentText()), MessageType.INFO)
         self.update_current_wms_layers()
 
     def update_parameters(self):
@@ -875,7 +867,7 @@ class SentinelHub:
             self.time1 = calendar_time
             self.dockwidget.time1.setText(calendar_time)
         else:
-            self.show_message('Start date must not be larger than end date', Message.INFO)
+            self.show_message('Start date must not be larger than end date', MessageType.INFO)
 
     # ------------------------------------------------------------------------
 
@@ -930,27 +922,27 @@ class SentinelHub:
             return self.missing_instance_id()
 
         if settings.parameters_wcs['resx'] == '' or settings.parameters_wcs['resy'] == '':
-            return self.show_message('Spatial resolution parameters are not set.', Message.CRITICAL)
+            return self.show_message('Spatial resolution parameters are not set.', MessageType.CRITICAL)
         if not self.download_current_window:
             for value in self.custom_bbox_params.values():
                 if value == '':
-                    return self.show_message('Custom bounding box parameters are missing.', Message.CRITICAL)
+                    return self.show_message('Custom bounding box parameters are missing.', MessageType.CRITICAL)
 
         self.update_parameters()
 
         if not self.download_folder:
             self.select_destination()
             if not self.download_folder:
-                return self.show_message("Download canceled. No destination set.", Message.CRITICAL)
+                return self.show_message("Download canceled. No destination set.", MessageType.CRITICAL)
 
         try:
             bbox = self.get_bbox() if self.download_current_window else self.get_custom_bbox()
         except Exception:
             return self.show_message("Unable to transform to selected CRS, please zoom in or change CRS",
-                                     Message.CRITICAL)
+                                     MessageType.CRITICAL)
 
-        bbox_str = self.bbox_to_string(bbox, None if self.download_current_window else WGS84)
-        url = self.get_wcs_url(bbox_str, None if self.download_current_window else WGS84)
+        bbox_str = self.bbox_to_string(bbox, None if self.download_current_window else CRS.WGS84)
+        url = self.get_wcs_url(bbox_str, None if self.download_current_window else CRS.WGS84)
         filename = self.get_filename(bbox_str)
 
         self.download_wcs_data(url, filename)
@@ -1072,7 +1064,7 @@ class SentinelHub:
             self.capabilities = capabilities
             self.update_instance_props(instance_changed=True)
             if self.instance_id:
-                self.show_message("New Instance ID and layers set.", Message.SUCCESS)
+                self.show_message("New Instance ID and layers set.", MessageType.SUCCESS)
             QSettings().setValue(settings.instance_id_location, new_instance_id)
             self.update_parameters()
             self.get_cloud_cover()
@@ -1091,7 +1083,7 @@ class SentinelHub:
         else:
             self.dockwidget.destination.setText(self.download_folder)
             self.show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
-                              Message.CRITICAL)
+                              MessageType.CRITICAL)
 
     def update_month(self):
         """
@@ -1130,9 +1122,9 @@ class SentinelHub:
         new_time1 = self.parse_date(self.dockwidget.time1.text())
 
         if new_time0 is None or new_time1 is None:
-            self.show_message('Please insert a valid date in format YYYY-MM-DD', Message.INFO)
+            self.show_message('Please insert a valid date in format YYYY-MM-DD', MessageType.INFO)
         elif new_time0 and new_time1 and new_time0 > new_time1 and not self.dockwidget.exactDate.isChecked():
-            self.show_message('Start date must not be larger than end date', Message.INFO)
+            self.show_message('Start date must not be larger than end date', MessageType.INFO)
         else:
             self.time0 = new_time0
             self.time1 = new_time1
@@ -1166,7 +1158,7 @@ class SentinelHub:
         new_values = self.get_values()
 
         if not new_values:
-            self.show_message('Please input a numerical value.', Message.INFO)
+            self.show_message('Please input a numerical value.', MessageType.INFO)
             self.set_values()
             return
 
