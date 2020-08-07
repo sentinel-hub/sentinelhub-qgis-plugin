@@ -30,97 +30,26 @@ from urllib.parse import quote_plus
 import requests
 from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
     QgsRectangle, QgsMessageLog
-from PyQt5.QtCore import QSettings, QCoreApplication, Qt, QDate
+from PyQt5.QtCore import QSettings, Qt, QDate
 from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
-from .constants import MessageType, CRS
+from .constants import MessageType, CRS, ImagePriority, ImageFormat, SERVICE_TYPES, MAX_CLOUD_COVER_IMAGE_SIZE
 from .dockwidget import SentinelHubDockWidget
 from . import settings
+from .utils import get_plugin_version
+from .sentinelhub.capabilities import Capabilities
 
 
 class InvalidInstanceId(ValueError):
     pass
 
 
-class Capabilities:
-    """ Stores info about capabilities of Sentinel Hub services
-    """
-
-    class Layer:
-        """ Stores info about Sentinel Hub WMS layer
-        """
-        def __init__(self, layer_id, name, info='', data_source=None):
-            self.id = layer_id
-            self.name = name
-            self.info = info
-            self.data_source = data_source
-
-    class CRS:
-        """ Stores info about available CRS at Sentinel Hub WMS
-        """
-        def __init__(self, crs_id, name):
-            self.id = crs_id
-            self.name = name
-
-    def __init__(self, instance_id, base_url=settings.services_base_url):
-        self.instance_id = instance_id
-        self.base_url = base_url
-
-        self.layers = []
-        self.crs_list = []
-
-    def load_xml(self, xml_root):
-        """ Loads info from getCapabilities.xml
-        """
-        if xml_root.tag.startswith('{'):
-            namespace = '{}}}'.format(xml_root.tag.split('}')[0])
-        else:
-            namespace = ''
-
-        self.layers = []
-        for layer in xml_root.findall('./{0}Capability/{0}Layer/{0}Layer'.format(namespace)):
-            info_node = layer.find('{}Abstract'.format(namespace))
-            self.layers.append(self.Layer(layer.find('{}Name'.format(namespace)).text,
-                                          layer.find('{}Title'.format(namespace)).text,
-                                          info_node.text if info_node is not None else ''))
-        self.layers.sort(key=lambda l: l.name)
-
-        self.crs_list = []
-        for crs in xml_root.findall('./{0}Capability/{0}Layer/{0}CRS'.format(namespace)):
-            self.crs_list.append(self.CRS(crs.text, crs.text.replace(':', ': ')))
-        self._sort_crs_list()
-
-    def load_json(self, json_dict):
-        """ Loads info from getCapabilities.json
-        """
-        try:
-            json_layers = {json_layer['id']: json_layer for json_layer in json_dict['layers']}
-            for layer in self.layers:
-                json_layer = json_layers.get(layer.id)
-                if json_layer:
-                    layer.data_source = json_layer['dataset']
-        except KeyError:
-            pass
-
-    def _sort_crs_list(self):
-        """ Sorts list of CRS so that 3857 and 4326 are on the top
-        """
-        new_crs_list = []
-        for main_crs in [CRS.POP_WEB, CRS.WGS84]:
-            for index, crs in enumerate(self.crs_list):
-                if crs and crs.id == main_crs:
-                    new_crs_list.append(crs)
-                    self.crs_list[index] = None
-        for crs in self.crs_list:
-            if crs:
-                new_crs_list.append(crs)
-        self.crs_list = new_crs_list
-
-
 class SentinelHubPlugin:
     """ The main class defining plugin logic
     """
+    PLUGIN_NAME = 'SentinelHub'
+
     def __init__(self, iface):
         """
         :param iface: A QGIS interface instance.
@@ -129,15 +58,12 @@ class SentinelHubPlugin:
         # Save reference to the QGIS interface
         self.iface = iface
 
-        # initialize plugin directory
-        self.plugin_dir = os.path.dirname(__file__)
-        self.plugin_version = self.get_plugin_version()
+        self.plugin_version = get_plugin_version()
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.translate(u'&SentinelHub')
-        self.toolbar = self.iface.addToolBar(u'SentinelHub')
-        self.toolbar.setObjectName(u'SentinelHub')
+        self.toolbar = self.iface.addToolBar(self.PLUGIN_NAME)
+
         self.pluginIsActive = False
         self.dockwidget = None
         self.base_url = None
@@ -151,7 +77,7 @@ class SentinelHubPlugin:
         self.service_type = None
 
         self.qgis_layers = []
-        self.capabilities = Capabilities('')
+        self.capabilities = Capabilities('', settings.services_base_url)
         self.active_time = 'time0'
         self.time0 = ''
         self.time1 = ''
@@ -164,12 +90,6 @@ class SentinelHubPlugin:
             self.custom_bbox_params[name] = ''
 
         self.layer_selection_event = None
-
-    @staticmethod
-    def translate(message):
-        """Get the translation for a string using Qt translation API.
-        """
-        return QCoreApplication.translate('SentinelHub', message)
 
     def add_action(self, icon_path, text, callback, enabled_flag=True, add_to_menu=True, add_to_toolbar=True,
                    status_tip=None, whats_this=None, parent=None):
@@ -191,7 +111,7 @@ class SentinelHubPlugin:
 
         if add_to_menu:
             self.iface.addPluginToWebMenu(
-                self.menu,
+                self.PLUGIN_NAME,
                 action)
 
         self.actions.append(action)
@@ -204,7 +124,7 @@ class SentinelHubPlugin:
         icon_path = ':/plugins/SentinelHub/favicon.ico'
         self.add_action(
             icon_path,
-            text=self.translate(u'SentinelHub'),
+            text=self.PLUGIN_NAME,
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -213,7 +133,7 @@ class SentinelHubPlugin:
         Layers - Renderers
         Priority
         """
-        self.dockwidget.serviceType.addItems(settings.service_types)
+        self.dockwidget.serviceType.addItems(SERVICE_TYPES)
         self.update_instance_props(instance_changed=True)
 
         self.dockwidget.instanceId.setText(self.instance_id)
@@ -221,10 +141,10 @@ class SentinelHubPlugin:
         self.set_values()
 
         self.dockwidget.priority.clear()
-        self.dockwidget.priority.addItems([priority[1] for priority in settings.priorities])
+        self.dockwidget.priority.addItems([priority.nice_name for priority in ImagePriority])
 
         self.dockwidget.format.clear()
-        self.dockwidget.format.addItems([image_format[1] for image_format in settings.image_formats])
+        self.dockwidget.format.addItems([image_format.nice_name for image_format in ImageFormat])
 
     def _check_local_variables(self):
         """ Checks if local variables are of type string or unicode. If they are not it sets them to ''
@@ -245,19 +165,6 @@ class SentinelHubPlugin:
         self.dockwidget.latMax.setText(self.custom_bbox_params['latMax'])
         self.dockwidget.lngMin.setText(self.custom_bbox_params['lngMin'])
         self.dockwidget.lngMax.setText(self.custom_bbox_params['lngMax'])
-
-    def get_plugin_version(self):
-        """
-        :return: Plugin version
-        :rtype: str
-        """
-        try:
-            with open(os.path.join(self.plugin_dir, 'metadata.txt')) as metadata_file:
-                for line in metadata_file:
-                    if line.startswith('version'):
-                        return line.split("=")[1].strip()
-        except IOError:
-            return '?'
 
     # --------------------------------------------------------------------------
 
@@ -332,11 +239,12 @@ class SentinelHubPlugin:
         self.pluginIsActive = False
 
     def unload(self):
-        """Removes the plugin menu item and icon from QGIS GUI."""
-
+        """ This is called when a user disables or uninstalls the plugin. This method removes the plugin and it's
+        icon from everywhere it appears in QGIS GUI.
+        """
         for action in self.actions:
             self.iface.removePluginWebMenu(
-                self.translate(u'&SentinelHub'),
+                self.PLUGIN_NAME,
                 action)
             self.iface.removeToolBarIcon(action)
         del self.toolbar
@@ -466,7 +374,7 @@ class SentinelHubPlugin:
             width, height = self.get_bbox_size(self.get_bbox())
         except Exception:
             return
-        if max(width, height) > settings.max_cloud_cover_image_size:
+        if max(width, height) > MAX_CLOUD_COVER_IMAGE_SIZE:
             return
 
         time_range = self.get_calendar_month_interval()
@@ -745,7 +653,8 @@ class SentinelHubPlugin:
             self.update_selected_crs()
             self.update_selected_layer()
 
-        settings.parameters['priority'] = settings.priorities[self.dockwidget.priority.currentIndex()][0]
+        priority_index = self.dockwidget.priority.currentIndex()
+        settings.parameters['priority'] = list(ImagePriority)[priority_index].url_param
         settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
         settings.parameters['time'] = self.get_time()
 
@@ -1026,7 +935,8 @@ class SentinelHubPlugin:
         Update image format
         :return:
         """
-        settings.parameters_wcs['format'] = settings.image_formats[self.dockwidget.format.currentIndex()][0]
+        image_format_index = self.dockwidget.format.currentIndex()
+        settings.parameters_wcs['format'] = list(ImageFormat)[image_format_index].url_param
 
     def change_exact_date(self):
         """
@@ -1056,7 +966,7 @@ class SentinelHubPlugin:
             return
 
         if new_instance_id == '':
-            capabilities = Capabilities(new_instance_id)
+            capabilities = Capabilities(new_instance_id, settings.services_base_url)
         else:
             capabilities = self.get_capabilities(new_instance_id)
 

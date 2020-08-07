@@ -12,11 +12,6 @@ ipt_base_url = 'http://services.eocloud.sentinel-hub.com/v1/'
 instance_id_location = 'SentinelHub/instance_id'
 download_folder_location = 'SentinelHub/download_folder'
 
-service_types = [
-    'WMS',
-    'WMTS'
-]
-
 # Main request parameters
 parameters = {
     'title': '',
@@ -111,18 +106,3 @@ data_source_props = {
         'pretty_name': 'DEM'
     }
 }
-
-# values for UI selections
-priorities = [
-    ('mostRecent', 'Most recent'),
-    ('leastRecent', 'Least recent'),
-    ('leastCC', 'Least cloud coverage')
-]
-
-image_formats = [
-    ('image/png', 'PNG'),
-    ('image/jpeg', 'JPEG'),
-    ('image/tiff', 'TIFF'),
-]
-
-max_cloud_cover_image_size = 1000000
