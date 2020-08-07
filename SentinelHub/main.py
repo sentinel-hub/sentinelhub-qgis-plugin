@@ -118,8 +118,9 @@ class Capabilities:
         self.crs_list = new_crs_list
 
 
-class SentinelHub:
-
+class SentinelHubPlugin:
+    """ The main class defining plugin logic
+    """
     def __init__(self, iface):
         """
         :param iface: A QGIS interface instance.
@@ -546,7 +547,7 @@ class SentinelHub:
         :return: dictionary of transfer protocols mapped to addresses, also authentication if set in QSettings
         :rtype: (dict, requests.auth.HTTPProxyAuth) or (dict, None)
         """
-        enabled, host, port, user, password = SentinelHub.get_proxy_from_qsettings()
+        enabled, host, port, user, password = SentinelHubPlugin.get_proxy_from_qsettings()
 
         proxy_dict = {}
         if enabled and host:
@@ -589,7 +590,7 @@ class SentinelHub:
         if isinstance(exception, requests.ConnectionError):
             message += 'Cannot access service, check your internet connection.'
 
-            enabled, host, port, _, _ = SentinelHub.get_proxy_from_qsettings()
+            enabled, host, port, _, _ = SentinelHubPlugin.get_proxy_from_qsettings()
             if enabled:
                 message += ' QGIS is configured to use proxy: {}'.format(host)
                 if port:

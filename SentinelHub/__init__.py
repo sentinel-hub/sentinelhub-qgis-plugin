@@ -33,5 +33,5 @@ def classFactory(iface):
     # The following initializes UI
     from . import resources
 
-    from .sentinelhub import SentinelHub
-    return SentinelHub(iface)
+    from .main import SentinelHubPlugin
+    return SentinelHubPlugin(iface)
