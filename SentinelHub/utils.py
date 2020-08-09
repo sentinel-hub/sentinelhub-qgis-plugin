@@ -22,3 +22,16 @@ def get_plugin_version():
                 return line.split('=')[1].strip()
 
     raise ValueError('Failed to parse version from metadata.txt file')
+
+
+def show_message(iface, message, message_type):
+    """ Show message for user
+
+    :param iface: A QGIS interface instance.
+    :type iface: QgsInterface
+    :param message: Message for user
+    :param message: str
+    :param message_type: Type of message
+    :param message_type: MessageType
+    """
+    iface.messageBar().pushMessage(message_type.nice_name, message, level=message_type.level)

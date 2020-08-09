@@ -66,6 +66,12 @@ class ImageFormat(_BaseParameter):
     TIFF = 'image/tiff', 'TIFF'
 
 
+class BaseUrl:
+    MAIN = 'https://services.sentinel-hub.com/ogc/'
+    USWEST = 'https://services-uswest2.sentinel-hub.com/ogc/'
+    EOCLOUD = 'http://services.eocloud.sentinel-hub.com/v1/'
+
+
 SERVICE_TYPES = [
     'WMS',
     'WMTS'

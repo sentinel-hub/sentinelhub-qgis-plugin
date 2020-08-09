@@ -3,10 +3,12 @@
 Module containing parameters and settings for Sentinel Hub services
 """
 
-# Base url
-services_base_url = 'https://services.sentinel-hub.com/ogc/'
-uswest_base_url = 'https://services-uswest2.sentinel-hub.com/ogc/'
-ipt_base_url = 'http://services.eocloud.sentinel-hub.com/v1/'
+from .constants import BaseUrl
+
+
+class Settings:
+    """ A class in charge of all settings
+    """
 
 # Locations where QGIS will save values
 instance_id_location = 'SentinelHub/instance_id'
@@ -76,32 +78,32 @@ parameters_wmts = {
 
 data_source_props = {
     'S2L1C': {
-        'url': services_base_url,
+        'url': BaseUrl.MAIN,
         'wfs_name': 'S2.TILE',
         'pretty_name': 'Sentinel-2 L1C'
     },
     'S2L2A': {
-        'url': services_base_url,
+        'url': BaseUrl.MAIN,
         'wfs_name': 'DSS2',
         'pretty_name': 'Sentinel-2 L2A'
     },
     'S1GRD': {
-        'url': services_base_url,
+        'url': BaseUrl.MAIN,
         'wfs_name': 'DSS3',
         'pretty_name': 'Sentinel-1'
     },
     'L8L1C': {
-        'url': uswest_base_url,
+        'url': BaseUrl.USWEST,
         'wfs_name': 'DSS6',
         'pretty_name': 'Landsat 8'
     },
     'MODIS': {
-        'url': uswest_base_url,
+        'url': BaseUrl.USWEST,
         'wfs_name': 'DSS5',
         'pretty_name': 'MODIS'
     },
     'DEM': {
-        'url': uswest_base_url,
+        'url': BaseUrl.USWEST,
         'wfs_name': 'DSS4',
         'pretty_name': 'DEM'
     }

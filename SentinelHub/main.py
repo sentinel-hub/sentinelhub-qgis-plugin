@@ -27,22 +27,19 @@ import math
 from xml.etree import ElementTree
 from urllib.parse import quote_plus
 
-import requests
 from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
     QgsRectangle, QgsMessageLog
 from PyQt5.QtCore import QSettings, Qt, QDate
 from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
-from .constants import MessageType, CRS, ImagePriority, ImageFormat, SERVICE_TYPES, MAX_CLOUD_COVER_IMAGE_SIZE
+from .constants import MessageType, CRS, ImagePriority, ImageFormat, BaseUrl, SERVICE_TYPES, MAX_CLOUD_COVER_IMAGE_SIZE
 from .dockwidget import SentinelHubDockWidget
+from .exceptions import InvalidInstanceId
 from . import settings
 from .utils import get_plugin_version
 from .sentinelhub.capabilities import Capabilities
-
-
-class InvalidInstanceId(ValueError):
-    pass
+from .sentinelhub.client import Client
 
 
 class SentinelHubPlugin:
@@ -57,8 +54,9 @@ class SentinelHubPlugin:
         """
         # Save reference to the QGIS interface
         self.iface = iface
-
         self.plugin_version = get_plugin_version()
+
+        self.client = Client(self.iface, self.plugin_version)
 
         # Declare instance attributes
         self.actions = []
@@ -77,7 +75,7 @@ class SentinelHubPlugin:
         self.service_type = None
 
         self.qgis_layers = []
-        self.capabilities = Capabilities('', settings.services_base_url)
+        self.capabilities = Capabilities('', BaseUrl.MAIN)
         self.active_time = 'time0'
         self.time0 = ''
         self.time1 = ''
@@ -223,7 +221,8 @@ class SentinelHubPlugin:
                 if layer == selected_layer:
                     self.dockwidget.qgisLayerList.setCurrentIndex(index)
 
-    def get_qgis_layers(self):
+    @staticmethod
+    def get_qgis_layers():
         """
         :return: List of existing QGIS layers in the same order as they are in the QGIS menu
         :rtype: list(QgsMapLayer)
@@ -333,12 +332,12 @@ class SentinelHubPlugin:
             return None
 
         try:
-            response = self.download_from_url(self.get_capabilities_url(settings.services_base_url, service,
-                                                                        instance_id), raise_invalid_id=True)
-            self.base_url = settings.services_base_url
+            response = self.client.download(self.get_capabilities_url(BaseUrl.MAIN, service,
+                                                                      instance_id), raise_invalid_id=True)
+            self.base_url = BaseUrl.MAIN
         except InvalidInstanceId:
-            response = self.download_from_url(self.get_capabilities_url(settings.ipt_base_url, service, instance_id))
-            self.base_url = settings.ipt_base_url
+            response = self.client.download(self.get_capabilities_url(BaseUrl.EOCLOUD, service, instance_id))
+            self.base_url = BaseUrl.EOCLOUD
 
         if not response:
             return None
@@ -348,9 +347,9 @@ class SentinelHubPlugin:
         xml_root = ElementTree.fromstring(response.content)
         capabilities.load_xml(xml_root)
 
-        if self.base_url == settings.services_base_url:
-            json_response = self.download_from_url(self.get_capabilities_url(self.base_url, service, instance_id,
-                                                                             get_json=True), raise_invalid_id=True)
+        if self.base_url == BaseUrl.MAIN:
+            json_response = self.client.download(self.get_capabilities_url(self.base_url, service, instance_id,
+                                                                           get_json=True), raise_invalid_id=True)
             try:
                 capabilities.load_json(json_response.json())
             except ValueError:
@@ -366,7 +365,7 @@ class SentinelHubPlugin:
 
         if not self.instance_id:
             return
-        if self.base_url != settings.services_base_url:  # Uswest is too slow for this
+        if self.base_url != BaseUrl.MAIN:  # Uswest is too slow for this
             return
 
         # Check if area is too large
@@ -378,7 +377,7 @@ class SentinelHubPlugin:
             return
 
         time_range = self.get_calendar_month_interval()
-        response = self.download_from_url(self.get_wfs_url(time_range), ignore_exception=True)
+        response = self.client.download(self.get_wfs_url(time_range), ignore_exception=True)
 
         if response:
             area_info = response.json()
@@ -398,7 +397,7 @@ class SentinelHubPlugin:
         :return:
         """
         with open(os.path.join(self.download_folder, filename), "wb") as download_file:
-            response = self.download_from_url(url, stream=True)
+            response = self.client.download(url, stream=True)
 
             if response:
                 total_length = response.headers.get('content-length')
@@ -416,112 +415,6 @@ class SentinelHubPlugin:
             time.sleep(1)
         else:
             self.show_message("Failed to download from {} to {}".format(url, filename), MessageType.CRITICAL)
-
-    def download_from_url(self, url, stream=False, raise_invalid_id=False, ignore_exception=False):
-        """ Downloads data from url and handles possible errors
-
-        :param url: download url
-        :type url: str
-        :param stream: True if download should be streamed and False otherwise
-        :type stream: bool
-        :param raise_invalid_id: If True an InvalidInstanceId exception will be raised in case service returns HTTP 400
-        :type raise_invalid_id: bool
-        :param ignore_exception: If True no error messages will be shown in case of exceptions
-        :type ignore_exception: bool
-        :return: download response or None if download failed
-        :rtype: requests.response or None
-        """
-        try:
-            proxy_dict, auth = self.get_proxy_config()
-            response = requests.get(url, stream=stream,
-                                    headers={'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)},
-                                    proxies=proxy_dict, auth=auth)
-            response.raise_for_status()
-        except requests.RequestException as exception:
-            if ignore_exception:
-                return
-            if raise_invalid_id and isinstance(exception, requests.HTTPError) and exception.response.status_code == 400:
-                raise InvalidInstanceId()
-
-            self.show_message(self.get_error_message(exception), MessageType.CRITICAL)
-            response = None
-
-        return response
-
-    @staticmethod
-    def get_proxy_config():
-        """ Get proxy config from QSettings and builds proxy parameters
-
-        :return: dictionary of transfer protocols mapped to addresses, also authentication if set in QSettings
-        :rtype: (dict, requests.auth.HTTPProxyAuth) or (dict, None)
-        """
-        enabled, host, port, user, password = SentinelHubPlugin.get_proxy_from_qsettings()
-
-        proxy_dict = {}
-        if enabled and host:
-            port_str = ':{}'.format(port) if port else ''
-            for protocol in ['http', 'https', 'ftp']:
-                proxy_dict[protocol] = '{}://{}{}'.format(protocol, host, port_str)
-
-        auth = requests.auth.HTTPProxyAuth(user, password) if enabled and user and password else None
-
-        return proxy_dict, auth
-
-    @staticmethod
-    def get_proxy_from_qsettings():
-        """ Gets the proxy configuration from QSettings
-
-        :return: Proxy settings: flag specifying if proxy is enabled, host, port, user and password
-        :rtype: tuple(str)
-        """
-        qsettings = QSettings()
-        qsettings.beginGroup('proxy')
-        enabled = str(qsettings.value('proxyEnabled')).lower() == 'true'  # to be compatible with QGIS 2 and 3
-        host = qsettings.value('proxyHost')
-        port = qsettings.value('proxyPort')
-        user = qsettings.value('proxyUser')
-        password = qsettings.value('proxyPassword')
-        qsettings.endGroup()
-        return enabled, host, port, user, password
-
-    @staticmethod
-    def get_error_message(exception):
-        """ Creates an error message from the given exception
-
-        :param exception: Exception obtained during download
-        :type exception: requests.RequestException
-        :return: error message
-        :rtype: str
-        """
-        message = '{}: '.format(exception.__class__.__name__)
-
-        if isinstance(exception, requests.ConnectionError):
-            message += 'Cannot access service, check your internet connection.'
-
-            enabled, host, port, _, _ = SentinelHubPlugin.get_proxy_from_qsettings()
-            if enabled:
-                message += ' QGIS is configured to use proxy: {}'.format(host)
-                if port:
-                    message += ':{}'.format(port)
-
-            return message
-
-        if isinstance(exception, requests.HTTPError):
-            try:
-                server_message = ''
-                for elem in ElementTree.fromstring(exception.response.content):
-                    if 'ServiceException' in elem.tag:
-                        server_message += elem.text.strip('\n\t ')
-            except ElementTree.ParseError:
-                server_message = exception.response.text.strip('\n\t ')
-            server_message = server_message.encode('ascii', errors='ignore').decode('utf-8')
-            if 'Config instance "instance.' in server_message:
-                instance_id = server_message.split('"')[1][9:]
-                server_message = 'Invalid instance id: {}'.format(instance_id)
-            return message + 'server response: "{}"'.format(server_message)
-
-        return message + str(exception)
-    # ----------------------------------------------------------------------------
 
     def add_qgis_layer(self, on_top=False):
         """
@@ -677,7 +570,7 @@ class SentinelHubPlugin:
             settings.parameters_wcs['coverage'] = wms_layers[layers_index].id
             settings.parameters['title'] = wms_layers[layers_index].name
 
-            if self.base_url in [settings.services_base_url, settings.uswest_base_url]:
+            if self.base_url in [BaseUrl.MAIN, BaseUrl.USWEST]:
                 self.data_source = wms_layers[layers_index].data_source
             else:
                 self.data_source = None
@@ -686,8 +579,8 @@ class SentinelHubPlugin:
                 self.base_url = settings.data_source_props[self.data_source]['url']
                 settings.parameters_wfs['typenames'] = settings.data_source_props[self.data_source]['wfs_name']
             else:
-                if self.base_url != settings.ipt_base_url:
-                    self.base_url = settings.services_base_url
+                if self.base_url != BaseUrl.EOCLOUD:
+                    self.base_url = BaseUrl.MAIN
                 settings.parameters_wfs['typenames'] = None
         else:
             self.data_source = None
@@ -882,7 +775,7 @@ class SentinelHubPlugin:
         :return: A name
         :rtype: str
         """
-        if self.base_url == settings.ipt_base_url:
+        if self.base_url == BaseUrl.EOCLOUD:
             return 'EO Cloud'
         if self.data_source in settings.data_source_props:
             return settings.data_source_props[self.data_source]['pretty_name']
@@ -966,7 +859,7 @@ class SentinelHubPlugin:
             return
 
         if new_instance_id == '':
-            capabilities = Capabilities(new_instance_id, settings.services_base_url)
+            capabilities = Capabilities(new_instance_id, BaseUrl.MAIN)
         else:
             capabilities = self.get_capabilities(new_instance_id)
 
