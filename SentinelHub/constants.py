@@ -78,3 +78,36 @@ SERVICE_TYPES = [
 ]
 
 MAX_CLOUD_COVER_IMAGE_SIZE = 1000000
+
+DATA_SOURCES = {
+    'S2L1C': {
+        'url': BaseUrl.MAIN,
+        'wfs_name': 'S2.TILE',
+        'pretty_name': 'Sentinel-2 L1C'
+    },
+    'S2L2A': {
+        'url': BaseUrl.MAIN,
+        'wfs_name': 'DSS2',
+        'pretty_name': 'Sentinel-2 L2A'
+    },
+    'S1GRD': {
+        'url': BaseUrl.MAIN,
+        'wfs_name': 'DSS3',
+        'pretty_name': 'Sentinel-1'
+    },
+    'L8L1C': {
+        'url': BaseUrl.USWEST,
+        'wfs_name': 'DSS6',
+        'pretty_name': 'Landsat 8'
+    },
+    'MODIS': {
+        'url': BaseUrl.USWEST,
+        'wfs_name': 'DSS5',
+        'pretty_name': 'MODIS'
+    },
+    'DEM': {
+        'url': BaseUrl.USWEST,
+        'wfs_name': 'DSS4',
+        'pretty_name': 'DEM'
+    }
+}
