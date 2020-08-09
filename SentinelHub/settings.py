@@ -27,21 +27,6 @@ class Settings:
         'crs': 'EPSG:3857'
     }
 
-    # WMS parameters - the first 3 parameters are required for qgis layer
-    parameters_wms = {
-        'IgnoreGetFeatureInfoUrl': '1',
-        'IgnoreGetMapUrl': '1',
-        'contextualWMSLegend': '0',
-        'service': 'WMS',
-        'styles': '',
-        'request': 'GetMap',
-        'format': 'image/png',
-        'transparent': 'true',
-        'showLogo': 'false',
-        'version': '1.3.0',
-        'preview': '1'
-    }
-
     # WFS parameters
     parameters_wfs = {
         'service': 'WFS',
@@ -62,21 +47,6 @@ class Settings:
         'version': '1.1.1',
         'resx': '10',
         'resy': '10'
-    }
-
-    # WMTS parameters
-    parameters_wmts = {
-        'IgnoreGetFeatureInfoUrl': '1',
-        'IgnoreGetMapUrl': '1',
-        'contextualWMSLegend': '0',
-        'service': 'WMTS',
-        'styles': '',
-        'request': 'GetTile',
-        'format': 'image/png',
-        'showLogo': 'false',
-        'transparent': 'true',
-        'tileMatrixSet': 'PopularWebMercator512',
-        'preview': '1'
     }
 
     _INSTANCE_ID_LOCATION = 'SentinelHub/instance_id'

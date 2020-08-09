@@ -41,6 +41,7 @@ from .settings import Settings
 from .utils import get_plugin_version
 from .sentinelhub.capabilities import Capabilities
 from .sentinelhub.client import Client
+from .sentinelhub.ogc import get_wms_uri, get_wmts_uri
 
 
 class SentinelHubPlugin:
@@ -229,36 +230,6 @@ class SentinelHubPlugin:
             self.iface.removeToolBarIcon(action)
         del self.toolbar
 
-    # --------------------------------------------------------------------------
-
-    def get_wms_uri(self):
-        """ Generate URI for WMS request from parameters """
-        uri = ''
-        request_parameters = list(self.settings.parameters_wms.items()) + list(self.settings.parameters.items())
-        for parameter, value in request_parameters:
-            uri += '{}={}&'.format(parameter, value)
-
-        # Every parameter that QGIS layer doesn't use by default must be in url
-        # And url has to be encoded
-        url = '{}wms/{}?showLogo={}&TIME={}&priority={}&maxcc={}' \
-              '&preview={}'.format(self.settings.base_url, self.settings.instance_id, self.settings.parameters_wms['showLogo'],
-                                   self.get_time(), self.settings.parameters['priority'], self.settings.parameters['maxcc'],
-                                   self.settings.parameters_wms['preview'])
-        return '{}url={}'.format(uri, quote_plus(url))
-
-    def get_wmts_uri(self):
-        """ Generate URI for WMTS request from parameters """
-        uri = ''
-        request_parameters = list(self.settings.parameters_wmts.items()) + list(self.settings.parameters.items())
-        for parameter, value in request_parameters:
-            uri += '{}={}&'.format(parameter, value)
-        url = '{}wmts/{}?showLogo={}&TIME={}&priority={}&maxcc={}' \
-              '&preview={}'.format(self.settings.base_url, self.settings.instance_id, self.settings.parameters_wmts['showLogo'],
-                                   self.get_time(), self.settings.parameters['priority'], self.settings.parameters['maxcc'],
-                                   self.settings.parameters_wmts['preview'])
-
-        return '{}url={}'.format(uri, quote_plus(url))
-
     def get_wcs_url(self, bbox, crs=None):
         """ Generate URL for WCS request from parameters
 
@@ -410,8 +381,11 @@ class SentinelHubPlugin:
         self.update_parameters()
         name = self.get_qgis_layer_name()
 
-        new_layer = QgsRasterLayer(self.get_wms_uri() if self.service_type == 'wms' else self.get_wmts_uri(),
-                                   name, 'wms')
+        time_str = self.get_time()
+        service_uri = get_wms_uri(self.settings, time_str) if self.service_type == 'wms' else \
+            get_wmts_uri(self.settings, time_str)
+        QgsMessageLog.logMessage(service_uri)
+        new_layer = QgsRasterLayer(service_uri, name, 'wms')
 
         if new_layer.isValid():
             if on_top and self.get_qgis_layers():
