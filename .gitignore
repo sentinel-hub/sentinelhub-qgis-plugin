@@ -115,3 +115,6 @@ resources.py
 # Zip files (created for upload to QGIS repo)
 *.zip
 zip_build
+
+# Repo with external package wheels
+external

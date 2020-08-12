@@ -6,6 +6,7 @@ from xml.etree import ElementTree
 import requests
 from PyQt5.QtCore import QSettings
 
+from .session import Session
 from ..constants import MessageType
 from ..exceptions import InvalidInstanceId
 from ..utils import show_message

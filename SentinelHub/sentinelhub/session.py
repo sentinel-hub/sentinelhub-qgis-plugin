@@ -3,12 +3,12 @@ Module for handling Sentinel Hub session
 """
 import time
 
+from qgis.core import QgsMessageLog
 from oauthlib.oauth2 import BackendApplicationClient
 from requests_oauthlib import OAuth2Session
-from qgis.core import QgsMessageLog
 
 
-class SentinelHubSession:
+class Session:
     """ Sentinel Hub authentication class
 
     The class will do OAuth2 authentication with Sentinel Hub service and store the token. It will make sure that the

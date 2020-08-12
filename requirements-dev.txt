@@ -1,2 +1,4 @@
 pb_tool
 pylint
+oauthlib
+requests-oauthlib
