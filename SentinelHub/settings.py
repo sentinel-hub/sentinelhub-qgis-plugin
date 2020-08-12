@@ -15,6 +15,9 @@ class Settings:
     client_secret = ''
 
     instance_id = ''
+    service_type = ''
+    layer = ''
+
     download_folder = ''
 
     active_time = 'time0'
@@ -53,16 +56,27 @@ class Settings:
     }
 
     _STORE_NAMESPACE = 'SentinelHub'
-    _STORE_PARAMETERS = [
+    _AUTO_SAVE_STORE_PARAMETERS = {
+        'instance_id',
+        'layer',
+        'download_folder'
+    }
+    _CREDENTIAL_STORE_PARAMETERS = {
         'base_url',
         'client_id',
-        'client_secret',
-        'instance_id',
-        'download_folder'
-    ]
+        'client_secret'
+    }
+    _STORE_PARAMETERS = _AUTO_SAVE_STORE_PARAMETERS | _CREDENTIAL_STORE_PARAMETERS
 
     def __init__(self):
         self.load_local_settings()
+
+    def __setattr__(self, key, value):
+        if key in self._AUTO_SAVE_STORE_PARAMETERS:
+            store_path = self._get_store_path(key)
+            QSettings().setValue(store_path, value)
+
+        super.__setattr__(key, value)
 
     def load_local_settings(self):
         """ Loads settings from QGIS local store
@@ -76,12 +90,12 @@ class Settings:
             if store_value is not None:
                 setattr(self, parameter, str(store_value))
 
-    def save_local_settings(self):
+    def save_credentials(self):
         """ Saves settings to QGIS local store
         """
         qsettings = QSettings()
 
-        for parameter in self._STORE_PARAMETERS:
+        for parameter in self._CREDENTIAL_STORE_PARAMETERS:
             store_path = self._get_store_path(parameter)
             qsettings.setValue(store_path, getattr(self, parameter))
 

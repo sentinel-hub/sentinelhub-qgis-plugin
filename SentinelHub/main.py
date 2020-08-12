@@ -39,7 +39,7 @@ from .exceptions import InvalidInstanceId
 from .settings import Settings
 from .utils import get_plugin_version
 from .sentinelhub.capabilities import Capabilities
-from .sentinelhub.configuration import ConfigurationService
+from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
 from .sentinelhub.ogc import get_wms_uri, get_wmts_uri
 
@@ -50,7 +50,9 @@ class SentinelHubPlugin:
     PLUGIN_NAME = 'SentinelHub'
 
     def __init__(self, iface):
-        """
+        """ Called by QGIS at the beginning when you open QGIS or when the plugin is enabled in the
+        Plugin Manager.
+
         :param iface: A QGIS interface instance.
         :type iface: QgsInterface
         """
@@ -60,6 +62,7 @@ class SentinelHubPlugin:
         self.settings = Settings()
         self.client = Client(self.iface, self.plugin_version)
 
+        self.configuration = None
         # Declare instance attributes
         self.actions = []
         self.toolbar = self.iface.addToolBar(self.PLUGIN_NAME)
@@ -109,7 +112,8 @@ class SentinelHubPlugin:
         return action
 
     def initGui(self):  # This method is called by QGIS
-        """ Create the menu entries and toolbar icons inside the QGIS GUI.
+        """ This method is called by QGIS when the main GUI starts up or when the plugin is enabled in the
+        Plugin Manager.
         """
         icon_path = ':/plugins/SentinelHub/favicon.ico'
         self.add_action(
@@ -124,14 +128,13 @@ class SentinelHubPlugin:
         Layers - Renderers
         Priority
         """
-        self.dockwidget.serviceType.addItems(SERVICE_TYPES)
+        self.dockwidget.serviceTypeComboBox.addItems(SERVICE_TYPES)
         self.update_instance_props(instance_changed=True)
 
         self.dockwidget.baseUrl.setText(self.settings.base_url)
         self.dockwidget.clientId.setText(self.settings.client_id)
         self.dockwidget.clientSecret.setText(self.settings.client_secret)
 
-        self.dockwidget.instanceId.setText(self.settings.instance_id)
         self.dockwidget.destination.setText(self.settings.download_folder)
         self.set_values()
 
@@ -175,15 +178,15 @@ class SentinelHubPlugin:
         :param instance_changed: True if instance id has changed, False otherwise
         :type instance_changed: bool
         """
-        self.service_type = self.dockwidget.serviceType.currentText().lower()
+        self.service_type = self.dockwidget.serviceTypeComboBox.currentText().lower()
         self.dockwidget.createLayerLabel.setText('Create new {} layer'.format(self.service_type.upper()))
 
         if self.capabilities:
-            layer_index = self.dockwidget.layers.currentIndex()
-            self.dockwidget.layers.clear()
-            self.dockwidget.layers.addItems([layer.name for layer in self.capabilities.layers])
+            layer_index = self.dockwidget.layersComboBox.currentIndex()
+            self.dockwidget.layersComboBox.clear()
+            self.dockwidget.layersComboBox.addItems([layer.name for layer in self.capabilities.layers])
             if not instance_changed:
-                self.dockwidget.layers.setCurrentIndex(layer_index)
+                self.dockwidget.layersComboBox.setCurrentIndex(layer_index)
 
             self.dockwidget.epsg.clear()
             if self.service_type == 'wms':
@@ -225,13 +228,14 @@ class SentinelHubPlugin:
         self.pluginIsActive = False
 
     def unload(self):
-        """ This is called when a user disables or uninstalls the plugin. This method removes the plugin and it's
-        icon from everywhere it appears in QGIS GUI.
+        """ This is called by QGIS when a user disables or uninstalls the plugin. This method removes the plugin and
+        it's icon from everywhere it appears in QGIS GUI.
         """
         for action in self.actions:
             self.iface.removePluginWebMenu(
                 self.PLUGIN_NAME,
-                action)
+                action
+            )
             self.iface.removeToolBarIcon(action)
         del self.toolbar
 
@@ -521,7 +525,7 @@ class SentinelHubPlugin:
     def update_selected_layer(self):
         """ Updates properties of selected Sentinel Hub layer
         """
-        layers_index = self.dockwidget.layers.currentIndex()
+        layers_index = self.dockwidget.layersComboBox.currentIndex()
         old_data_source = self.data_source
         wms_layers = self.capabilities.layers
         if 0 <= layers_index < len(wms_layers):
@@ -828,7 +832,6 @@ class SentinelHubPlugin:
             self.update_instance_props(instance_changed=True)
             if self.settings.instance_id:
                 self.show_message("New Instance ID and layers set.", MessageType.SUCCESS)
-            self.settings.save_local_settings()
             self.update_parameters()
             self.get_cloud_cover()
         else:
@@ -842,7 +845,6 @@ class SentinelHubPlugin:
 
         if new_download_folder == '' or os.path.exists(new_download_folder):
             self.settings.download_folder = new_download_folder
-            self.settings.save_local_settings()
         else:
             self.dockwidget.destination.setText(self.settings.download_folder)
             self.show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
@@ -967,14 +969,43 @@ class SentinelHubPlugin:
         self.settings.client_id = self.dockwidget.clientId.text()
         self.settings.client_secret = self.dockwidget.clientSecret.text()
 
-        self.settings.save_local_settings()
-
     def login(self):
-        configuration = ConfigurationService(self.settings, self.client)
+        """ Uses credentials to connect to Sentinel Hub services and updates
+        """
+        # TODO: reset everything
+        self.dockwidget.configurationComboBox.clear()
+        self.dockwidget.layersComboBox.clear()
 
-        instance_collection = configuration.get_instances()
+        self.configuration = ConfigurationManager(self.settings, self.client)
+        instances = self.configuration.get_instances(reload=True)
 
-        self.show_message(str(len(instance_collection)), MessageType.INFO)
+        self.settings.save_credentials()
+
+        configuration_names = [instance_name for _, instance_name in instances]
+        self.dockwidget.configurationComboBox.addItems(configuration_names)
+
+        initial_configuration_index = self.configuration.get_configuration_index(self.settings.instance_id)
+        self.dockwidget.configurationComboBox.setCurrentIndex(initial_configuration_index)
+        if initial_configuration_index > -1:
+            self.select_configuration()
+        else:
+            self.settings.instance_id = ''
+
+    def select_configuration(self):
+        configuration_index = self.dockwidget.configurationComboBox.currentIndex()
+        self.settings.instance_id = self.configuration.get_instances()[configuration_index][0]
+
+        layers = self.configuration.get_layers(self.settings.instance_id)
+
+        self.dockwidget.layersComboBox.clear()
+        layer_titles = [layer_title for _, layer_title in layers]
+        self.dockwidget.layersComboBox.addItems(layer_titles)
+
+        initial_layer_index = self.configuration.get_layer_index(self.settings.instance_id, self.settings.layer)
+        self.dockwidget.layersComboBox.setCurrentIndex(initial_layer_index)
+        self.settings.layer = self.configuration.get_layers(self.settings.instance_id)[initial_layer_index][0]
+
+        # TODO: CRS
 
     def run(self):
         """ Run method that loads and starts the plugin and binds all UI actions
@@ -985,17 +1016,21 @@ class SentinelHubPlugin:
 
         # Initial function calls
         self.dockwidget = SentinelHubDockWidget()
-        self.capabilities = self.get_capabilities(self.settings.instance_id)
+        # self.capabilities = self.get_capabilities(self.settings.instance_id)
         self.init_gui_settings()
         self.update_month()
         self.toggle_extent('current')
         self.dockwidget.calendarSpacer.hide()
         self.update_current_wms_layers()
 
+        # Login widget:
         self.dockwidget.baseUrl.editingFinished.connect(self.update_credentials)
         self.dockwidget.clientId.editingFinished.connect(self.update_credentials)
         self.dockwidget.clientSecret.editingFinished.connect(self.update_credentials)
         self.dockwidget.buttonLogin.clicked.connect(self.login)
+
+        # Create widget
+        self.dockwidget.configurationComboBox.currentIndexChanged.connect(self.select_configuration)
 
         # Bind actions to buttons
         self.dockwidget.buttonAddWms.clicked.connect(self.add_qgis_layer)
@@ -1011,9 +1046,9 @@ class SentinelHubPlugin:
         self.dockwidget.qgisLayerList.mousePressEvent = new_layer_selection_event
 
         # Render input fields changes and events
-        self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
-        self.dockwidget.serviceType.currentIndexChanged.connect(self.update_service_type)
-        self.dockwidget.layers.currentIndexChanged.connect(self.update_selected_layer)
+        # self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
+        self.dockwidget.serviceTypeComboBox.currentIndexChanged.connect(self.update_service_type)
+        self.dockwidget.layersComboBox.currentIndexChanged.connect(self.update_selected_layer)
 
         self.dockwidget.time0.mousePressEvent = lambda _: self.move_calendar('time0')
         self.dockwidget.time1.mousePressEvent = lambda _: self.move_calendar('time1')
