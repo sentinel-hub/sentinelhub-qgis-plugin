@@ -11,6 +11,9 @@ class Settings:
     """ A class in charge of all settings
     """
     base_url = BaseUrl.MAIN
+    client_id = None
+    client_secret = None
+
     instance_id = None
     download_folder = None
 

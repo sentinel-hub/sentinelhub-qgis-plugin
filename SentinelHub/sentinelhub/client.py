@@ -14,11 +14,14 @@ from ..utils import show_message
 
 class Client:
 
+    _CACHED_SESSIONS = {}
+
     def __init__(self, iface, plugin_version):
         self.iface = iface
         self.plugin_version = plugin_version
 
-    def download(self, url, stream=False, raise_invalid_id=False, ignore_exception=False):
+    def download(self, url, stream=False, use_session=False, raise_invalid_id=False, ignore_exception=False,
+                 settings=None):
         """ Downloads data from url and handles possible errors
 
         :param url: download url
@@ -34,9 +37,13 @@ class Client:
         """
         try:
             proxy_dict, auth = get_proxy_config()
-            response = requests.get(url, stream=stream,
-                                    headers={'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)},
-                                    proxies=proxy_dict, auth=auth)
+            response = requests.get(
+                url,
+                stream=stream,
+                headers=self._prepare_headers(use_session, settings),
+                proxies=proxy_dict,
+                auth=auth
+            )
             response.raise_for_status()
         except requests.RequestException as exception:
             if ignore_exception:
@@ -48,6 +55,38 @@ class Client:
             response = None
 
         return response
+
+    def _prepare_headers(self, use_session, settings):
+        """ Prepares final headers by potentially joining them with session headers
+        """
+        headers = {
+            'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)
+        }
+
+        if use_session:
+            session = self._get_session(settings)
+            headers = {
+                **headers,
+                **session.session_headers
+            }
+
+        return headers
+
+    def _get_session(self, settings):
+        """ Provides a session object either from cache or it creates a new one
+        """
+        cache_key = settings.client_id, settings.client_secret, settings.base_url
+        if cache_key in Client._CACHED_SESSIONS:
+            return Client._CACHED_SESSIONS[cache_key]
+
+        session = Session(
+            base_url=settings.base_url,
+            client_id=settings.client_id,
+            client_secret=settings.client_secret,
+            client=self
+        )
+        Client._CACHED_SESSIONS[cache_key] = session
+        return session
 
 
 def get_error_message(exception):
