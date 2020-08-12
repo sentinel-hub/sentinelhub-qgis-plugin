@@ -11,11 +11,11 @@ class Settings:
     """ A class in charge of all settings
     """
     base_url = BaseUrl.MAIN
-    client_id = None
-    client_secret = None
+    client_id = ''
+    client_secret = ''
 
-    instance_id = None
-    download_folder = None
+    instance_id = ''
+    download_folder = ''
 
     active_time = 'time0'
     time0 = ''
@@ -52,8 +52,14 @@ class Settings:
         'resy': '10'
     }
 
-    _INSTANCE_ID_LOCATION = 'SentinelHub/instance_id'
-    _DOWNLOAD_FOLDER_LOCATION = 'SentinelHub/download_folder'
+    _STORE_NAMESPACE = 'SentinelHub'
+    _STORE_PARAMETERS = [
+        'base_url',
+        'client_id',
+        'client_secret',
+        'instance_id',
+        'download_folder'
+    ]
 
     def __init__(self):
         self.load_local_settings()
@@ -63,19 +69,23 @@ class Settings:
         """
         qsettings = QSettings()
 
-        self.instance_id = qsettings.value(self._INSTANCE_ID_LOCATION, '')
-        self.download_folder = qsettings.value(self._DOWNLOAD_FOLDER_LOCATION, '')
+        for parameter in self._STORE_PARAMETERS:
+            store_path = self._get_store_path(parameter)
+            store_value = qsettings.value(store_path)
 
-        # Just in case something else would be saved
-        if not isinstance(self.instance_id, str):
-            self.instance_id = ''
-        if not isinstance(self.download_folder, str):
-            self.download_folder = ''
+            if store_value is not None:
+                setattr(self, parameter, str(store_value))
 
     def save_local_settings(self):
         """ Saves settings to QGIS local store
         """
         qsettings = QSettings()
 
-        qsettings.setValue(self._INSTANCE_ID_LOCATION, self.instance_id)
-        qsettings.setValue(self._DOWNLOAD_FOLDER_LOCATION, self.download_folder)
+        for parameter in self._STORE_PARAMETERS:
+            store_path = self._get_store_path(parameter)
+            qsettings.setValue(store_path, getattr(self, parameter))
+
+    def _get_store_path(self, parameter_name):
+        """ Provides a location of the parameter in the local store
+        """
+        return '{}/{}'.format(self._STORE_NAMESPACE, parameter_name)

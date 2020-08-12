@@ -4,6 +4,7 @@ Download client for Sentinel Hub service
 from xml.etree import ElementTree
 
 import requests
+from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from PyQt5.QtCore import QSettings
 
 from .session import Session
@@ -79,12 +80,15 @@ class Client:
         if cache_key in Client._CACHED_SESSIONS:
             return Client._CACHED_SESSIONS[cache_key]
 
-        session = Session(
-            base_url=settings.base_url,
-            client_id=settings.client_id,
-            client_secret=settings.client_secret,
-            client=self
-        )
+        try:
+            session = Session(
+                base_url=settings.base_url,
+                client_id=settings.client_id,
+                client_secret=settings.client_secret
+            )
+        except OAuth2Error as exception:
+            show_message(self.iface, exception.error, MessageType.CRITICAL)  # TODO: fix this by moving logging to the main
+
         Client._CACHED_SESSIONS[cache_key] = session
         return session
 

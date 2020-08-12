@@ -6,16 +6,25 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>868</width>
-    <height>601</height>
+    <width>853</width>
+    <height>592</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>SentinelHub</string>
+   <string>Sentinel Hub</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
-    <property name="margin">
+    <property name="leftMargin">
+     <number>1</number>
+    </property>
+    <property name="topMargin">
+     <number>1</number>
+    </property>
+    <property name="rightMargin">
+     <number>1</number>
+    </property>
+    <property name="bottomMargin">
      <number>1</number>
     </property>
     <item row="0" column="0">
@@ -31,12 +40,149 @@
         <property name="currentIndex">
          <number>0</number>
         </property>
-        <widget class="QWidget" name="rendererTab">
+        <widget class="QWidget" name="loginTab">
          <attribute name="title">
-          <string>Renderer</string>
+          <string>Login</string>
+         </attribute>
+         <widget class="QScrollArea" name="scrollAreaRenderer_2">
+          <property name="geometry">
+           <rect>
+            <x>5</x>
+            <y>5</y>
+            <width>835</width>
+            <height>161</height>
+           </rect>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="verticalScrollBarPolicy">
+           <enum>Qt::ScrollBarAsNeeded</enum>
+          </property>
+          <property name="horizontalScrollBarPolicy">
+           <enum>Qt::ScrollBarAsNeeded</enum>
+          </property>
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="scrollAreaWidgetContents_3">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>833</width>
+             <height>159</height>
+            </rect>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_8">
+            <item row="1" column="3">
+             <widget class="QLineEdit" name="clientId"/>
+            </item>
+            <item row="1" column="2">
+             <widget class="QLabel" name="label_2">
+              <property name="text">
+               <string>Client ID</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="2">
+             <widget class="QLabel" name="label_3">
+              <property name="text">
+               <string>Client secret</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="4">
+             <spacer name="horizontalSpacer_4">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="0" column="2">
+             <widget class="QLabel" name="label">
+              <property name="text">
+               <string>Service URL</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="3">
+             <widget class="QLineEdit" name="baseUrl"/>
+            </item>
+            <item row="2" column="3">
+             <widget class="QLineEdit" name="clientSecret">
+              <property name="echoMode">
+               <enum>QLineEdit::Password</enum>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <spacer name="horizontalSpacer_6">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeType">
+               <enum>QSizePolicy::Preferred</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="6" column="3">
+             <spacer name="verticalSpacer_3">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeType">
+               <enum>QSizePolicy::Expanding</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="7" column="3">
+             <widget class="QPushButton" name="buttonLogin">
+              <property name="text">
+               <string>Login</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </widget>
+        <widget class="QWidget" name="createTab">
+         <attribute name="title">
+          <string>Create</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_2">
-          <property name="margin">
+          <property name="leftMargin">
+           <number>5</number>
+          </property>
+          <property name="topMargin">
+           <number>5</number>
+          </property>
+          <property name="rightMargin">
+           <number>5</number>
+          </property>
+          <property name="bottomMargin">
            <number>5</number>
           </property>
           <item row="2" column="0" alignment="Qt::AlignLeft">
@@ -194,8 +340,8 @@
               <rect>
                <x>0</x>
                <y>0</y>
-               <width>848</width>
-               <height>441</height>
+               <width>846</width>
+               <height>426</height>
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_4">
@@ -458,6 +604,15 @@
                        </color>
                       </brush>
                      </colorrole>
+                     <colorrole role="PlaceholderText">
+                      <brush brushstyle="NoBrush">
+                       <color alpha="128">
+                        <red>0</red>
+                        <green>0</green>
+                        <blue>0</blue>
+                       </color>
+                      </brush>
+                     </colorrole>
                     </active>
                     <inactive>
                      <colorrole role="WindowText">
@@ -604,6 +759,15 @@
                        </color>
                       </brush>
                      </colorrole>
+                     <colorrole role="PlaceholderText">
+                      <brush brushstyle="NoBrush">
+                       <color alpha="128">
+                        <red>0</red>
+                        <green>0</green>
+                        <blue>0</blue>
+                       </color>
+                      </brush>
+                     </colorrole>
                     </inactive>
                     <disabled>
                      <colorrole role="WindowText">
@@ -744,6 +908,15 @@
                      <colorrole role="ToolTipText">
                       <brush brushstyle="SolidPattern">
                        <color alpha="255">
+                        <red>0</red>
+                        <green>0</green>
+                        <blue>0</blue>
+                       </color>
+                      </brush>
+                     </colorrole>
+                     <colorrole role="PlaceholderText">
+                      <brush brushstyle="NoBrush">
+                       <color alpha="128">
                         <red>0</red>
                         <green>0</green>
                         <blue>0</blue>
@@ -1080,7 +1253,16 @@
           <string>Download</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_3">
-          <property name="margin">
+          <property name="leftMargin">
+           <number>5</number>
+          </property>
+          <property name="topMargin">
+           <number>5</number>
+          </property>
+          <property name="rightMargin">
+           <number>5</number>
+          </property>
+          <property name="bottomMargin">
            <number>5</number>
           </property>
           <item row="1" column="0">
@@ -1100,8 +1282,8 @@
               <rect>
                <x>0</x>
                <y>0</y>
-               <width>848</width>
-               <height>494</height>
+               <width>833</width>
+               <height>495</height>
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_6">

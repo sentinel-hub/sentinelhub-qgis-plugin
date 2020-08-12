@@ -69,7 +69,7 @@ def get_wmts_uri(settings, time_str):
 def _get_service_endpoint(settings, service_type):
     """ A helper function to provide a service endpoint URL
     """
-    return '{}{}/{}'.format(settings.base_url, service_type, settings.instance_id)
+    return '{}/ogc/{}/{}'.format(settings.base_url, service_type, settings.instance_id)
 
 
 def _join_uri_params(param_list):

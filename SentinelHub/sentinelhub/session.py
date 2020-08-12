@@ -18,14 +18,13 @@ class Session:
     """
     SECONDS_BEFORE_EXPIRY = 60
 
-    def __init__(self, base_url, client_id, client_secret, client):
+    def __init__(self, base_url, client_id, client_secret):
         """
         TODO
         """
         self.oauth_url = '{}/oauth/token'.format(base_url)
         self.client_id = client_id
         self.client_secret = client_secret
-        self.client = client
 
         self._token = None
         _ = self.token
@@ -61,6 +60,7 @@ class Session:
         oauth_client = BackendApplicationClient(client_id=self.client_id)
 
         QgsMessageLog.logMessage('Creating a new authentication session with Sentinel Hub service')
+
         with OAuth2Session(client=oauth_client) as oauth_session:
             return oauth_session.fetch_token(
                 token_url=self.oauth_url,

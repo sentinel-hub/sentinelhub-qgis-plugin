@@ -67,8 +67,8 @@ class ImageFormat(_BaseParameter):
 
 
 class BaseUrl:
-    MAIN = 'https://services.sentinel-hub.com/ogc/'
-    USWEST = 'https://services-uswest2.sentinel-hub.com/ogc/'
+    MAIN = 'https://services.sentinel-hub.com'
+    USWEST = 'https://services-uswest2.sentinel-hub.com'
     EOCLOUD = 'http://services.eocloud.sentinel-hub.com/v1/'
 
 

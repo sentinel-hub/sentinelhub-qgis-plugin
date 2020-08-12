@@ -25,7 +25,6 @@ import calendar
 import datetime
 import math
 from xml.etree import ElementTree
-from urllib.parse import quote_plus
 
 from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
     QgsRectangle, QgsMessageLog
@@ -40,6 +39,7 @@ from .exceptions import InvalidInstanceId
 from .settings import Settings
 from .utils import get_plugin_version
 from .sentinelhub.capabilities import Capabilities
+from .sentinelhub.configuration import ConfigurationService
 from .sentinelhub.client import Client
 from .sentinelhub.ogc import get_wms_uri, get_wmts_uri
 
@@ -109,14 +109,15 @@ class SentinelHubPlugin:
         return action
 
     def initGui(self):  # This method is called by QGIS
-        """Create the menu entries and toolbar icons inside the QGIS GUI."""
-
+        """ Create the menu entries and toolbar icons inside the QGIS GUI.
+        """
         icon_path = ':/plugins/SentinelHub/favicon.ico'
         self.add_action(
             icon_path,
             text=self.PLUGIN_NAME,
             callback=self.run,
-            parent=self.iface.mainWindow())
+            parent=self.iface.mainWindow()
+        )
 
     def init_gui_settings(self):
         """Fill combo boxes:
@@ -125,6 +126,10 @@ class SentinelHubPlugin:
         """
         self.dockwidget.serviceType.addItems(SERVICE_TYPES)
         self.update_instance_props(instance_changed=True)
+
+        self.dockwidget.baseUrl.setText(self.settings.base_url)
+        self.dockwidget.clientId.setText(self.settings.client_id)
+        self.dockwidget.clientSecret.setText(self.settings.client_secret)
 
         self.dockwidget.instanceId.setText(self.settings.instance_id)
         self.dockwidget.destination.setText(self.settings.download_folder)
@@ -238,7 +243,7 @@ class SentinelHubPlugin:
         :param crs: CRS of bounding box
         :type crs: str or None
         """
-        url = '{}wcs/{}?'.format(self.settings.base_url, self.settings.instance_id)
+        url = '{}/ogc/wcs/{}?'.format(self.settings.base_url, self.settings.instance_id)
         request_parameters = list(self.settings.parameters_wcs.items()) + list(self.settings.parameters.items())
 
         for parameter, value in request_parameters:
@@ -252,7 +257,7 @@ class SentinelHubPlugin:
     def get_wfs_url(self, time_range):
         """ Generate URL for WFS request from parameters """
 
-        url = '{}wfs/{}?'.format(self.settings.base_url, self.settings.instance_id)
+        url = '{}/ogc/wfs/{}?'.format(self.settings.base_url, self.settings.instance_id)
         for parameter, value in self.settings.parameters_wfs.items():
             url += '{}={}&'.format(parameter, value)
 
@@ -263,7 +268,7 @@ class SentinelHubPlugin:
     def get_capabilities_url(base_url, service, instance_id, get_json=False):
         """ Generates url for obtaining service capabilities
         """
-        url = '{}{}/{}?service={}&request=GetCapabilities&version=1.3.0'.format(base_url, service, instance_id, service)
+        url = '{}/ogc/{}/{}?service={}&request=GetCapabilities&version=1.3.0'.format(base_url, service, instance_id, service)
         if get_json:
             return url + '&format=application/json'
         return url
@@ -945,77 +950,104 @@ class SentinelHubPlugin:
         return new_values
 
     def change_show_logo(self):
-        """Determines if Sentinel Hub logo will be shown in downloaded image
+        """ Determines if Sentinel Hub logo will be shown in downloaded image
         """
         self.settings.parameters_wcs['showLogo'] = 'true' if self.dockwidget.showLogoBox.isChecked() else 'false'
 
+    def update_credentials(self):
+        """ Update login credentials
+        """
+        base_url = self.dockwidget.baseUrl.text()
+        self.settings.base_url = base_url.rstrip('/')
+        if not self.settings.base_url:
+            self.settings.base_url = BaseUrl.MAIN
+        if self.settings.base_url != base_url:
+            self.dockwidget.baseUrl.setText(self.settings.base_url)
+
+        self.settings.client_id = self.dockwidget.clientId.text()
+        self.settings.client_secret = self.dockwidget.clientSecret.text()
+
+        self.settings.save_local_settings()
+
+    def login(self):
+        configuration = ConfigurationService(self.settings, self.client)
+
+        instance_collection = configuration.get_instances()
+
+        self.show_message(str(len(instance_collection)), MessageType.INFO)
+
     def run(self):
-        """Run method that loads and starts the plugin and binds all UI actions"""
+        """ Run method that loads and starts the plugin and binds all UI actions
+        """
+        if self.pluginIsActive and self.dockwidget is not None:  # TODO: do we even need pluginIsActive flag?
+            return
+        self.pluginIsActive = True
 
-        if not self.pluginIsActive:
-            self.pluginIsActive = True
+        # Initial function calls
+        self.dockwidget = SentinelHubDockWidget()
+        self.capabilities = self.get_capabilities(self.settings.instance_id)
+        self.init_gui_settings()
+        self.update_month()
+        self.toggle_extent('current')
+        self.dockwidget.calendarSpacer.hide()
+        self.update_current_wms_layers()
 
-            if self.dockwidget is None:
-                # Initial function calls
-                self.dockwidget = SentinelHubDockWidget()
-                self.capabilities = self.get_capabilities(self.settings.instance_id)
-                self.init_gui_settings()
-                self.update_month()
-                self.toggle_extent('current')
-                self.dockwidget.calendarSpacer.hide()
-                self.update_current_wms_layers()
+        self.dockwidget.baseUrl.editingFinished.connect(self.update_credentials)
+        self.dockwidget.clientId.editingFinished.connect(self.update_credentials)
+        self.dockwidget.clientSecret.editingFinished.connect(self.update_credentials)
+        self.dockwidget.buttonLogin.clicked.connect(self.login)
 
-                # Bind actions to buttons
-                self.dockwidget.buttonAddWms.clicked.connect(self.add_qgis_layer)
-                self.dockwidget.buttonUpdateWms.clicked.connect(self.update_qgis_layer)
+        # Bind actions to buttons
+        self.dockwidget.buttonAddWms.clicked.connect(self.add_qgis_layer)
+        self.dockwidget.buttonUpdateWms.clicked.connect(self.update_qgis_layer)
 
-                # This overrides a press event, better solution would be to detect changes of QGIS layers
-                self.layer_selection_event = self.dockwidget.qgisLayerList.mousePressEvent
+        # This overrides a press event, better solution would be to detect changes of QGIS layers
+        self.layer_selection_event = self.dockwidget.qgisLayerList.mousePressEvent
 
-                def new_layer_selection_event(event):
-                    self.update_current_wms_layers()
-                    self.layer_selection_event(event)
+        def new_layer_selection_event(event):
+            self.update_current_wms_layers()
+            self.layer_selection_event(event)
 
-                self.dockwidget.qgisLayerList.mousePressEvent = new_layer_selection_event
+        self.dockwidget.qgisLayerList.mousePressEvent = new_layer_selection_event
 
-                # Render input fields changes and events
-                self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
-                self.dockwidget.serviceType.currentIndexChanged.connect(self.update_service_type)
-                self.dockwidget.layers.currentIndexChanged.connect(self.update_selected_layer)
+        # Render input fields changes and events
+        self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
+        self.dockwidget.serviceType.currentIndexChanged.connect(self.update_service_type)
+        self.dockwidget.layers.currentIndexChanged.connect(self.update_selected_layer)
 
-                self.dockwidget.time0.mousePressEvent = lambda _: self.move_calendar('time0')
-                self.dockwidget.time1.mousePressEvent = lambda _: self.move_calendar('time1')
-                self.dockwidget.time0.editingFinished.connect(self.update_dates)
-                self.dockwidget.time1.editingFinished.connect(self.update_dates)
-                self.dockwidget.calendar.clicked.connect(self.add_time)
-                self.dockwidget.exactDate.stateChanged.connect(self.change_exact_date)
-                self.dockwidget.calendar.currentPageChanged.connect(self.update_month)
-                self.dockwidget.maxcc.valueChanged.connect(self.update_maxcc_label)
-                self.dockwidget.maxcc.sliderReleased.connect(self.update_maxcc)
-                self.dockwidget.destination.editingFinished.connect(self.change_download_folder)
+        self.dockwidget.time0.mousePressEvent = lambda _: self.move_calendar('time0')
+        self.dockwidget.time1.mousePressEvent = lambda _: self.move_calendar('time1')
+        self.dockwidget.time0.editingFinished.connect(self.update_dates)
+        self.dockwidget.time1.editingFinished.connect(self.update_dates)
+        self.dockwidget.calendar.clicked.connect(self.add_time)
+        self.dockwidget.exactDate.stateChanged.connect(self.change_exact_date)
+        self.dockwidget.calendar.currentPageChanged.connect(self.update_month)
+        self.dockwidget.maxcc.valueChanged.connect(self.update_maxcc_label)
+        self.dockwidget.maxcc.sliderReleased.connect(self.update_maxcc)
+        self.dockwidget.destination.editingFinished.connect(self.change_download_folder)
 
-                # Download input fields changes and events
-                self.dockwidget.format.currentIndexChanged.connect(self.update_download_format)
-                self.dockwidget.inputResX.editingFinished.connect(self.update_values)
-                self.dockwidget.inputResY.editingFinished.connect(self.update_values)
+        # Download input fields changes and events
+        self.dockwidget.format.currentIndexChanged.connect(self.update_download_format)
+        self.dockwidget.inputResX.editingFinished.connect(self.update_values)
+        self.dockwidget.inputResY.editingFinished.connect(self.update_values)
 
-                self.dockwidget.radioCurrentExtent.clicked.connect(lambda: self.toggle_extent('current'))
-                self.dockwidget.radioCustomExtent.clicked.connect(lambda: self.toggle_extent('custom'))
-                self.dockwidget.latMin.editingFinished.connect(self.update_values)
-                self.dockwidget.latMax.editingFinished.connect(self.update_values)
-                self.dockwidget.lngMin.editingFinished.connect(self.update_values)
-                self.dockwidget.lngMax.editingFinished.connect(self.update_values)
+        self.dockwidget.radioCurrentExtent.clicked.connect(lambda: self.toggle_extent('current'))
+        self.dockwidget.radioCustomExtent.clicked.connect(lambda: self.toggle_extent('custom'))
+        self.dockwidget.latMin.editingFinished.connect(self.update_values)
+        self.dockwidget.latMax.editingFinished.connect(self.update_values)
+        self.dockwidget.lngMin.editingFinished.connect(self.update_values)
+        self.dockwidget.lngMax.editingFinished.connect(self.update_values)
 
-                self.dockwidget.showLogoBox.stateChanged.connect(self.change_show_logo)
+        self.dockwidget.showLogoBox.stateChanged.connect(self.change_show_logo)
 
-                self.dockwidget.buttonDownload.clicked.connect(self.download_caption)
-                self.dockwidget.refreshExtent.clicked.connect(self.take_window_bbox)
-                self.dockwidget.selectDestination.clicked.connect(self.select_destination)
+        self.dockwidget.buttonDownload.clicked.connect(self.download_caption)
+        self.dockwidget.refreshExtent.clicked.connect(self.take_window_bbox)
+        self.dockwidget.selectDestination.clicked.connect(self.select_destination)
 
-            # Tracks which layer is selected in left menu
-            # self.iface.currentLayerChanged.connect(self.update_current_wms_layers)
+        # Tracks which layer is selected in left menu
+        # self.iface.currentLayerChanged.connect(self.update_current_wms_layers)
 
-            self.dockwidget.closingPlugin.connect(self.on_close_plugin)
+        self.dockwidget.closingPlugin.connect(self.on_close_plugin)
 
-            self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dockwidget)
-            self.dockwidget.show()
+        self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dockwidget)
+        self.dockwidget.show()
