@@ -79,17 +79,17 @@
            </property>
            <layout class="QGridLayout" name="gridLayout_8">
             <item row="1" column="3">
-             <widget class="QLineEdit" name="clientId"/>
+             <widget class="QLineEdit" name="clientIdLineEdit"/>
             </item>
             <item row="1" column="2">
-             <widget class="QLabel" name="label_2">
+             <widget class="QLabel" name="clientIdLabel">
               <property name="text">
                <string>Client ID</string>
               </property>
              </widget>
             </item>
             <item row="2" column="2">
-             <widget class="QLabel" name="label_3">
+             <widget class="QLabel" name="clientIdSecret">
               <property name="text">
                <string>Client secret</string>
               </property>
@@ -109,17 +109,17 @@
              </spacer>
             </item>
             <item row="0" column="2">
-             <widget class="QLabel" name="label">
+             <widget class="QLabel" name="serviceUrlLabel">
               <property name="text">
                <string>Service URL</string>
               </property>
              </widget>
             </item>
             <item row="0" column="3">
-             <widget class="QLineEdit" name="baseUrl"/>
+             <widget class="QLineEdit" name="serviceUrlLineEdit"/>
             </item>
             <item row="2" column="3">
-             <widget class="QLineEdit" name="clientSecret">
+             <widget class="QLineEdit" name="clientSecretLineEdit">
               <property name="echoMode">
                <enum>QLineEdit::Password</enum>
               </property>
@@ -158,7 +158,7 @@
              </spacer>
             </item>
             <item row="7" column="3">
-             <widget class="QPushButton" name="buttonLogin">
+             <widget class="QPushButton" name="loginPushButton">
               <property name="text">
                <string>Login</string>
               </property>
@@ -235,7 +235,7 @@
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QPushButton" name="buttonAddWms">
+              <widget class="QPushButton" name="createLayerPushButton">
                <property name="minimumSize">
                 <size>
                  <width>400</width>
@@ -263,7 +263,7 @@
              <item row="1" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_7">
                <item>
-                <widget class="QComboBox" name="qgisLayerList">
+                <widget class="QComboBox" name="mapLayerComboBox">
                  <property name="minimumSize">
                   <size>
                    <width>300</width>
@@ -279,7 +279,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="QPushButton" name="buttonUpdateWms">
+                <widget class="QPushButton" name="updateLayerPushButton">
                  <property name="minimumSize">
                   <size>
                    <width>94</width>
@@ -315,7 +315,7 @@
             </layout>
             <zorder>createLayerLabel</zorder>
             <zorder>updateLayerLabel</zorder>
-            <zorder>buttonAddWms</zorder>
+            <zorder>createLayerPushButton</zorder>
            </widget>
           </item>
           <item row="0" column="0" rowspan="2">
@@ -374,7 +374,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QCalendarWidget" name="calendar">
+                 <widget class="QCalendarWidget" name="calendarWidget">
                   <property name="minimumSize">
                    <size>
                     <width>400</width>
@@ -946,7 +946,7 @@
                </widget>
               </item>
               <item row="12" column="2">
-               <widget class="QComboBox" name="priority">
+               <widget class="QComboBox" name="priorityComboBox">
                 <property name="minimumSize">
                  <size>
                   <width>400</width>
@@ -962,7 +962,7 @@
                </widget>
               </item>
               <item row="7" column="2">
-               <widget class="QComboBox" name="epsg">
+               <widget class="QComboBox" name="crsComboBox">
                 <property name="minimumSize">
                  <size>
                   <width>400</width>
@@ -1002,7 +1002,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QSlider" name="maxcc">
+                 <widget class="QSlider" name="maxccSlider">
                   <property name="minimumSize">
                    <size>
                     <width>195</width>
@@ -1047,7 +1047,7 @@
               <item row="9" column="2">
                <layout class="QHBoxLayout" name="horizontalLayout">
                 <item>
-                 <widget class="QLineEdit" name="time0">
+                 <widget class="QLineEdit" name="startTimeLineEdit">
                   <property name="minimumSize">
                    <size>
                     <width>230</width>
@@ -1085,7 +1085,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLineEdit" name="time1">
+                 <widget class="QLineEdit" name="endTimeLineEdit">
                   <property name="minimumSize">
                    <size>
                     <width>230</width>
@@ -1164,7 +1164,7 @@
                 <item>
                  <layout class="QHBoxLayout" name="horizontalLayout_4">
                   <item>
-                   <widget class="QCheckBox" name="exactDate">
+                   <widget class="QCheckBox" name="exactDateCheckBox">
                     <property name="layoutDirection">
                      <enum>Qt::RightToLeft</enum>
                     </property>
@@ -1260,7 +1260,7 @@
            <number>5</number>
           </property>
           <item row="1" column="0">
-           <widget class="QPushButton" name="buttonDownload">
+           <widget class="QPushButton" name="downloadPushButton">
             <property name="text">
              <string>Download</string>
             </property>
@@ -1295,7 +1295,7 @@
                </spacer>
               </item>
               <item row="2" column="1">
-               <widget class="QRadioButton" name="radioCurrentExtent">
+               <widget class="QRadioButton" name="currentExtentRadioButton">
                 <property name="text">
                  <string>Current window</string>
                 </property>
@@ -1319,7 +1319,7 @@
                </widget>
               </item>
               <item row="0" column="1">
-               <widget class="QComboBox" name="format">
+               <widget class="QComboBox" name="imageFormatComboBox">
                 <property name="minimumSize">
                  <size>
                   <width>379</width>
@@ -1335,7 +1335,7 @@
                </widget>
               </item>
               <item row="3" column="1">
-               <widget class="QRadioButton" name="radioCustomExtent">
+               <widget class="QRadioButton" name="customExtentRadioButton">
                 <property name="text">
                  <string>Custom bounding box</string>
                 </property>
@@ -1373,7 +1373,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLineEdit" name="inputResX">
+                 <widget class="QLineEdit" name="resXLineEdit">
                   <property name="minimumSize">
                    <size>
                     <width>140</width>
@@ -1411,7 +1411,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLineEdit" name="inputResY">
+                 <widget class="QLineEdit" name="resYLineEdit">
                   <property name="minimumSize">
                    <size>
                     <width>140</width>
@@ -1471,7 +1471,7 @@
                   </widget>
                  </item>
                  <item row="1" column="1">
-                  <widget class="QLineEdit" name="lngMin">
+                  <widget class="QLineEdit" name="lngMinLineEdit">
                    <property name="minimumSize">
                     <size>
                      <width>140</width>
@@ -1490,7 +1490,7 @@
                   </widget>
                  </item>
                  <item row="0" column="2">
-                  <widget class="QLineEdit" name="latMax">
+                  <widget class="QLineEdit" name="latMaxLineEdit">
                    <property name="minimumSize">
                     <size>
                      <width>140</width>
@@ -1509,7 +1509,7 @@
                   </widget>
                  </item>
                  <item row="1" column="2">
-                  <widget class="QLineEdit" name="lngMax">
+                  <widget class="QLineEdit" name="lngMaxLineEdit">
                    <property name="minimumSize">
                     <size>
                      <width>140</width>
@@ -1528,7 +1528,7 @@
                   </widget>
                  </item>
                  <item row="0" column="1">
-                  <widget class="QLineEdit" name="latMin">
+                  <widget class="QLineEdit" name="latMinLineEdit">
                    <property name="minimumSize">
                     <size>
                      <width>140</width>
@@ -1557,7 +1557,7 @@
                   </spacer>
                  </item>
                  <item row="2" column="1" colspan="2">
-                  <widget class="QPushButton" name="refreshExtent">
+                  <widget class="QPushButton" name="refreshExtentPushButton">
                    <property name="minimumSize">
                     <size>
                      <width>100</width>
@@ -1577,13 +1577,13 @@
                  </item>
                 </layout>
                 <zorder>latitudeLabel</zorder>
-                <zorder>latMin</zorder>
-                <zorder>latMax</zorder>
+                <zorder>latMinLineEdit</zorder>
+                <zorder>latMaxLineEdit</zorder>
                 <zorder>longitudeLabel</zorder>
-                <zorder>lngMin</zorder>
-                <zorder>lngMax</zorder>
+                <zorder>lngMinLineEdit</zorder>
+                <zorder>lngMaxLineEdit</zorder>
                 <zorder>horizontalSpacer_8</zorder>
-                <zorder>refreshExtent</zorder>
+                <zorder>refreshExtentPushButton</zorder>
                </widget>
               </item>
               <item row="9" column="0">
@@ -1596,7 +1596,7 @@
               <item row="9" column="1">
                <layout class="QHBoxLayout" name="horizontalLayout_2">
                 <item>
-                 <widget class="QLineEdit" name="destination">
+                 <widget class="QLineEdit" name="downloadFolderLineEdit">
                   <property name="minimumSize">
                    <size>
                     <width>340</width>
@@ -1612,7 +1612,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="selectDestination">
+                 <widget class="QPushButton" name="selectDownloadFolderPushButton">
                   <property name="minimumSize">
                    <size>
                     <width>60</width>
@@ -1653,7 +1653,7 @@
                </widget>
               </item>
               <item row="5" column="1">
-               <widget class="QCheckBox" name="showLogoBox">
+               <widget class="QCheckBox" name="showLogoCheckBox">
                 <property name="text">
                  <string/>
                 </property>

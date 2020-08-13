@@ -9,7 +9,6 @@ from PyQt5.QtCore import QSettings
 
 from .session import Session
 from ..constants import MessageType
-from ..exceptions import InvalidInstanceId
 from ..utils import show_message
 
 
@@ -21,8 +20,7 @@ class Client:
         self.iface = iface
         self.plugin_version = plugin_version
 
-    def download(self, url, stream=False, use_session=False, raise_invalid_id=False, ignore_exception=False,
-                 settings=None):
+    def download(self, url, stream=False, use_session=False, ignore_exception=False, settings=None):
         """ Downloads data from url and handles possible errors
 
         :param url: download url
@@ -49,8 +47,6 @@ class Client:
         except requests.RequestException as exception:
             if ignore_exception:
                 return
-            if raise_invalid_id and isinstance(exception, requests.HTTPError) and exception.response.status_code == 400:
-                raise InvalidInstanceId()
 
             show_message(self.iface, get_error_message(exception), MessageType.CRITICAL)
             response = None

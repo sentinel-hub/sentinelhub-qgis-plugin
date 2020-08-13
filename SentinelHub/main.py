@@ -24,7 +24,6 @@ import time
 import calendar
 import datetime
 import math
-from xml.etree import ElementTree
 
 from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
     QgsRectangle, QgsMessageLog
@@ -32,13 +31,11 @@ from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
-from .constants import MessageType, CRS, ImagePriority, ImageFormat, BaseUrl, SERVICE_TYPES,\
+from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ServiceType, \
     MAX_CLOUD_COVER_IMAGE_SIZE, DATA_SOURCES
 from .dockwidget import SentinelHubDockWidget
-from .exceptions import InvalidInstanceId
 from .settings import Settings
 from .utils import get_plugin_version
-from .sentinelhub.capabilities import Capabilities
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
 from .sentinelhub.ogc import get_wms_uri, get_wmts_uri
@@ -48,6 +45,7 @@ class SentinelHubPlugin:
     """ The main class defining plugin logic
     """
     PLUGIN_NAME = 'SentinelHub'
+    ICON_PATH = ':/plugins/SentinelHub/favicon.ico'
 
     def __init__(self, iface):
         """ Called by QGIS at the beginning when you open QGIS or when the plugin is enabled in the
@@ -56,25 +54,21 @@ class SentinelHubPlugin:
         :param iface: A QGIS interface instance.
         :type iface: QgsInterface
         """
-        # Save reference to the QGIS interface
         self.iface = iface
+        self.toolbar = self.iface.addToolBar(self.PLUGIN_NAME)
+        self.plugin_actions = []
+        self.dockwidget = None
+
         self.plugin_version = get_plugin_version()
         self.settings = Settings()
         self.client = Client(self.iface, self.plugin_version)
 
-        self.configuration = None
-        # Declare instance attributes
-        self.actions = []
-        self.toolbar = self.iface.addToolBar(self.PLUGIN_NAME)
+        self.manager = None
 
-        self.pluginIsActive = False
-        self.dockwidget = None
         self.data_source = None
-
-        self.service_type = None
+        self.capabilities = None
 
         self.qgis_layers = []
-        self.capabilities = Capabilities('', BaseUrl.MAIN)
         self.cloud_cover = {}
 
         self.download_current_window = True
@@ -84,75 +78,197 @@ class SentinelHubPlugin:
 
         self.layer_selection_event = None
 
-    def add_action(self, icon_path, text, callback, enabled_flag=True, add_to_menu=True, add_to_toolbar=True,
-                   status_tip=None, whats_this=None, parent=None):
-        """Add a toolbar icon to the toolbar.
-        """
-        icon = QIcon(icon_path)
-        action = QAction(icon, text, parent)
-        action.triggered.connect(callback)
-        action.setEnabled(enabled_flag)
-
-        if status_tip is not None:
-            action.setStatusTip(status_tip)
-
-        if whats_this is not None:
-            action.setWhatsThis(whats_this)
-
-        if add_to_toolbar:
-            self.toolbar.addAction(action)
-
-        if add_to_menu:
-            self.iface.addPluginToWebMenu(
-                self.PLUGIN_NAME,
-                action)
-
-        self.actions.append(action)
-
-        return action
-
-    def initGui(self):  # This method is called by QGIS
+    def initGui(self):
         """ This method is called by QGIS when the main GUI starts up or when the plugin is enabled in the
         Plugin Manager.
         """
-        icon_path = ':/plugins/SentinelHub/favicon.ico'
-        self.add_action(
-            icon_path,
-            text=self.PLUGIN_NAME,
-            callback=self.run,
-            parent=self.iface.mainWindow()
-        )
+        icon = QIcon(self.ICON_PATH)
+        bold_plugin_name = '<b>{}</b>'.format(self.PLUGIN_NAME)
+        action = QAction(icon, bold_plugin_name, self.iface.mainWindow())
 
-    def init_gui_settings(self):
-        """Fill combo boxes:
-        Layers - Renderers
-        Priority
+        action.triggered.connect(self.run)
+        action.setEnabled(True)
+
+        self.toolbar.addAction(action)
+        self.iface.addPluginToWebMenu(self.PLUGIN_NAME, action)
+
+        self.plugin_actions.append(action)
+
+    def unload(self):
+        """ This is called by QGIS when a user disables or uninstalls the plugin. This method removes the plugin and
+        it's icon from everywhere it appears in QGIS GUI.
         """
-        self.dockwidget.serviceTypeComboBox.addItems(SERVICE_TYPES)
+        if self.dockwidget:
+            self.dockwidget.close()
+
+        for action in self.plugin_actions:
+            self.iface.removePluginWebMenu(
+                self.PLUGIN_NAME,
+                action
+            )
+            self.iface.removeToolBarIcon(action)
+        del self.toolbar
+
+    def run(self):
+        """ It loads and starts the plugin and binds all UI actions.
+        """
+        if self.dockwidget is not None:
+            return
+
+        self.dockwidget = SentinelHubDockWidget()
+        self.initialize_ui()
+
+        # Login widget:
+        self.dockwidget.serviceUrlLineEdit.editingFinished.connect(self.validate_base_url)
+        self.dockwidget.loginPushButton.clicked.connect(self.login)
+
+        # Create widget
+        self.dockwidget.configurationComboBox.currentIndexChanged.connect(self.select_configuration)
+
+        # Bind actions to buttons
+        self.dockwidget.createLayerPushButton.clicked.connect(self.add_qgis_layer)
+        self.dockwidget.updateLayerPushButton.clicked.connect(self.update_qgis_layer)
+
+        # This overrides a press event, better solution would be to detect changes of QGIS layers
+        self.layer_selection_event = self.dockwidget.mapLayerComboBox.mousePressEvent
+
+        def new_layer_selection_event(event):
+            self.update_current_wms_layers()
+            self.layer_selection_event(event)
+
+        self.dockwidget.mapLayerComboBox.mousePressEvent = new_layer_selection_event
+
+        # Render input fields changes and events
+        # self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
+        self.dockwidget.serviceTypeComboBox.currentIndexChanged.connect(self.update_service_type)
+        self.dockwidget.layersComboBox.currentIndexChanged.connect(self.update_selected_layer)
+
+        self.dockwidget.startTimeLineEdit.mousePressEvent = lambda _: self.move_calendar('time0')
+        self.dockwidget.endTimeLineEdit.mousePressEvent = lambda _: self.move_calendar('time1')
+        self.dockwidget.startTimeLineEdit.editingFinished.connect(self.update_dates)
+        self.dockwidget.endTimeLineEdit.editingFinished.connect(self.update_dates)
+        self.dockwidget.calendarWidget.clicked.connect(self.add_time)
+        self.dockwidget.exactDateCheckBox.stateChanged.connect(self.change_exact_date)
+        self.dockwidget.calendarWidget.currentPageChanged.connect(self.update_month)
+        self.dockwidget.maxccSlider.valueChanged.connect(self.update_maxcc_label)
+        self.dockwidget.maxccSlider.sliderReleased.connect(self.update_maxcc)
+        self.dockwidget.downloadFolderLineEdit.editingFinished.connect(self.change_download_folder)
+
+        # Download input fields changes and events
+        self.dockwidget.imageFormatComboBox.currentIndexChanged.connect(self.update_download_format)
+        self.dockwidget.resXLineEdit.editingFinished.connect(self.update_values)
+        self.dockwidget.resYLineEdit.editingFinished.connect(self.update_values)
+
+        self.dockwidget.currentExtentRadioButton.clicked.connect(lambda: self.toggle_extent('current'))
+        self.dockwidget.customExtentRadioButton.clicked.connect(lambda: self.toggle_extent('custom'))
+        self.dockwidget.latMinLineEdit.editingFinished.connect(self.update_values)
+        self.dockwidget.latMaxLineEdit.editingFinished.connect(self.update_values)
+        self.dockwidget.lngMinLineEdit.editingFinished.connect(self.update_values)
+        self.dockwidget.lngMaxLineEdit.editingFinished.connect(self.update_values)
+
+        self.dockwidget.showLogoCheckBox.stateChanged.connect(self.change_show_logo)
+
+        self.dockwidget.downloadPushButton.clicked.connect(self.download_caption)
+        self.dockwidget.refreshExtentPushButton.clicked.connect(self.take_window_bbox)
+        self.dockwidget.selectDownloadFolderPushButton.clicked.connect(self.select_download_folder)
+
+        # Tracks which layer is selected in left menu
+        # self.iface.currentLayerChanged.connect(self.update_current_wms_layers)
+
+        self.dockwidget.closingPlugin.connect(self.on_close_plugin)
+
+        self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dockwidget)
+        self.dockwidget.show()
+
+    def initialize_ui(self):
+        """ Initializes and resets entire UI
+        """
+        self.dockwidget.serviceTypeComboBox.addItems([ServiceType.WMS, ServiceType.WMTS])
         self.update_instance_props(instance_changed=True)
 
-        self.dockwidget.baseUrl.setText(self.settings.base_url)
-        self.dockwidget.clientId.setText(self.settings.client_id)
-        self.dockwidget.clientSecret.setText(self.settings.client_secret)
+        self.dockwidget.serviceUrlLineEdit.setText(self.settings.base_url)
+        self.dockwidget.clientIdLineEdit.setText(self.settings.client_id)
+        self.dockwidget.clientSecretLineEdit.setText(self.settings.client_secret)
 
-        self.dockwidget.destination.setText(self.settings.download_folder)
+        self.dockwidget.downloadFolderLineEdit.setText(self.settings.download_folder)
         self.set_values()
 
-        self.dockwidget.priority.clear()
-        self.dockwidget.priority.addItems([priority.nice_name for priority in ImagePriority])
+        self.dockwidget.priorityComboBox.clear()
+        self.dockwidget.priorityComboBox.addItems([priority.nice_name for priority in ImagePriority])
 
-        self.dockwidget.format.clear()
-        self.dockwidget.format.addItems([image_format.nice_name for image_format in ImageFormat])
+        self.dockwidget.imageFormatComboBox.clear()
+        self.dockwidget.imageFormatComboBox.addItems([image_format.nice_name for image_format in ImageFormat])
+
+        self.update_month()
+        self.toggle_extent('current')
+        self.dockwidget.calendarSpacer.hide()
+        self.update_current_wms_layers()
+
+    def login(self):
+        """ Uses credentials to connect to Sentinel Hub services and updates
+        """
+        new_settings = self.settings.copy()
+        new_settings.base_url = self.dockwidget.serviceUrlLineEdit.text()
+        new_settings.client_id = self.dockwidget.clientIdLineEdit.text()
+        new_settings.client_secret = self.dockwidget.clientSecretLineEdit.text()
+
+        new_manager = ConfigurationManager(new_settings, self.client)
+        configurations = new_manager.get_configurations(reload=True)
+
+        self.settings = new_settings
+        self.manager = new_manager
+        self.settings.save_credentials()
+
+        # TODO: reset everything
+        self.dockwidget.configurationComboBox.clear()
+        self.dockwidget.layersComboBox.clear()
+        self.dockwidget.crsComboBox.clear()
+
+        configuration_names = [configuration.name for configuration in configurations]
+        self.dockwidget.configurationComboBox.addItems(configuration_names)
+
+        initial_configuration_index = self.manager.get_configuration_index(self.settings.instance_id)
+        self.dockwidget.configurationComboBox.setCurrentIndex(initial_configuration_index)
+
+    def select_configuration(self):
+        """ A different configuration has been chosen
+        """
+        configuration_index = self.dockwidget.configurationComboBox.currentIndex()
+        if configuration_index < 0:
+            self.settings.instance_id = ''
+            return
+
+        self.settings.instance_id = self.manager.get_configurations()[configuration_index].id
+
+        layers = self.manager.get_layers(self.settings.instance_id)
+
+        self.dockwidget.layersComboBox.clear()
+        self.dockwidget.layersComboBox.addItems([layer.name for layer in layers])
+
+        initial_layer_index = self.manager.get_layer_index(self.settings.instance_id, self.settings.layer)
+        self.dockwidget.layersComboBox.setCurrentIndex(initial_layer_index)
+        self.settings.layer = self.manager.get_layers(self.settings.instance_id)[initial_layer_index].id
+
+        self.dockwidget.crsComboBox.clear()
+        crs_list = self.manager.get_available_crs()
+        self.dockwidget.crsComboBox.addItems([crs.name for crs in crs_list])
+        initial_crs_index = self.manager.get_crs_index(self.settings.crs)
+        self.dockwidget.crsComboBox.setCurrentIndex(initial_crs_index)
+        # TODO: setting of crs should be done via the other method
+
+        # self.update_instance_props(instance_changed=True)
+        # self.update_parameters()
+        # self.get_cloud_cover()
 
     def set_values(self):
         """ Updates some values for the wcs download request
         """
-        self.dockwidget.inputResX.setText(self.settings.parameters_wcs['resx'])
-        self.dockwidget.inputResY.setText(self.settings.parameters_wcs['resy'])
-        self.dockwidget.latMin.setText(self.custom_bbox_params['latMin'])
-        self.dockwidget.latMax.setText(self.custom_bbox_params['latMax'])
-        self.dockwidget.lngMin.setText(self.custom_bbox_params['lngMin'])
-        self.dockwidget.lngMax.setText(self.custom_bbox_params['lngMax'])
+        self.dockwidget.resXLineEdit.setText(self.settings.parameters_wcs['resx'])
+        self.dockwidget.resYLineEdit.setText(self.settings.parameters_wcs['resy'])
+        self.dockwidget.latMinLineEdit.setText(self.custom_bbox_params['latMin'])
+        self.dockwidget.latMaxLineEdit.setText(self.custom_bbox_params['latMax'])
+        self.dockwidget.lngMinLineEdit.setText(self.custom_bbox_params['lngMin'])
+        self.dockwidget.lngMaxLineEdit.setText(self.custom_bbox_params['lngMax'])
 
     # --------------------------------------------------------------------------
 
@@ -178,8 +294,8 @@ class SentinelHubPlugin:
         :param instance_changed: True if instance id has changed, False otherwise
         :type instance_changed: bool
         """
-        self.service_type = self.dockwidget.serviceTypeComboBox.currentText().lower()
-        self.dockwidget.createLayerLabel.setText('Create new {} layer'.format(self.service_type.upper()))
+        self.settings.service_type = self.dockwidget.serviceTypeComboBox.currentText().lower()
+        self.dockwidget.createLayerLabel.setText('Create new {} layer'.format(self.settings.service_type.upper()))
 
         if self.capabilities:
             layer_index = self.dockwidget.layersComboBox.currentIndex()
@@ -188,11 +304,11 @@ class SentinelHubPlugin:
             if not instance_changed:
                 self.dockwidget.layersComboBox.setCurrentIndex(layer_index)
 
-            self.dockwidget.epsg.clear()
-            if self.service_type == 'wms':
-                self.dockwidget.epsg.addItems([crs.name for crs in self.capabilities.crs_list])
-            if self.service_type == 'wmts':
-                self.dockwidget.epsg.addItems([crs.name for crs in self.capabilities.crs_list[:1]])
+            self.dockwidget.crsComboBox.clear()
+            if self.settings.service_type == 'wms':
+                self.dockwidget.crsComboBox.addItems([crs.name for crs in self.capabilities.crs_list])
+            if self.settings.service_type == 'wmts':
+                self.dockwidget.crsComboBox.addItems([crs.name for crs in self.capabilities.crs_list[:1]])
 
     def update_current_wms_layers(self, selected_layer=None):
         """
@@ -203,13 +319,13 @@ class SentinelHubPlugin:
         layer_names = []
         for layer in self.qgis_layers:
             layer_names.append(layer.name())
-        self.dockwidget.qgisLayerList.clear()
-        self.dockwidget.qgisLayerList.addItems(layer_names)
+        self.dockwidget.mapLayerComboBox.clear()
+        self.dockwidget.mapLayerComboBox.addItems(layer_names)
 
         if selected_layer:
             for index, layer in enumerate(self.qgis_layers):
                 if layer == selected_layer:
-                    self.dockwidget.qgisLayerList.setCurrentIndex(index)
+                    self.dockwidget.mapLayerComboBox.setCurrentIndex(index)
 
     @staticmethod
     def get_qgis_layers():
@@ -220,24 +336,6 @@ class SentinelHubPlugin:
         return [tree_layer.layer() for tree_layer in QgsProject.instance().layerTreeRoot().findLayers()]
 
     # --------------------------------------------------------------------------
-
-    def on_close_plugin(self):
-        """Cleanup necessary items here when plugin dockwidget is closed"""
-        # disconnects
-        self.dockwidget.closingPlugin.disconnect(self.on_close_plugin)
-        self.pluginIsActive = False
-
-    def unload(self):
-        """ This is called by QGIS when a user disables or uninstalls the plugin. This method removes the plugin and
-        it's icon from everywhere it appears in QGIS GUI.
-        """
-        for action in self.actions:
-            self.iface.removePluginWebMenu(
-                self.PLUGIN_NAME,
-                action
-            )
-            self.iface.removeToolBarIcon(action)
-        del self.toolbar
 
     def get_wcs_url(self, bbox, crs=None):
         """ Generate URL for WCS request from parameters
@@ -253,8 +351,8 @@ class SentinelHubPlugin:
         for parameter, value in request_parameters:
             if parameter in ('resx', 'resy'):
                 value = value.strip('m') + 'm'
-            if parameter == 'crs':
-                value = crs if crs else self.settings.parameters['crs']
+            if parameter == 'crs':  # TODO: fix
+                value = crs if crs else self.settings.crs
             url += '{}={}&'.format(parameter, value)
         return '{}bbox={}'.format(url, bbox)
 
@@ -266,57 +364,7 @@ class SentinelHubPlugin:
             url += '{}={}&'.format(parameter, value)
 
         return '{}bbox={}&time={}&srsname={}&maxcc=100'.format(url, self.bbox_to_string(self.get_bbox()), time_range,
-                                                               self.settings.parameters['crs'])
-
-    @staticmethod
-    def get_capabilities_url(base_url, service, instance_id, get_json=False):
-        """ Generates url for obtaining service capabilities
-        """
-        url = '{}/ogc/{}/{}?service={}&request=GetCapabilities&version=1.3.0'.format(base_url, service, instance_id, service)
-        if get_json:
-            return url + '&format=application/json'
-        return url
-
-    # ---------------------------------------------------------------------------
-
-    def get_capabilities(self, instance_id, service='wms'):
-        """ Get capabilities of desired service
-
-        :param instance_id: Sentinel Hub instance id
-        :type instance_id: str
-        :param service: Service (wms, wfs, wcs)
-        :type service: str
-        :return: Capabilities class or none
-        :rtype: Capabilities or None
-        """
-        if not instance_id:
-            return None
-
-        try:
-            response = self.client.download(self.get_capabilities_url(BaseUrl.MAIN, service,
-                                                                      instance_id), raise_invalid_id=True)
-            self.settings.base_url = BaseUrl.MAIN
-        except InvalidInstanceId:
-            response = self.client.download(self.get_capabilities_url(BaseUrl.EOCLOUD, service, instance_id))
-            self.settings.base_url = BaseUrl.EOCLOUD
-
-        if not response:
-            return None
-
-        capabilities = Capabilities(instance_id, self.settings.base_url)
-
-        xml_root = ElementTree.fromstring(response.content)
-        capabilities.load_xml(xml_root)
-
-        if self.settings.base_url == BaseUrl.MAIN:
-            json_response = self.client.download(self.get_capabilities_url(self.settings.base_url, service, instance_id,
-                                                                           get_json=True), raise_invalid_id=True)
-            try:
-                capabilities.load_json(json_response.json())
-            except ValueError:
-                pass
-
-        return capabilities
+                                                               self.settings.crs)
 
     def get_cloud_cover(self):
         """ Get cloud cover for current extent.
@@ -391,7 +439,7 @@ class SentinelHubPlugin:
         name = self.get_qgis_layer_name()
 
         time_str = self.get_time()
-        service_uri = get_wms_uri(self.settings, time_str) if self.service_type == 'wms' else \
+        service_uri = get_wms_uri(self.settings, time_str) if self.settings.service_type == 'wms' else \
             get_wmts_uri(self.settings, time_str)
         QgsMessageLog.logMessage(service_uri)
         new_layer = QgsRasterLayer(service_uri, name, 'wms')
@@ -410,7 +458,7 @@ class SentinelHubPlugin:
         Get window bbox
         """
         bbox = self.iface.mapCanvas().extent()
-        target_crs = QgsCoordinateReferenceSystem(crs if crs else self.settings.parameters['crs'])
+        target_crs = QgsCoordinateReferenceSystem(crs if crs else self.settings.crs)
         current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapSettings().destinationCrs().authid())
 
         if current_crs != target_crs:
@@ -422,9 +470,9 @@ class SentinelHubPlugin:
     def bbox_to_string(self, bbox, crs=None):
         """ Transforms BBox object into string
         """
-        target_crs = QgsCoordinateReferenceSystem(crs if crs else self.settings.parameters['crs'])
+        target_crs = QgsCoordinateReferenceSystem(crs if crs else self.settings.crs)
 
-        if target_crs.authid() == CRS.WGS84:
+        if target_crs.authid() == CrsType.WGS84:
             precision = 6
             bbox_list = [bbox.yMinimum(), bbox.xMinimum(), bbox.yMaximum(), bbox.xMaximum()]
         else:
@@ -447,8 +495,8 @@ class SentinelHubPlugin:
         From Custom extent get values, save them and show them in UI
         :return:
         """
-        bbox = self.get_bbox(crs=CRS.WGS84)
-        bbox_list = self.bbox_to_string(bbox, crs=CRS.WGS84).split(',')
+        bbox = self.get_bbox(crs=CrsType.WGS84)
+        bbox_list = self.bbox_to_string(bbox, crs=CrsType.WGS84).split(',')
         self.custom_bbox_params['latMin'] = bbox_list[0]
         self.custom_bbox_params['lngMin'] = bbox_list[1]
         self.custom_bbox_params['latMax'] = bbox_list[2]
@@ -459,7 +507,7 @@ class SentinelHubPlugin:
     def get_bbox_size(self, bbox, crs=None):
         """ Returns approximate width and height of bounding box in meters
         """
-        bbox_crs = QgsCoordinateReferenceSystem(crs if crs else self.settings.parameters['crs'])
+        bbox_crs = QgsCoordinateReferenceSystem(crs if crs else self.settings.crs)
         utm_crs = QgsCoordinateReferenceSystem(self.lng_to_utm_zone(
             (bbox.xMinimum() + bbox.xMaximum()) / 2,
             (bbox.yMinimum() + bbox.yMaximum()) / 2))
@@ -483,7 +531,7 @@ class SentinelHubPlugin:
         if not self.settings.instance_id:
             return self.missing_instance_id()
 
-        selected_index = self.dockwidget.qgisLayerList.currentIndex()
+        selected_index = self.dockwidget.mapLayerComboBox.currentIndex()
         if selected_index < 0:
             return
 
@@ -497,7 +545,7 @@ class SentinelHubPlugin:
                     self.update_current_wms_layers(selected_layer=new_layer)
                 return
         self.show_message('Chosen layer {} does not exist anymore.'
-                          ''.format(self.dockwidget.qgisLayerList.currentText()), MessageType.INFO)
+                          ''.format(self.dockwidget.mapLayerComboBox.currentText()), MessageType.INFO)
         self.update_current_wms_layers()
 
     def update_parameters(self):
@@ -509,25 +557,25 @@ class SentinelHubPlugin:
             self.update_selected_crs()
             self.update_selected_layer()
 
-        priority_index = self.dockwidget.priority.currentIndex()
+        priority_index = self.dockwidget.priorityComboBox.currentIndex()
         self.settings.parameters['priority'] = list(ImagePriority)[priority_index].url_param
-        self.settings.parameters['maxcc'] = str(self.dockwidget.maxcc.value())
+        self.settings.parameters['maxcc'] = str(self.dockwidget.maxccSlider.value())
         self.settings.parameters['time'] = self.get_time()
 
     def update_selected_crs(self):
         """ Updates crs with selected Sentinel Hub CRS
         """
-        crs_index = self.dockwidget.epsg.currentIndex()
+        crs_index = self.dockwidget.crsComboBox.currentIndex()
         wms_crs = self.capabilities.crs_list
         if 0 <= crs_index < len(wms_crs):
-            self.settings.parameters['crs'] = wms_crs[crs_index].id
+            self.settings.crs = wms_crs[crs_index].id
 
     def update_selected_layer(self):
         """ Updates properties of selected Sentinel Hub layer
         """
         layers_index = self.dockwidget.layersComboBox.currentIndex()
         old_data_source = self.data_source
-        wms_layers = self.capabilities.layers
+        wms_layers = self.manager.get_layers(self.settings.instance_id)
         if 0 <= layers_index < len(wms_layers):
             self.settings.parameters['layers'] = wms_layers[layers_index].id
             self.settings.parameters_wcs['coverage'] = wms_layers[layers_index].id
@@ -548,29 +596,29 @@ class SentinelHubPlugin:
         else:
             self.data_source = None
 
-        if self.is_cloudless_source() and not self.dockwidget.maxcc.isHidden():
-            self.dockwidget.maxcc.hide()
+        if self.is_cloudless_source() and not self.dockwidget.maxccSlider.isHidden():
+            self.dockwidget.maxccSlider.hide()
             self.dockwidget.maxccLabel.hide()
-        if not self.is_cloudless_source() and self.dockwidget.maxcc.isHidden():
-            self.dockwidget.maxcc.show()
+        if not self.is_cloudless_source() and self.dockwidget.maxccSlider.isHidden():
+            self.dockwidget.maxccSlider.show()
             self.dockwidget.maxccLabel.show()
 
         """
         # This doesn't hide vertical spacer and therefore doesn't look good
-        if self.is_timeless_source() and not self.dockwidget.calendar.isHidden():
-            self.dockwidget.calendar.hide()
-            self.dockwidget.exactDate.hide()
+        if self.is_timeless_source() and not self.dockwidget.calendarWidget.isHidden():
+            self.dockwidget.calendarWidget.hide()
+            self.dockwidget.exactDateCheckBox.hide()
             self.dockwidget.timeRangeLabel.hide()
             self.dockwidget.timeLabel.hide()
-            self.dockwidget.time0.hide()
-            self.dockwidget.time1.hide()
-        if not self.is_timeless_source() and self.dockwidget.calendar.isHidden():
-            self.dockwidget.calendar.show()
-            self.dockwidget.exactDate.show()
+            self.dockwidget.startTimeLineEdit.hide()
+            self.dockwidget.endTimeLineEdit.hide()
+        if not self.is_timeless_source() and self.dockwidget.calendarWidget.isHidden():
+            self.dockwidget.calendarWidget.show()
+            self.dockwidget.exactDateCheckBox.show()
             self.dockwidget.timeRangeLabel.show()
             self.dockwidget.timeLabel.show()
-            self.dockwidget.time0.show()
-            self.dockwidget.time1.show()
+            self.dockwidget.startTimeLineEdit.show()
+            self.dockwidget.endTimeLineEdit.show()
         """
 
         if old_data_source != self.data_source:
@@ -601,14 +649,14 @@ class SentinelHubPlugin:
         Update Max Cloud Coverage Label when slider value change
         :return:
         """
-        self.dockwidget.maxccLabel.setText('Cloud coverage {}%'.format(self.dockwidget.maxcc.value()))
+        self.dockwidget.maxccLabel.setText('Cloud coverage {}%'.format(self.dockwidget.maxccSlider.value()))
 
     def get_time(self):
         """
         Format time parameter according to settings
         :return:
         """
-        if self.dockwidget.exactDate.isChecked():
+        if self.dockwidget.exactDateCheckBox.isChecked():
             return '{}/{}/P1D'.format(self.settings.time0, self.settings.time0)
         if self.settings.time0 == '':
             return self.settings.time1
@@ -623,15 +671,15 @@ class SentinelHubPlugin:
         time1 - ending time
         :return:
         """
-        calendar_time = str(self.dockwidget.calendar.selectedDate().toPyDate())
+        calendar_time = str(self.dockwidget.calendarWidget.selectedDate().toPyDate())
 
-        if self.settings.active_time == 'time0' and (self.dockwidget.exactDate.isChecked() or not self.settings.time1 or
+        if self.settings.active_time == 'time0' and (self.dockwidget.exactDateCheckBox.isChecked() or not self.settings.time1 or
                                             calendar_time <= self.settings.time1):
             self.settings.time0 = calendar_time
-            self.dockwidget.time0.setText(calendar_time)
+            self.dockwidget.startTimeLineEdit.setText(calendar_time)
         elif self.settings.active_time == 'time1' and (not self.settings.time0 or self.settings.time0 <= calendar_time):
             self.settings.time1 = calendar_time
-            self.dockwidget.time1.setText(calendar_time)
+            self.dockwidget.endTimeLineEdit.setText(calendar_time)
         else:
             self.show_message('Start date must not be larger than end date', MessageType.INFO)
 
@@ -644,7 +692,7 @@ class SentinelHubPlugin:
         """
         style = QTextCharFormat()
         style.setBackground(Qt.white)
-        self.dockwidget.calendar.setDateTextFormat(QDate(), style)
+        self.dockwidget.calendarWidget.setDateTextFormat(QDate(), style)
 
     def update_calendar_from_cloud_cover(self):
         """
@@ -657,7 +705,7 @@ class SentinelHubPlugin:
                 d = date.split('-')
                 style = QTextCharFormat()
                 style.setBackground(Qt.gray)
-                self.dockwidget.calendar.setDateTextFormat(QDate(int(d[0]), int(d[1]), int(d[2])), style)
+                self.dockwidget.calendarWidget.setDateTextFormat(QDate(int(d[0]), int(d[1]), int(d[2])), style)
 
     def move_calendar(self, active):
         """
@@ -670,13 +718,13 @@ class SentinelHubPlugin:
             self.dockwidget.calendarSpacer.show()
         self.settings.active_time = active
 
-    def select_destination(self):
+    def select_download_folder(self):
         """
         Opens dialog to select destination folder
         :return:
         """
         folder = QFileDialog.getExistingDirectory(self.dockwidget, "Select folder")
-        self.dockwidget.destination.setText(folder)
+        self.dockwidget.downloadFolderLineEdit.setText(folder)
         self.change_download_folder()
 
     def download_caption(self):
@@ -697,7 +745,7 @@ class SentinelHubPlugin:
         self.update_parameters()
 
         if not self.settings.download_folder:
-            self.select_destination()
+            self.select_download_folder()
             if not self.settings.download_folder:
                 return self.show_message("Download canceled. No destination set.", MessageType.CRITICAL)
 
@@ -707,8 +755,8 @@ class SentinelHubPlugin:
             return self.show_message("Unable to transform to selected CRS, please zoom in or change CRS",
                                      MessageType.CRITICAL)
 
-        bbox_str = self.bbox_to_string(bbox, None if self.download_current_window else CRS.WGS84)
-        url = self.get_wcs_url(bbox_str, None if self.download_current_window else CRS.WGS84)
+        bbox_str = self.bbox_to_string(bbox, None if self.download_current_window else CrsType.WGS84)
+        url = self.get_wcs_url(bbox_str, None if self.download_current_window else CrsType.WGS84)
         filename = self.get_filename(bbox_str)
 
         self.download_wcs_data(url, filename)
@@ -751,7 +799,7 @@ class SentinelHubPlugin:
         :rtype: str
         """
         time_interval = self.settings.parameters['time'].split('/')[:2]
-        if self.dockwidget.exactDate.isChecked():
+        if self.dockwidget.exactDateCheckBox.isChecked():
             time_interval = time_interval[:1]
         if len(time_interval) == 1:
             if not time_interval[0]:
@@ -769,12 +817,12 @@ class SentinelHubPlugin:
         :return: qgis layer name
         :rtype: str
         """
-        plugin_params = [self.service_type.upper()]
+        plugin_params = [self.settings.service_type.upper()]
         if not self.is_timeless_source():
             plugin_params.append(self.get_time_name())
         if not self.is_cloudless_source():
             plugin_params.append('{}%'.format(self.settings.parameters['maxcc']))
-        plugin_params.extend([self.settings.parameters['priority'], self.settings.parameters['crs']])
+        plugin_params.extend([self.settings.parameters['priority'], self.settings.crs])
 
         return '{} - {} ({})'.format(self.get_source_name(), self.settings.parameters['title'], ', '.join(plugin_params))
 
@@ -791,7 +839,7 @@ class SentinelHubPlugin:
         Update image format
         :return:
         """
-        image_format_index = self.dockwidget.format.currentIndex()
+        image_format_index = self.dockwidget.imageFormatComboBox.currentIndex()
         self.settings.parameters_wcs['format'] = list(ImageFormat)[image_format_index].url_param
 
     def change_exact_date(self):
@@ -799,54 +847,29 @@ class SentinelHubPlugin:
         Change if using exact date or not
         :return:
         """
-        if self.dockwidget.exactDate.isChecked():
-            self.dockwidget.time1.hide()
+        if self.dockwidget.exactDateCheckBox.isChecked():
+            self.dockwidget.endTimeLineEdit.hide()
             self.dockwidget.timeLabel.hide()
             self.move_calendar('time0')
         else:
             if self.settings.time0 and self.settings.time1 and self.settings.time0 > self.settings.time1:
                 self.settings.time1 = ''
                 self.settings.parameters['time'] = self.get_time()
-                self.dockwidget.time1.setText(self.settings.time1)
+                self.dockwidget.endTimeLineEdit.setText(self.settings.time1)
 
-            self.dockwidget.time1.show()
+            self.dockwidget.endTimeLineEdit.show()
             self.dockwidget.timeLabel.show()
-
-    def change_instance_id(self):
-        """
-        Change Instance ID, and check that it is valid
-        :return:
-        """
-        new_instance_id = self.dockwidget.instanceId.text()
-        if new_instance_id == self.settings.instance_id:
-            return
-
-        if new_instance_id == '':
-            capabilities = Capabilities(new_instance_id, BaseUrl.MAIN)
-        else:
-            capabilities = self.get_capabilities(new_instance_id)
-
-        if capabilities:
-            self.settings.instance_id = new_instance_id
-            self.capabilities = capabilities
-            self.update_instance_props(instance_changed=True)
-            if self.settings.instance_id:
-                self.show_message("New Instance ID and layers set.", MessageType.SUCCESS)
-            self.update_parameters()
-            self.get_cloud_cover()
-        else:
-            self.dockwidget.instanceId.setText(self.settings.instance_id)
 
     def change_download_folder(self):
         """ Sets new download folder"""
-        new_download_folder = self.dockwidget.destination.text()
+        new_download_folder = self.dockwidget.downloadFolderLineEdit.text()
         if new_download_folder == self.settings.download_folder:
             return
 
         if new_download_folder == '' or os.path.exists(new_download_folder):
             self.settings.download_folder = new_download_folder
         else:
-            self.dockwidget.destination.setText(self.settings.download_folder)
+            self.dockwidget.downloadFolderLineEdit.setText(self.settings.download_folder)
             self.show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
                               MessageType.CRITICAL)
 
@@ -859,8 +882,8 @@ class SentinelHubPlugin:
         self.get_cloud_cover()
 
     def get_calendar_month_interval(self):
-        year = self.dockwidget.calendar.yearShown()
-        month = self.dockwidget.calendar.monthShown()
+        year = self.dockwidget.calendarWidget.yearShown()
+        month = self.dockwidget.calendarWidget.monthShown()
         _, number_of_days = calendar.monthrange(year, month)
         first = datetime.date(year, month, 1)
         last = datetime.date(year, month, number_of_days)
@@ -883,20 +906,20 @@ class SentinelHubPlugin:
     def update_dates(self):
         """ Checks if newly inserted dates are valid and updates date attributes
         """
-        new_time0 = self.parse_date(self.dockwidget.time0.text())
-        new_time1 = self.parse_date(self.dockwidget.time1.text())
+        new_time0 = self.parse_date(self.dockwidget.startTimeLineEdit.text())
+        new_time1 = self.parse_date(self.dockwidget.endTimeLineEdit.text())
 
         if new_time0 is None or new_time1 is None:
             self.show_message('Please insert a valid date in format YYYY-MM-DD', MessageType.INFO)
-        elif new_time0 and new_time1 and new_time0 > new_time1 and not self.dockwidget.exactDate.isChecked():
+        elif new_time0 and new_time1 and new_time0 > new_time1 and not self.dockwidget.exactDateCheckBox.isChecked():
             self.show_message('Start date must not be larger than end date', MessageType.INFO)
         else:
             self.settings.time0 = new_time0
             self.settings.time1 = new_time1
             self.settings.parameters['time'] = self.get_time()
 
-        self.dockwidget.time0.setText(self.settings.time0)
-        self.dockwidget.time1.setText(self.settings.time1)
+        self.dockwidget.startTimeLineEdit.setText(self.settings.time0)
+        self.dockwidget.endTimeLineEdit.setText(self.settings.time1)
 
     @staticmethod
     def parse_date(date):
@@ -936,12 +959,12 @@ class SentinelHubPlugin:
     def get_values(self):
         """ Retrieves numerical values from user input"""
         new_values = {
-            'resx': self.dockwidget.inputResX.text(),
-            'resy': self.dockwidget.inputResY.text(),
-            'latMin': self.dockwidget.latMin.text(),
-            'latMax': self.dockwidget.latMax.text(),
-            'lngMin': self.dockwidget.lngMin.text(),
-            'lngMax': self.dockwidget.lngMax.text()
+            'resx': self.dockwidget.resXLineEdit.text(),
+            'resy': self.dockwidget.resYLineEdit.text(),
+            'latMin': self.dockwidget.latMinLineEdit.text(),
+            'latMax': self.dockwidget.latMaxLineEdit.text(),
+            'lngMin': self.dockwidget.lngMinLineEdit.text(),
+            'lngMax': self.dockwidget.lngMaxLineEdit.text()
         }
         for name, value in new_values.items():
             if value != '':
@@ -954,135 +977,20 @@ class SentinelHubPlugin:
     def change_show_logo(self):
         """ Determines if Sentinel Hub logo will be shown in downloaded image
         """
-        self.settings.parameters_wcs['showLogo'] = 'true' if self.dockwidget.showLogoBox.isChecked() else 'false'
+        self.settings.parameters_wcs['showLogo'] = 'true' if self.dockwidget.showLogoCheckBox.isChecked() else 'false'
 
-    def update_credentials(self):
-        """ Update login credentials
+    def validate_base_url(self):
+        """ Makes sure the base url is in the correct format
         """
         base_url = self.dockwidget.baseUrl.text()
-        self.settings.base_url = base_url.rstrip('/')
-        if not self.settings.base_url:
-            self.settings.base_url = BaseUrl.MAIN
-        if self.settings.base_url != base_url:
-            self.dockwidget.baseUrl.setText(self.settings.base_url)
+        expected_base_url = base_url.rstrip('/')
+        if not expected_base_url:
+            expected_base_url = BaseUrl.MAIN
+        if base_url != expected_base_url:
+            self.dockwidget.baseUrl.setText(expected_base_url)
 
-        self.settings.client_id = self.dockwidget.clientId.text()
-        self.settings.client_secret = self.dockwidget.clientSecret.text()
-
-    def login(self):
-        """ Uses credentials to connect to Sentinel Hub services and updates
+    def on_close_plugin(self):
+        """ Cleanup necessary items here when a close event on the dockwidget is triggered
         """
-        # TODO: reset everything
-        self.dockwidget.configurationComboBox.clear()
-        self.dockwidget.layersComboBox.clear()
-
-        self.configuration = ConfigurationManager(self.settings, self.client)
-        instances = self.configuration.get_instances(reload=True)
-
-        self.settings.save_credentials()
-
-        configuration_names = [instance_name for _, instance_name in instances]
-        self.dockwidget.configurationComboBox.addItems(configuration_names)
-
-        initial_configuration_index = self.configuration.get_configuration_index(self.settings.instance_id)
-        self.dockwidget.configurationComboBox.setCurrentIndex(initial_configuration_index)
-        if initial_configuration_index > -1:
-            self.select_configuration()
-        else:
-            self.settings.instance_id = ''
-
-    def select_configuration(self):
-        configuration_index = self.dockwidget.configurationComboBox.currentIndex()
-        self.settings.instance_id = self.configuration.get_instances()[configuration_index][0]
-
-        layers = self.configuration.get_layers(self.settings.instance_id)
-
-        self.dockwidget.layersComboBox.clear()
-        layer_titles = [layer_title for _, layer_title in layers]
-        self.dockwidget.layersComboBox.addItems(layer_titles)
-
-        initial_layer_index = self.configuration.get_layer_index(self.settings.instance_id, self.settings.layer)
-        self.dockwidget.layersComboBox.setCurrentIndex(initial_layer_index)
-        self.settings.layer = self.configuration.get_layers(self.settings.instance_id)[initial_layer_index][0]
-
-        # TODO: CRS
-
-    def run(self):
-        """ Run method that loads and starts the plugin and binds all UI actions
-        """
-        if self.pluginIsActive and self.dockwidget is not None:  # TODO: do we even need pluginIsActive flag?
-            return
-        self.pluginIsActive = True
-
-        # Initial function calls
-        self.dockwidget = SentinelHubDockWidget()
-        # self.capabilities = self.get_capabilities(self.settings.instance_id)
-        self.init_gui_settings()
-        self.update_month()
-        self.toggle_extent('current')
-        self.dockwidget.calendarSpacer.hide()
-        self.update_current_wms_layers()
-
-        # Login widget:
-        self.dockwidget.baseUrl.editingFinished.connect(self.update_credentials)
-        self.dockwidget.clientId.editingFinished.connect(self.update_credentials)
-        self.dockwidget.clientSecret.editingFinished.connect(self.update_credentials)
-        self.dockwidget.buttonLogin.clicked.connect(self.login)
-
-        # Create widget
-        self.dockwidget.configurationComboBox.currentIndexChanged.connect(self.select_configuration)
-
-        # Bind actions to buttons
-        self.dockwidget.buttonAddWms.clicked.connect(self.add_qgis_layer)
-        self.dockwidget.buttonUpdateWms.clicked.connect(self.update_qgis_layer)
-
-        # This overrides a press event, better solution would be to detect changes of QGIS layers
-        self.layer_selection_event = self.dockwidget.qgisLayerList.mousePressEvent
-
-        def new_layer_selection_event(event):
-            self.update_current_wms_layers()
-            self.layer_selection_event(event)
-
-        self.dockwidget.qgisLayerList.mousePressEvent = new_layer_selection_event
-
-        # Render input fields changes and events
-        # self.dockwidget.instanceId.editingFinished.connect(self.change_instance_id)
-        self.dockwidget.serviceTypeComboBox.currentIndexChanged.connect(self.update_service_type)
-        self.dockwidget.layersComboBox.currentIndexChanged.connect(self.update_selected_layer)
-
-        self.dockwidget.time0.mousePressEvent = lambda _: self.move_calendar('time0')
-        self.dockwidget.time1.mousePressEvent = lambda _: self.move_calendar('time1')
-        self.dockwidget.time0.editingFinished.connect(self.update_dates)
-        self.dockwidget.time1.editingFinished.connect(self.update_dates)
-        self.dockwidget.calendar.clicked.connect(self.add_time)
-        self.dockwidget.exactDate.stateChanged.connect(self.change_exact_date)
-        self.dockwidget.calendar.currentPageChanged.connect(self.update_month)
-        self.dockwidget.maxcc.valueChanged.connect(self.update_maxcc_label)
-        self.dockwidget.maxcc.sliderReleased.connect(self.update_maxcc)
-        self.dockwidget.destination.editingFinished.connect(self.change_download_folder)
-
-        # Download input fields changes and events
-        self.dockwidget.format.currentIndexChanged.connect(self.update_download_format)
-        self.dockwidget.inputResX.editingFinished.connect(self.update_values)
-        self.dockwidget.inputResY.editingFinished.connect(self.update_values)
-
-        self.dockwidget.radioCurrentExtent.clicked.connect(lambda: self.toggle_extent('current'))
-        self.dockwidget.radioCustomExtent.clicked.connect(lambda: self.toggle_extent('custom'))
-        self.dockwidget.latMin.editingFinished.connect(self.update_values)
-        self.dockwidget.latMax.editingFinished.connect(self.update_values)
-        self.dockwidget.lngMin.editingFinished.connect(self.update_values)
-        self.dockwidget.lngMax.editingFinished.connect(self.update_values)
-
-        self.dockwidget.showLogoBox.stateChanged.connect(self.change_show_logo)
-
-        self.dockwidget.buttonDownload.clicked.connect(self.download_caption)
-        self.dockwidget.refreshExtent.clicked.connect(self.take_window_bbox)
-        self.dockwidget.selectDestination.clicked.connect(self.select_destination)
-
-        # Tracks which layer is selected in left menu
-        # self.iface.currentLayerChanged.connect(self.update_current_wms_layers)
-
-        self.dockwidget.closingPlugin.connect(self.on_close_plugin)
-
-        self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dockwidget)
-        self.dockwidget.show()
+        self.dockwidget.closingPlugin.disconnect(self.on_close_plugin)
+        self.dockwidget = None

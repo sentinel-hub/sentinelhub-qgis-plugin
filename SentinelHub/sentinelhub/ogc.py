@@ -31,7 +31,8 @@ def get_wms_uri(settings, time_str):
     }
     url = quote_plus('{}?{}'.format(_get_service_endpoint(settings, 'wms'), urlencode(url_params)))
 
-    uri_params = list(WMS_PARAMETERS.items()) + list(settings.parameters.items()) + [('url', url)]
+    common_parameters = _get_common_parameters(settings)
+    uri_params = list(WMS_PARAMETERS.items()) + list(common_parameters.items()) + [('url', url)]
     return _join_uri_params(uri_params)
 
 
@@ -62,7 +63,8 @@ def get_wmts_uri(settings, time_str):
     }
     url = quote_plus('{}?{}'.format(_get_service_endpoint(settings, 'wmts'), urlencode(url_params)))
 
-    uri_params = list(WMTS_PARAMETERS.items()) + list(settings.parameters.items()) + [('url', url)]
+    common_parameters = _get_common_parameters(settings)
+    uri_params = list(WMTS_PARAMETERS.items()) + list(common_parameters.items()) + [('url', url)]
     return _join_uri_params(uri_params)
 
 
@@ -77,3 +79,10 @@ def _join_uri_params(param_list):
     """
     param_strings = ('{}={}'.format(key, value) for key, value in param_list)
     return '&'.join(param_strings)
+
+
+def _get_common_parameters(settings):
+    return {
+        'crs': settings.crs,
+        **settings.parameters
+    }

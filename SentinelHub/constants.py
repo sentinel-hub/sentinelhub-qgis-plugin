@@ -27,7 +27,7 @@ class MessageType(Enum):
         return self.value[1]
 
 
-class CRS:
+class CrsType:
     """ Class containing CRS EPSG strings
     """
     POP_WEB = 'EPSG:3857'
@@ -72,10 +72,11 @@ class BaseUrl:
     EOCLOUD = 'http://services.eocloud.sentinel-hub.com/v1/'
 
 
-SERVICE_TYPES = [
-    'WMS',
-    'WMTS'
-]
+class ServiceType:
+    WMS = 'WMS'
+    WMTS = 'WMTS'
+    WFS = 'WFS'
+
 
 MAX_CLOUD_COVER_IMAGE_SIZE = 1000000
 

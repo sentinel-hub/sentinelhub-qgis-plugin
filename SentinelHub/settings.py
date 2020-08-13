@@ -2,9 +2,11 @@
 """
 Module containing parameters and settings for Sentinel Hub services
 """
+import copy
+
 from PyQt5.QtCore import QSettings
 
-from .constants import BaseUrl
+from .constants import BaseUrl, CrsType
 
 
 class Settings:
@@ -17,6 +19,7 @@ class Settings:
     instance_id = ''
     service_type = ''
     layer = ''
+    crs = CrsType.POP_WEB
 
     download_folder = ''
 
@@ -29,8 +32,7 @@ class Settings:
         'layers': '',
         'maxcc': '100',
         'priority': 'mostRecent',
-        'time': '',
-        'crs': 'EPSG:3857'
+        'time': ''
     }
 
     # WFS parameters
@@ -76,7 +78,7 @@ class Settings:
             store_path = self._get_store_path(key)
             QSettings().setValue(store_path, value)
 
-        super.__setattr__(key, value)
+        super().__setattr__(key, value)
 
     def load_local_settings(self):
         """ Loads settings from QGIS local store
@@ -103,3 +105,8 @@ class Settings:
         """ Provides a location of the parameter in the local store
         """
         return '{}/{}'.format(self._STORE_NAMESPACE, parameter_name)
+
+    def copy(self):
+        """ Provides a copy of a Settings object instance
+        """
+        return copy.copy(self)
