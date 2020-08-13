@@ -16,6 +16,7 @@ class ConfigurationManager:
         self._layer_to_index_maps = {}
 
         self._wms_capabilities = None
+        self._data_sources_names_map = None
 
     @property
     def configuration_url(self):
@@ -31,9 +32,9 @@ class ConfigurationManager:
 
         if reload or self._configurations is None:
             url = '{}/wms/instances'.format(self.configuration_url)
-            conf_list = self.client.download(url, use_session=True, settings=self.settings).json()
+            result_list = self.client.download(url, use_session=True, settings=self.settings).json()
 
-            self._configurations = [Configuration(conf['id'], conf['name']) for conf in conf_list]
+            self._configurations = [Configuration.load(result) for result in result_list]
             self._configurations.sort(key=lambda conf: conf.name.lower())
 
             self._instance_to_index_map = {conf.id: index for index, conf in enumerate(self._configurations)}
@@ -49,9 +50,9 @@ class ConfigurationManager:
 
         if reload or configuration.layers is None:
             url = '{}/wms/instances/{}/layers'.format(self.configuration_url, instance_id)
-            layer_list = self.client.download(url, use_session=True, settings=self.settings).json()
+            result_list = self.client.download(url, use_session=True, settings=self.settings).json()
 
-            configuration.layers = [Layer(layer['id'], layer['title']) for layer in layer_list]
+            configuration.layers = [Layer.load(result) for result in result_list]
             configuration.layers.sort(key=lambda layer: layer.name.lower())
 
             self._layer_to_index_maps[configuration.id] = {
@@ -63,10 +64,29 @@ class ConfigurationManager:
     def get_layer_index(self, instance_id, layer_id):
         return self._layer_to_index_maps[instance_id].get(layer_id, 0)
 
-    def get_datasets(self):
-        url = '{}/datasets'.format(self.configuration_url)
+    def get_layer_url(self, instance_id, layer_id):
+        conf_index = self.get_configuration_index(instance_id)
+        layer_index = self.get_layer_index(instance_id, layer_id)
+        data_source = self._configurations[conf_index].layers[layer_index].data_source
 
-        return self.client.download(url, use_session=True, settings=self.settings).json()
+        if data_source.service_url is None:
+            url = '{}/datasets/{}/sources/{}'.format(self.configuration_url, data_source.type, data_source.id)
+            result = self.client.download(url, use_session=True, settings=self.settings).json()
+
+            data_source.name = result['description']
+            data_source.service_url = result['settings']['indexServiceUrl'].rsplit('/', 1)[0]
+
+        return data_source.service_url
+
+    def get_datasource_names(self):
+        if self._data_sources_names_map is None:
+            url = '{}/datasets'.format(self.configuration_url)
+            result_list = self.client.download(url, use_session=True, settings=self.settings).json()
+
+            self._data_sources_names_map = {result['id']: result['name'] for result in result_list}
+            # TODO: save into layer datasource objects
+
+        # TODO: join with layers...
 
     def get_available_crs(self):
         return self.wms_capabilities.get_available_crs()
