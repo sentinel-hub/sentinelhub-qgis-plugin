@@ -78,6 +78,14 @@ class ServiceType:
     WFS = 'WFS'
 
 
+AVAILABLE_SERVICE_TYPES = [ServiceType.WMS, ServiceType.WMTS, ServiceType.WFS]
+
+
+class ExtentType(Enum):
+    CURRENT = 'current'
+    CUSTOM = 'custom'
+
+
 MAX_CLOUD_COVER_IMAGE_SIZE = 1000000
 
 DATA_SOURCES = {

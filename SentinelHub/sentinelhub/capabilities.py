@@ -30,7 +30,7 @@ class WmsCapabilities:
             self._sort_crs_list()
 
         if self.settings.service_type.upper() == ServiceType.WMTS:
-            return self._crs_list[:1]  # TODO: maybe this is not necessary
+            return self._crs_list[:2]  # TODO: maybe this is not necessary
         return self._crs_list
 
     def get_crs_index(self, crs_id):
@@ -40,8 +40,8 @@ class WmsCapabilities:
 
         crs_index = self._crs_to_index_map.get(crs_id, 0)
 
-        if crs_index > 1 and self.settings.service_type.upper() == ServiceType.WMTS:
-            return 0  # TODO: maybe this is not necessary
+        if crs_index >= len(self.get_available_crs()):
+            return 0
         return crs_index
 
     def _load_xml(self):

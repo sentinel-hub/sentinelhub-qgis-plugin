@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Module containing parameters and settings for Sentinel Hub services
 """
@@ -6,7 +5,7 @@ import copy
 
 from PyQt5.QtCore import QSettings
 
-from .constants import BaseUrl, CrsType
+from .constants import BaseUrl, ServiceType, CrsType, ExtentType
 
 
 class Settings:
@@ -17,10 +16,12 @@ class Settings:
     client_secret = ''
 
     instance_id = ''
-    service_type = ''
+    service_type = ServiceType.WMS
     layer = ''
+    data_source = ''
     crs = CrsType.POP_WEB
 
+    download_extent_type = ExtentType.CURRENT
     download_folder = ''
 
     active_time = 'time0'
@@ -60,9 +61,12 @@ class Settings:
     _STORE_NAMESPACE = 'SentinelHub'
     _AUTO_SAVE_STORE_PARAMETERS = {
         'instance_id',
+        'service_type',
         'layer',
+        'crs',
         'download_folder'
     }
+    _auto_save = False
     _CREDENTIAL_STORE_PARAMETERS = {
         'base_url',
         'client_id',
@@ -72,9 +76,10 @@ class Settings:
 
     def __init__(self):
         self.load_local_settings()
+        self._auto_save = True
 
     def __setattr__(self, key, value):
-        if key in self._AUTO_SAVE_STORE_PARAMETERS:
+        if self._auto_save and key in self._AUTO_SAVE_STORE_PARAMETERS:
             store_path = self._get_store_path(key)
             QSettings().setValue(store_path, value)
 
