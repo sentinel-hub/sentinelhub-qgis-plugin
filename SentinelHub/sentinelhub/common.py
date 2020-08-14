@@ -46,10 +46,21 @@ class DataSource:
     """
     def __init__(self, data_source_type, data_source_id, collection_id=None, name=None, service_url=None):
         self.type = data_source_type
-        self.id = data_source_id
+        self.id = int(data_source_id)
         self.collection_id = collection_id
         self.name = name
         self.service_url = None
+
+    def get_wfs_id(self):
+        """ TODO: find a better way
+        """
+        if self.id == 1:
+            return 'S2.TILE'
+
+        wfs_id = 'DSS{}'.format(self.id)
+        if self.collection_id is not None:
+            wfs_id = '{}-{}'.format(wfs_id, self.collection_id)
+        return wfs_id
 
 
 class CRS:

@@ -1,8 +1,6 @@
 """
 Module for querying Sentinel Hub Configuration API
 """
-from qgis.core import QgsMessageLog
-
 from .capabilities import WmsCapabilities
 from .common import Configuration, Layer
 
@@ -76,8 +74,6 @@ class ConfigurationManager:
             url = '{}/datasets/{}/sources/{}'.format(self.configuration_url, data_source.type, data_source.id)
             result = self.client.download(url, use_session=True, settings=self.settings).json()
 
-            import json
-            QgsMessageLog.logMessage(json.dumps(result))
             data_source.name = result['description']
             data_source_settings = result['settings']
             if 'indexServiceUrl' in data_source_settings:
