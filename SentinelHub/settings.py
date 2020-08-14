@@ -17,7 +17,7 @@ class Settings:
 
     instance_id = ''
     service_type = ServiceType.WMS
-    layer = ''
+    layer_id = ''
     data_source = ''
     crs = CrsType.POP_WEB
 
@@ -29,8 +29,6 @@ class Settings:
     time1 = ''
 
     parameters = {
-        'title': '',
-        'layers': '',
         'maxcc': '100',
         'priority': 'mostRecent',
         'time': ''
@@ -62,7 +60,7 @@ class Settings:
     _AUTO_SAVE_STORE_PARAMETERS = {
         'instance_id',
         'service_type',
-        'layer',
+        'layer_id',
         'crs',
         'download_folder'
     }

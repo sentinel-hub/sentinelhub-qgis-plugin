@@ -1,8 +1,10 @@
 """
 Module for querying Sentinel Hub Configuration API
 """
+from qgis.core import QgsMessageLog
+
 from .capabilities import WmsCapabilities
-from .common import Configuration, Layer, DataSource
+from .common import Configuration, Layer
 
 
 class ConfigurationManager:
@@ -64,19 +66,27 @@ class ConfigurationManager:
     def get_layer_index(self, instance_id, layer_id):
         return self._layer_to_index_maps[instance_id].get(layer_id, 0)
 
-    def get_layer_url(self, instance_id, layer_id):
+    def get_layer(self, instance_id, layer_id, load_url=False):
         conf_index = self.get_configuration_index(instance_id)
         layer_index = self.get_layer_index(instance_id, layer_id)
-        data_source = self._configurations[conf_index].layers[layer_index].data_source
+        layer = self._configurations[conf_index].layers[layer_index]
+        data_source = layer.data_source
 
-        if data_source.service_url is None:
+        if load_url and data_source.service_url is None:
             url = '{}/datasets/{}/sources/{}'.format(self.configuration_url, data_source.type, data_source.id)
             result = self.client.download(url, use_session=True, settings=self.settings).json()
 
+            import json
+            QgsMessageLog.logMessage(json.dumps(result))
             data_source.name = result['description']
-            data_source.service_url = result['settings']['indexServiceUrl'].rsplit('/', 1)[0]
+            data_source_settings = result['settings']
+            if 'indexServiceUrl' in data_source_settings:
+                data_source.service_url = data_source_settings['indexServiceUrl'].rsplit('/', 1)[0]
+            else:
+                # This happens in case of DEM
+                data_source.service_url = self.settings.base_url
 
-        return data_source.service_url
+        return layer
 
     def get_datasource_names(self):
         if self._data_sources_names_map is None:

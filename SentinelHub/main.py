@@ -38,7 +38,7 @@ from .settings import Settings
 from .utils import get_plugin_version
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
-from .sentinelhub.ogc import get_wms_uri, get_wmts_uri
+from .sentinelhub.ogc import get_service_uri, get_wcs_url, get_wfs_url
 
 
 class SentinelHubPlugin:
@@ -62,14 +62,12 @@ class SentinelHubPlugin:
         self.plugin_version = get_plugin_version()
         self.settings = Settings()
         self.client = Client(self.iface, self.plugin_version)
-
         self.manager = None
-
-        # TODO: remove all below:
-        self.capabilities = None
 
         self.qgis_layers = []
         self.cloud_cover = {}
+
+        # TODO: remove all below:
 
         self.custom_bbox_params = {}
         for name in ['latMin', 'latMax', 'lngMin', 'lngMax']:
@@ -238,7 +236,7 @@ class SentinelHubPlugin:
         self.dockwidget.layersComboBox.clear()
         layers = self.manager.get_layers(self.settings.instance_id)
         self.dockwidget.layersComboBox.addItems([layer.name for layer in layers])
-        layer_index = self.manager.get_layer_index(self.settings.instance_id, self.settings.layer)
+        layer_index = self.manager.get_layer_index(self.settings.instance_id, self.settings.layer_id)
         self.update_layer(layer_index)
 
         self._update_available_crs()
@@ -269,43 +267,25 @@ class SentinelHubPlugin:
         available_layers = self.manager.get_layers(self.settings.instance_id)
         layer_index = self.dockwidget.layersComboBox.currentIndex()
         if not 0 <= layer_index < len(available_layers):
-            self.settings.layer = ''
+            self.settings.layer_id = ''
             self.settings.data_source = ''
             self.clear_calendar_cells()
             return
 
         layer = available_layers[layer_index]
-        self.settings.layer = layer.id
+        self.settings.layer_id = layer.id
+        self.settings.data_source = layer.data_source.type
+
+        # TODO
+        self.settings.parameters_wfs['typenames'] = None  # DATA_SOURCES[self.settings.data_source]['wfs_name']
 
         # TODO:
-        old_data_source = self.settings.data_source
-        available_layers = self.manager.get_layers(self.settings.instance_id)
-        if 0 <= layer_index < len(available_layers):
-            self.settings.parameters['layers'] = layer.id
-            self.settings.parameters_wcs['coverage'] = layer.id
-            self.settings.parameters['title'] = layer.name
-
-            if self.settings.base_url in [BaseUrl.MAIN, BaseUrl.USWEST]:
-                self.settings.data_source = layer.data_source
-            else:
-                self.settings.data_source = None
-
-            if self.settings.data_source in DATA_SOURCES:
-                self.settings.base_url = DATA_SOURCES[self.settings.data_source]['url']
-                self.settings.parameters_wfs['typenames'] = DATA_SOURCES[self.settings.data_source]['wfs_name']
-            else:
-                if self.settings.base_url != BaseUrl.EOCLOUD:
-                    self.settings.base_url = BaseUrl.MAIN
-                self.settings.parameters_wfs['typenames'] = None
-        else:
-            self.settings.data_source = None
-
-        if self.is_cloudless_source() and not self.dockwidget.maxccSlider.isHidden():
-            self.dockwidget.maxccSlider.hide()
-            self.dockwidget.maxccLabel.hide()
-        if not self.is_cloudless_source() and self.dockwidget.maxccSlider.isHidden():
-            self.dockwidget.maxccSlider.show()
-            self.dockwidget.maxccLabel.show()
+        # if self.is_cloudless_source() and not self.dockwidget.maxccSlider.isHidden():
+        #     self.dockwidget.maxccSlider.hide()
+        #     self.dockwidget.maxccLabel.hide()
+        # if not self.is_cloudless_source() and self.dockwidget.maxccSlider.isHidden():
+        #     self.dockwidget.maxccSlider.show()
+        #     self.dockwidget.maxccLabel.show()
 
         """
         # This doesn't hide vertical spacer and therefore doesn't look good
@@ -325,8 +305,10 @@ class SentinelHubPlugin:
             self.dockwidget.endTimeLineEdit.show()
         """
 
-        if old_data_source != self.settings.data_source:
-            self.get_cloud_cover()
+        # TODO:
+        # old_data_source = self.settings.data_source
+        # if old_data_source != self.settings.data_source:
+        #     self.get_cloud_cover()
 
     def update_crs(self, crs_index=None):
         """ Updates crs with selected Sentinel Hub CRS
@@ -381,14 +363,15 @@ class SentinelHubPlugin:
         :param instance_changed: True if instance id has changed, False otherwise
         :type instance_changed: bool
         """
+        if self.manager is None:
+            return
 
-        if self.capabilities:
-            layer_index = self.dockwidget.layersComboBox.currentIndex()
-            self.dockwidget.layersComboBox.clear()
-            self.dockwidget.layersComboBox.addItems([layer.name for layer in self.capabilities.layers])
-            if not instance_changed:
-                self.dockwidget.layersComboBox.setCurrentIndex(layer_index)
-
+        layer_index = self.dockwidget.layersComboBox.currentIndex()
+        self.dockwidget.layersComboBox.clear()
+        available_layers = self.manager.get_layers(self.settings.instance_id)
+        self.dockwidget.layersComboBox.addItems([layer.name for layer in available_layers])
+        if not instance_changed:
+            self.dockwidget.layersComboBox.setCurrentIndex(layer_index)
 
     def update_current_wms_layers(self, selected_layer=None):
         """
@@ -415,37 +398,6 @@ class SentinelHubPlugin:
         """
         return [tree_layer.layer() for tree_layer in QgsProject.instance().layerTreeRoot().findLayers()]
 
-    # --------------------------------------------------------------------------
-
-    def get_wcs_url(self, bbox, crs=None):
-        """ Generate URL for WCS request from parameters
-
-        :param bbox: Bounding box in form of "xmin,ymin,xmax,ymax"
-        :type bbox: str
-        :param crs: CRS of bounding box
-        :type crs: str or None
-        """
-        url = '{}/ogc/wcs/{}?'.format(self.settings.base_url, self.settings.instance_id)
-        request_parameters = list(self.settings.parameters_wcs.items()) + list(self.settings.parameters.items())
-
-        for parameter, value in request_parameters:
-            if parameter in ('resx', 'resy'):
-                value = value.strip('m') + 'm'
-            if parameter == 'crs':  # TODO: fix
-                value = crs if crs else self.settings.crs
-            url += '{}={}&'.format(parameter, value)
-        return '{}bbox={}'.format(url, bbox)
-
-    def get_wfs_url(self, time_range):
-        """ Generate URL for WFS request from parameters """
-
-        url = '{}/ogc/wfs/{}?'.format(self.settings.base_url, self.settings.instance_id)
-        for parameter, value in self.settings.parameters_wfs.items():
-            url += '{}={}&'.format(parameter, value)
-
-        return '{}bbox={}&time={}&srsname={}&maxcc=100'.format(url, self.bbox_to_string(self.get_bbox()), time_range,
-                                                               self.settings.crs)
-
     def get_cloud_cover(self):
         """ Get cloud cover for current extent.
         """
@@ -466,13 +418,16 @@ class SentinelHubPlugin:
             return
 
         time_range = self.get_calendar_month_interval()
-        response = self.client.download(self.get_wfs_url(time_range), ignore_exception=True)
+        bbox_str = self.bbox_to_string(self.get_bbox())
+        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
+        wfs_url = get_wfs_url(self.settings, layer, bbox_str, time_range)
+        response = self.client.download(wfs_url, ignore_exception=True)
 
         if response:
             area_info = response.json()
             for feature in area_info['features']:
-                self.cloud_cover[str(feature['properties']['date'])] = feature['properties'].get('cloudCoverPercentage',
-                                                                                                 0)
+                date_str = str(feature['properties']['date'])
+                self.cloud_cover[date_str] = feature['properties'].get('cloudCoverPercentage', 0)
             self.update_calendar_from_cloud_cover()
 
     # ----------------------------------------------------------------------------
@@ -506,27 +461,31 @@ class SentinelHubPlugin:
             self.show_message("Failed to download from {} to {}".format(url, filename), MessageType.CRITICAL)
 
     def add_qgis_layer(self, on_top=False):
-        """
-        Add WMS raster layer to canvas,
+        """ Creates and adds a new QGIS layer to the Layers menu
+
         :param on_top: If True the layer will be added on top of all layers, if False it will be added on top of
-                       currently selected layer.
+            currently selected layer.
+        :type on_top: bool
         :return: new layer
         """
         if not self.settings.instance_id:
             return self.missing_instance_id()
 
         self.update_parameters()
-        name = self.get_qgis_layer_name()
+
+        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
+        name = self.get_qgis_layer_name(layer)
 
         time_str = self.get_time()
-        service_uri = get_wms_uri(self.settings, time_str) if self.settings.service_type == 'wms' else \
-            get_wmts_uri(self.settings, time_str)
+        service_uri = get_service_uri(self.settings, layer, time_str)
+
         QgsMessageLog.logMessage(service_uri)
         new_layer = QgsRasterLayer(service_uri, name, 'wms')
 
         if new_layer.isValid():
-            if on_top and self.get_qgis_layers():
-                self.iface.setActiveLayer(self.get_qgis_layers()[0])
+            qgis_layers = self.get_qgis_layers()
+            if on_top and qgis_layers:
+                self.iface.setActiveLayer(qgis_layers[0])
             QgsProject.instance().addMapLayer(new_layer)
             self.update_current_wms_layers()
         else:
@@ -633,10 +592,6 @@ class SentinelHubPlugin:
         Update parameters from GUI
         :return:
         """
-        if self.capabilities:
-            self.update_crs()
-            self.update_layer()
-
         priority_index = self.dockwidget.priorityComboBox.currentIndex()
         self.settings.parameters['priority'] = list(ImagePriority)[priority_index].url_param
         self.settings.parameters['maxcc'] = str(self.dockwidget.maxccSlider.value())
@@ -770,7 +725,8 @@ class SentinelHubPlugin:
 
         crs = None if self.settings.download_extent_type is ExtentType.CURRENT else CrsType.WGS84
         bbox_str = self.bbox_to_string(bbox, crs)
-        url = self.get_wcs_url(bbox_str, crs)
+        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
+        url = get_wcs_url(self.settings, layer, bbox_str, crs)
         filename = self.get_filename(bbox_str)
 
         self.download_wcs_data(url, filename)
@@ -782,7 +738,7 @@ class SentinelHubPlugin:
         :param bbox:
         :return:
         """
-        info_list = [self.get_source_name(), self.settings.parameters['layers']]
+        info_list = [self.get_source_name(), self.settings.layer_id]
         if not self.is_timeless_source():
             info_list.append(self.get_time_name())
         info_list.extend(bbox.split(','))
@@ -825,7 +781,7 @@ class SentinelHubPlugin:
                 time_interval[1] = '-'  # 'end'
         return '/'.join(time_interval)
 
-    def get_qgis_layer_name(self):
+    def get_qgis_layer_name(self, layer):  # TODO: move
         """ Returns name of new qgis layer
 
         :return: qgis layer name
@@ -838,7 +794,7 @@ class SentinelHubPlugin:
             plugin_params.append('{}%'.format(self.settings.parameters['maxcc']))
         plugin_params.extend([self.settings.parameters['priority'], self.settings.crs])
 
-        return '{} - {} ({})'.format(self.get_source_name(), self.settings.parameters['title'], ', '.join(plugin_params))
+        return '{} - {} ({})'.format(self.get_source_name(), layer.name, ', '.join(plugin_params))
 
     def update_maxcc(self):
         """
