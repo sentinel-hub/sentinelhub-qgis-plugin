@@ -29,19 +29,17 @@ class Settings:
     active_time = 'time0'
     time0 = ''
     time1 = ''
+    time = ''
 
-    parameters = {
-        'time': ''
-    }
+    image_format = 'image/png'
+    show_logo = 'false'
+    resx = '10'
+    resy = '10'
 
     # WCS parameters
     parameters_wcs = {
-        'service': 'wcs',
-        'request': 'GetCoverage',
         'format': 'image/png',
         'showLogo': 'false',
-        'transparent': 'false',
-        'version': '1.1.1',
         'resx': '10',
         'resy': '10'
     }

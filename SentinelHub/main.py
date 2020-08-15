@@ -338,8 +338,8 @@ class SentinelHubPlugin:
     def set_values(self):
         """ Updates some values for the wcs download request
         """
-        self.dockwidget.resXLineEdit.setText(self.settings.parameters_wcs['resx'])
-        self.dockwidget.resYLineEdit.setText(self.settings.parameters_wcs['resy'])
+        self.dockwidget.resXLineEdit.setText(self.settings.resx)
+        self.dockwidget.resYLineEdit.setText(self.settings.resy)
         self.dockwidget.latMinLineEdit.setText(self.custom_bbox_params['latMin'])
         self.dockwidget.latMaxLineEdit.setText(self.custom_bbox_params['latMax'])
         self.dockwidget.lngMinLineEdit.setText(self.custom_bbox_params['lngMin'])
@@ -488,11 +488,11 @@ class SentinelHubPlugin:
         time_str = self.get_time()
         service_uri = get_service_uri(self.settings, layer, time_str)
 
-        QgsMessageLog.logMessage(service_uri)
+        QgsMessageLog.logMessage(str(service_uri))
         if self.settings.service_type.upper() == ServiceType.WFS:
             new_layer = QgsVectorLayer(service_uri, name, ServiceType.WFS)
         else:
-            new_layer = QgsRasterLayer(service_uri, name, ServiceType.WMS.lower())  # TODO: 'wms' check size
+            new_layer = QgsRasterLayer(service_uri, name, ServiceType.WMS.lower())
 
         if new_layer.isValid():
             qgis_layers = self.get_qgis_layers()
@@ -607,7 +607,7 @@ class SentinelHubPlugin:
         priority_index = self.dockwidget.priorityComboBox.currentIndex()
         self.settings.priority = list(ImagePriority)[priority_index].url_param
         self.settings.maxcc = str(self.dockwidget.maxccSlider.value())
-        self.settings.parameters['time'] = self.get_time()
+        self.settings.time = self.get_time()
 
     def is_cloudless_source(self):
         """
@@ -714,7 +714,7 @@ class SentinelHubPlugin:
         if not self.settings.instance_id:
             return self.missing_instance_id()
 
-        if self.settings.parameters_wcs['resx'] == '' or self.settings.parameters_wcs['resy'] == '':
+        if self.settings.resx == '' or self.settings.resy == '':
             return self.show_message('Spatial resolution parameters are not set.', MessageType.CRITICAL)
         if self.settings.download_extent_type is ExtentType.CUSTOM:
             for value in self.custom_bbox_params.values():
@@ -759,7 +759,7 @@ class SentinelHubPlugin:
         info_list.append(self.settings.priority)
 
         name = '.'.join(map(str, ['_'.join(map(str, info_list)),
-                                  self.settings.parameters_wcs['format'].split(';')[0].split('/')[1]]))
+                                  self.settings.image_format.split(';')[0].split('/')[1]]))
         return name.replace(' ', '').replace(':', '_').replace('/', '_')
 
     def get_source_name(self):
@@ -780,7 +780,7 @@ class SentinelHubPlugin:
         :return: string describing time interval
         :rtype: str
         """
-        time_interval = self.settings.parameters['time'].split('/')[:2]
+        time_interval = self.settings.time.split('/')[:2]
         if self.dockwidget.exactDateCheckBox.isChecked():
             time_interval = time_interval[:1]
         if len(time_interval) == 1:
@@ -822,7 +822,7 @@ class SentinelHubPlugin:
         :return:
         """
         image_format_index = self.dockwidget.imageFormatComboBox.currentIndex()
-        self.settings.parameters_wcs['format'] = list(ImageFormat)[image_format_index].url_param
+        self.settings.image_format = list(ImageFormat)[image_format_index].url_param
 
     def change_exact_date(self):
         """
@@ -836,7 +836,7 @@ class SentinelHubPlugin:
         else:
             if self.settings.time0 and self.settings.time1 and self.settings.time0 > self.settings.time1:
                 self.settings.time1 = ''
-                self.settings.parameters['time'] = self.get_time()
+                self.settings.time = self.get_time()
                 self.dockwidget.endTimeLineEdit.setText(self.settings.time1)
 
             self.dockwidget.endTimeLineEdit.show()
@@ -885,7 +885,7 @@ class SentinelHubPlugin:
         else:
             self.settings.time0 = new_time0
             self.settings.time1 = new_time1
-            self.settings.parameters['time'] = self.get_time()
+            self.settings.time = self.get_time()
 
         self.dockwidget.startTimeLineEdit.setText(self.settings.time0)
         self.dockwidget.endTimeLineEdit.setText(self.settings.time1)
@@ -921,7 +921,7 @@ class SentinelHubPlugin:
 
         for name, value in new_values.items():
             if name in ['resx', 'resy']:
-                self.settings.parameters_wcs[name] = value
+                setattr(self.settings, name, value)
             else:
                 self.custom_bbox_params[name] = value
 
@@ -946,7 +946,7 @@ class SentinelHubPlugin:
     def change_show_logo(self):
         """ Determines if Sentinel Hub logo will be shown in downloaded image
         """
-        self.settings.parameters_wcs['showLogo'] = 'true' if self.dockwidget.showLogoCheckBox.isChecked() else 'false'
+        self.settings.show_logo = 'true' if self.dockwidget.showLogoCheckBox.isChecked() else 'false'
 
     def toggle_extent(self, extent_type):
         """ Switches between an option to download current window bbox or a custom bbox

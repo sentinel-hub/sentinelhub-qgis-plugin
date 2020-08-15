@@ -11,11 +11,8 @@ from ..constants import ServiceType
 def get_service_uri(settings, layer, time_str):
     service_type = settings.service_type.upper()
 
-    if service_type == ServiceType.WMS:
-        return get_wms_uri(settings, layer, time_str)
-
-    if service_type == ServiceType.WMTS:
-        return get_wmts_uri(settings, layer, time_str)
+    if service_type in [ServiceType.WMS, ServiceType.WMTS]:
+        return get_wms_or_wmts_uri(settings, layer, time_str)
 
     if service_type == ServiceType.WFS:
         return get_wfs_uri(settings, layer, time_str)
@@ -23,68 +20,35 @@ def get_service_uri(settings, layer, time_str):
     raise ValueError('Unsupported service type {}'.format(service_type))
 
 
-WMS_PARAMETERS = {
-    'IgnoreGetFeatureInfoUrl': '1',
-    'IgnoreGetMapUrl': '1',
-    'contextualWMSLegend': '0',
-    'service': 'WMS',
-    'styles': '',
-    'request': 'GetMap',
-    'format': 'image/png',
-    'transparent': 'true',
-    'showLogo': 'false',
-    'version': '1.3.0',
-    'preview': '1'
-}
-
-
-def get_wms_uri(settings, layer, time_str):
-    """ Generates URI for a QGIS WMS map layer
+def get_wms_or_wmts_uri(settings, layer, time_str):
+    """ Generates URI for a QGIS WMS or WMTS map layer
     """
+    base_url = _get_service_endpoint(settings, layer)
     url_params = {
-        'showLogo': WMS_PARAMETERS['showLogo'],
+        'showLogo': 'false',
         'time': time_str,
         'priority': settings.priority,
         'maxcc': settings.maxcc,
-        'preview': WMS_PARAMETERS['preview']
+        'preview': '1'
     }
-    url = quote_plus('{}?{}'.format(_get_service_endpoint(settings, layer), urlencode(url_params)))
 
-    common_parameters = _get_common_parameters(settings, layer)
-    uri_params = list(WMS_PARAMETERS.items()) + list(common_parameters.items()) + [('url', url)]
-    return _join_uri_params(uri_params)
-
-
-WMTS_PARAMETERS = {
-    'IgnoreGetFeatureInfoUrl': '1',
-    'IgnoreGetMapUrl': '1',
-    'contextualWMSLegend': '0',
-    'service': 'WMTS',
-    'styles': '',
-    'request': 'GetTile',
-    'format': 'image/png',
-    'showLogo': 'false',
-    'transparent': 'true',
-    'tileMatrixSet': 'PopularWebMercator512',
-    'preview': '1'
-}
-
-
-def get_wmts_uri(settings, layer, time_str):
-    """ Generates URI for a QGIS WMTS map layer
-    """
-    url_params = {
-        'showLogo': WMTS_PARAMETERS['showLogo'],
-        'time': time_str,
-        'priority': settings.priority,
-        'maxcc': settings.maxcc,
-        'preview': WMTS_PARAMETERS['preview']
+    service_type = settings.service_type.upper()
+    uri_params = {
+        'IgnoreGetFeatureInfoUrl': '1',
+        'IgnoreGetMapUrl': '1',
+        'contextualWMSLegend': '0',
+        'service': service_type,
+        'version': '1.3.0' if service_type == ServiceType.WMS else '1.0.0',
+        'styles': '',
+        'format': 'image/png',
+        'transparent': 'true',
+        'layers': layer.id,
+        'crs': settings.crs
     }
-    url = quote_plus('{}?{}'.format(_get_service_endpoint(settings, layer), urlencode(url_params)))
+    if service_type == ServiceType.WMTS:
+        uri_params['tileMatrixSet'] = 'PopularWebMercator512'
 
-    common_parameters = _get_common_parameters(settings, layer)
-    uri_params = list(WMTS_PARAMETERS.items()) + list(common_parameters.items()) + [('url', url)]
-    return _join_uri_params(uri_params)
+    return _build_uri(base_url, url_params, uri_params, use_builder=False)
 
 
 def get_wfs_uri(settings, layer, time_str):
@@ -105,7 +69,7 @@ def get_wfs_uri(settings, layer, time_str):
         'typename': layer.data_source.get_wfs_id(),
         'maxfeatures': 100
     }
-    return _build_uri(base_url, url_params, uri_params)
+    return _build_uri(base_url, url_params, uri_params, use_builder=True)
 
 
 def get_wfs_url(settings, layer, bbox_str, time_range):
@@ -127,7 +91,7 @@ def get_wfs_url(settings, layer, bbox_str, time_range):
     return _build_url(base_url, params)
 
 
-def get_wcs_url(settings, layer, bbox, crs=None):  # TODO: update
+def get_wcs_url(settings, layer, bbox, crs=None):
     """ Generate URL for WCS request from parameters
 
     :param bbox: Bounding box in form of "xmin,ymin,xmax,ymax"
@@ -136,18 +100,23 @@ def get_wcs_url(settings, layer, bbox, crs=None):  # TODO: update
     :type crs: str or None
     """
     base_url = _get_service_endpoint(settings, layer, ServiceType.WCS)
-
-    common_parameters = _get_common_parameters(settings, layer)
-    wcs_parameters = _get_wcs_parameters(settings)
-    request_parameters = list(wcs_parameters.items()) + list(common_parameters.items())
-
-    for parameter, value in request_parameters:
-        if parameter in ('resx', 'resy'):
-            value = value.strip('m') + 'm'
-        if parameter == 'crs':  # TODO: fix
-            value = crs if crs else settings.crs
-        url += '{}={}&'.format(parameter, value)
-    return '{}bbox={}'.format(url, bbox)
+    params = {
+        'service': 'wcs',
+        'request': 'GetCoverage',
+        'version': '1.1.1',
+        'coverage': settings.layer_id,
+        'time': settings.time,
+        'bbox': bbox,
+        'crs': crs if crs else settings.crs,
+        'maxcc': settings.maxcc,
+        'priority': settings.priority,
+        'format': settings.image_format,
+        'resx': settings.resx.strip('m') + 'm',
+        'resy': settings.resy.strip('m') + 'm',
+        'showLogo': settings.show_logo,
+        'transparent': 'false',
+    }
+    return _build_url(base_url, params)
 
 
 def _get_service_endpoint(settings, layer, service_type=None):
@@ -165,38 +134,20 @@ def _build_url(base_url, params):
     return '{}?{}'.format(base_url, urlencode(params))
 
 
-def _build_uri(base_url, url_params, uri_params):
-    """ Builds an URI for a QGIS layer
+def _build_uri(base_url, url_params, uri_params, use_builder=False):
+    """ Builds an URI for a QGIS layer. In some cases a builder class should be used and in some cases it shouldn't.
     """
-    uri_builder = QgsDataSourceUri()
-
-    for key, value in uri_params.items():
-        uri_builder.setParam(key, str(value))
-
     url = _build_url(base_url, url_params)
-    uri_builder.setParam('url', url)
 
-    return uri_builder.uri()
+    if use_builder:
+        uri_builder = QgsDataSourceUri()
 
+        for key, value in uri_params.items():
+            uri_builder.setParam(key, str(value))
+        uri_builder.setParam('url', url)
 
-def _join_uri_params(param_list):
-    """ For some reason it doesn't work if they are urlencoded -> TODO
-    """
+        return uri_builder.uri()
+
+    param_list = list(uri_params.items()) + [('url', quote_plus(url))]
     param_strings = ('{}={}'.format(key, value) for key, value in param_list)
     return '&'.join(param_strings)
-
-
-def _get_common_parameters(settings, layer):
-    return {
-        'layers': layer.id,
-        'crs': settings.crs,
-        'title': layer.name,
-        **settings.parameters
-    }
-
-
-def _get_wcs_parameters(settings):
-    return {
-        'coverage': settings.layer_id,
-        **settings.parameters_wcs
-    }

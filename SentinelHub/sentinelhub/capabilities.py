@@ -29,11 +29,12 @@ class WmsCapabilities:
 
             self._sort_crs_list()
 
-        if self.settings.service_type.upper() == ServiceType.WFS:
-            # QGIS isn't be able to handle any other CRS correctly
+        if self.settings.service_type.upper() != ServiceType.WMS:
+            # Reasons why other CRS aren't supported
+            # - for WMTS CRS is specified with TileMatrixSet parameter which has different names and for UTM something
+            #   is not configured correctly
+            # - for WFS the problem is that QGIS would pass CRS in a way that the service couldn't parse
             return self._crs_list[:1]
-        if self.settings.service_type.upper() == ServiceType.WMTS:
-            return self._crs_list[:2]  # TODO: maybe this is not necessary
         return self._crs_list
 
     def get_crs_index(self, crs_id):
