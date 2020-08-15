@@ -5,7 +5,7 @@ import copy
 
 from PyQt5.QtCore import QSettings
 
-from .constants import BaseUrl, ServiceType, CrsType, ExtentType
+from .constants import BaseUrl, ServiceType, CrsType, ExtentType, ImagePriority
 
 
 class Settings:
@@ -20,6 +20,8 @@ class Settings:
     layer_id = ''
     data_source = ''
     crs = CrsType.POP_WEB
+    maxcc = '100'
+    priority = ImagePriority.MOST_RECENT.url_param
 
     download_extent_type = ExtentType.CURRENT
     download_folder = ''
@@ -29,19 +31,7 @@ class Settings:
     time1 = ''
 
     parameters = {
-        'maxcc': '100',
-        'priority': 'mostRecent',
         'time': ''
-    }
-
-    # WFS parameters
-    parameters_wfs = {
-        'service': 'WFS',
-        'version': '2.0.0',
-        'request': 'GetFeature',
-        'typenames': 'S2.TILE',
-        'maxfeatures': '100',
-        'outputformat': 'application/json',
     }
 
     # WCS parameters

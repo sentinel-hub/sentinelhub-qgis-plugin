@@ -24,13 +24,13 @@ import calendar
 import datetime
 import math
 
-from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
-    QgsRectangle, QgsMessageLog
+from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem,\
+    QgsCoordinateTransform, QgsRectangle, QgsMessageLog
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
-from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ExtentType, \
+from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ExtentType, ServiceType, \
     AVAILABLE_SERVICE_TYPES, MAX_CLOUD_COVER_IMAGE_SIZE, DATA_SOURCES
 from .dockwidget import SentinelHubDockWidget
 from .settings import Settings
@@ -177,12 +177,12 @@ class SentinelHubPlugin:
     def initialize_ui(self):
         """ Initializes and resets entire UI
         """
-        self.dockwidget.serviceTypeComboBox.addItems(AVAILABLE_SERVICE_TYPES)
-        self.update_service_type(self.settings.service_type)
-
         self.dockwidget.serviceUrlLineEdit.setText(self.settings.base_url)
         self.dockwidget.clientIdLineEdit.setText(self.settings.client_id)
         self.dockwidget.clientSecretLineEdit.setText(self.settings.client_secret)
+
+        self.dockwidget.serviceTypeComboBox.addItems(AVAILABLE_SERVICE_TYPES)
+        self.update_service_type(self.settings.service_type.upper())
 
         self.dockwidget.downloadFolderLineEdit.setText(self.settings.download_folder)
 
@@ -194,6 +194,16 @@ class SentinelHubPlugin:
         self.dockwidget.calendarSpacer.hide()
         self.update_current_wms_layers()
         self.toggle_extent(self.settings.download_extent_type)
+
+    def validate_base_url(self):
+        """ Makes sure the base url is in the correct format
+        """
+        base_url = self.dockwidget.serviceUrlLineEdit.text()
+        expected_base_url = base_url.rstrip('/')
+        if not expected_base_url:
+            expected_base_url = BaseUrl.MAIN
+        if base_url != expected_base_url:
+            self.dockwidget.serviceUrlLineEdit.setText(expected_base_url)
 
     def login(self):
         """ Uses credentials to connect to Sentinel Hub services and updates
@@ -274,9 +284,6 @@ class SentinelHubPlugin:
         layer = available_layers[layer_index]
         self.settings.layer_id = layer.id
         self.settings.data_source = layer.data_source.type
-
-        # TODO
-        self.settings.parameters_wfs['typenames'] = None  # DATA_SOURCES[self.settings.data_source]['wfs_name']
 
         # TODO:
         # if self.is_cloudless_source() and not self.dockwidget.maxccSlider.isHidden():
@@ -400,6 +407,9 @@ class SentinelHubPlugin:
     def get_cloud_cover(self):
         """ Get cloud cover for current extent.
         """
+        if self.manager is None:
+            return
+
         self.cloud_cover = {}
         self.clear_calendar_cells()
 
@@ -419,7 +429,7 @@ class SentinelHubPlugin:
         time_range = self.get_calendar_month_interval()
         bbox_str = self.bbox_to_string(self.get_bbox())
         layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
-        wfs_url = get_wfs_url(self.settings, layer, bbox_str, time_range)
+        wfs_url = get_wfs_url(self.settings, layer, bbox_str, time_range)  # TODO: make sure that is also triggered when maxcc is changed
         response = self.client.download(wfs_url, ignore_exception=True)
 
         if response:
@@ -479,7 +489,10 @@ class SentinelHubPlugin:
         service_uri = get_service_uri(self.settings, layer, time_str)
 
         QgsMessageLog.logMessage(service_uri)
-        new_layer = QgsRasterLayer(service_uri, name, 'wms')
+        if self.settings.service_type.upper() == ServiceType.WFS:
+            new_layer = QgsVectorLayer(service_uri, name, ServiceType.WFS)
+        else:
+            new_layer = QgsRasterLayer(service_uri, name, ServiceType.WMS.lower())  # TODO: 'wms' check size
 
         if new_layer.isValid():
             qgis_layers = self.get_qgis_layers()
@@ -592,8 +605,8 @@ class SentinelHubPlugin:
         :return:
         """
         priority_index = self.dockwidget.priorityComboBox.currentIndex()
-        self.settings.parameters['priority'] = list(ImagePriority)[priority_index].url_param
-        self.settings.parameters['maxcc'] = str(self.dockwidget.maxccSlider.value())
+        self.settings.priority = list(ImagePriority)[priority_index].url_param
+        self.settings.maxcc = str(self.dockwidget.maxccSlider.value())
         self.settings.parameters['time'] = self.get_time()
 
     def is_cloudless_source(self):
@@ -667,7 +680,7 @@ class SentinelHubPlugin:
         """
         self.clear_calendar_cells()
         for date, value in self.cloud_cover.items():
-            if float(value) <= int(self.settings.parameters['maxcc']):
+            if float(value) <= int(self.settings.maxcc):
                 d = date.split('-')
                 style = QTextCharFormat()
                 style.setBackground(Qt.gray)
@@ -742,8 +755,8 @@ class SentinelHubPlugin:
             info_list.append(self.get_time_name())
         info_list.extend(bbox.split(','))
         if not self.is_cloudless_source():
-            info_list.append(self.settings.parameters['maxcc'])
-        info_list.append(self.settings.parameters['priority'])
+            info_list.append(self.settings.maxcc)
+        info_list.append(self.settings.priority)
 
         name = '.'.join(map(str, ['_'.join(map(str, info_list)),
                                   self.settings.parameters_wcs['format'].split(';')[0].split('/')[1]]))
@@ -790,8 +803,8 @@ class SentinelHubPlugin:
         if not self.is_timeless_source():
             plugin_params.append(self.get_time_name())
         if not self.is_cloudless_source():
-            plugin_params.append('{}%'.format(self.settings.parameters['maxcc']))
-        plugin_params.extend([self.settings.parameters['priority'], self.settings.crs])
+            plugin_params.append('{}%'.format(self.settings.maxcc))
+        plugin_params.extend([self.settings.priority, self.settings.crs])
 
         return '{} - {} ({})'.format(self.get_source_name(), layer.name, ', '.join(plugin_params))
 
@@ -866,9 +879,9 @@ class SentinelHubPlugin:
         new_time1 = self.parse_date(self.dockwidget.endTimeLineEdit.text())
 
         if new_time0 is None or new_time1 is None:
-            self.show_message('Please insert a valid date in format YYYY-MM-DD', MessageType.INFO)
+            self.show_message('Please insert a valid date in a form YYYY-MM-DD', MessageType.INFO)
         elif new_time0 and new_time1 and new_time0 > new_time1 and not self.dockwidget.exactDateCheckBox.isChecked():
-            self.show_message('Start date must not be larger than end date', MessageType.INFO)
+            self.show_message('Start date must be earlier or equal to end date', MessageType.INFO)
         else:
             self.settings.time0 = new_time0
             self.settings.time1 = new_time1
@@ -934,16 +947,6 @@ class SentinelHubPlugin:
         """ Determines if Sentinel Hub logo will be shown in downloaded image
         """
         self.settings.parameters_wcs['showLogo'] = 'true' if self.dockwidget.showLogoCheckBox.isChecked() else 'false'
-
-    def validate_base_url(self):
-        """ Makes sure the base url is in the correct format
-        """
-        base_url = self.dockwidget.baseUrl.text()
-        expected_base_url = base_url.rstrip('/')
-        if not expected_base_url:
-            expected_base_url = BaseUrl.MAIN
-        if base_url != expected_base_url:
-            self.dockwidget.baseUrl.setText(expected_base_url)
 
     def toggle_extent(self, extent_type):
         """ Switches between an option to download current window bbox or a custom bbox

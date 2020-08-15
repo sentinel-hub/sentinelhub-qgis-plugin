@@ -29,6 +29,9 @@ class WmsCapabilities:
 
             self._sort_crs_list()
 
+        if self.settings.service_type.upper() == ServiceType.WFS:
+            # QGIS isn't be able to handle any other CRS correctly
+            return self._crs_list[:1]
         if self.settings.service_type.upper() == ServiceType.WMTS:
             return self._crs_list[:2]  # TODO: maybe this is not necessary
         return self._crs_list
@@ -57,7 +60,7 @@ class WmsCapabilities:
         """ Generates url for obtaining service capabilities
         """
         url = '{0}/ogc/{1}/{2}?service={1}&request=GetCapabilities&version=1.3.0'.format(
-            self.settings.base_url, self.settings.service_type, self.settings.instance_id
+            self.settings.base_url, ServiceType.WMS.lower(), self.settings.instance_id
         )
         if get_json:
             return url + '&format=application/json'

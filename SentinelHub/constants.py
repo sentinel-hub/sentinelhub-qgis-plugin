@@ -74,6 +74,7 @@ class BaseUrl:
 
 class ServiceType:
     WMS = 'WMS'
+    WCS = 'WCS'
     WMTS = 'WMTS'
     WFS = 'WFS'
 
