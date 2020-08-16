@@ -82,12 +82,21 @@ class ServiceType:
 AVAILABLE_SERVICE_TYPES = [ServiceType.WMS, ServiceType.WMTS, ServiceType.WFS]
 
 
+class TimeType(Enum):
+    """ A type of time
+    """
+    START_TIME = 'start_time'
+    END_TIME = 'end_time'
+
+
 class ExtentType(Enum):
+    """ A type of map extend, either a current map bbox or a custom defined bbox
+    """
     CURRENT = 'current'
     CUSTOM = 'custom'
 
 
-MAX_CLOUD_COVER_IMAGE_SIZE = 1000000
+MAX_CLOUD_COVER_BBOX_SIZE = 1000000
 
 DATA_SOURCES = {
     'S2L1C': {

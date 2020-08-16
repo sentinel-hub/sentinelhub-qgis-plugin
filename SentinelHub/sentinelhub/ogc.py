@@ -1,6 +1,7 @@
 """
 Module with Sentinel Hub OGC utilities
 """
+import datetime as dt
 from urllib.parse import urlencode, quote_plus
 
 from qgis.core import QgsDataSourceUri
@@ -8,25 +9,25 @@ from qgis.core import QgsDataSourceUri
 from ..constants import ServiceType
 
 
-def get_service_uri(settings, layer, time_str):
+def get_service_uri(settings, layer):
     service_type = settings.service_type.upper()
 
     if service_type in [ServiceType.WMS, ServiceType.WMTS]:
-        return get_wms_or_wmts_uri(settings, layer, time_str)
+        return get_wms_or_wmts_uri(settings, layer)
 
     if service_type == ServiceType.WFS:
-        return get_wfs_uri(settings, layer, time_str)
+        return get_wfs_uri(settings, layer)
 
     raise ValueError('Unsupported service type {}'.format(service_type))
 
 
-def get_wms_or_wmts_uri(settings, layer, time_str):
+def get_wms_or_wmts_uri(settings, layer):
     """ Generates URI for a QGIS WMS or WMTS map layer
     """
     base_url = _get_service_endpoint(settings, layer)
     url_params = {
         'showLogo': 'false',
-        'time': time_str,
+        'time': _build_time(settings),
         'priority': settings.priority,
         'maxcc': settings.maxcc,
         'preview': '1'
@@ -51,13 +52,13 @@ def get_wms_or_wmts_uri(settings, layer, time_str):
     return _build_uri(base_url, url_params, uri_params, use_builder=False)
 
 
-def get_wfs_uri(settings, layer, time_str):
+def get_wfs_uri(settings, layer):
     """ Generates URI for a QGIS WFS vector map layer
     """
     base_url = _get_service_endpoint(settings, layer)
     url_params = {
         'srsname': settings.crs,
-        'time': time_str,
+        'time': _build_time(settings),
         'maxcc': settings.maxcc,
         'priority': settings.priority
     }
@@ -92,12 +93,7 @@ def get_wfs_url(settings, layer, bbox_str, time_range):
 
 
 def get_wcs_url(settings, layer, bbox, crs=None):
-    """ Generate URL for WCS request from parameters
-
-    :param bbox: Bounding box in form of "xmin,ymin,xmax,ymax"
-    :type bbox: str
-    :param crs: CRS of bounding box
-    :type crs: str or None
+    """ Generate an URL for WCS request from parameters
     """
     base_url = _get_service_endpoint(settings, layer, ServiceType.WCS)
     params = {
@@ -105,7 +101,7 @@ def get_wcs_url(settings, layer, bbox, crs=None):
         'request': 'GetCoverage',
         'version': '1.1.1',
         'coverage': settings.layer_id,
-        'time': settings.time,
+        'time': _build_time(settings),
         'bbox': bbox,
         'crs': crs if crs else settings.crs,
         'maxcc': settings.maxcc,
@@ -151,3 +147,19 @@ def _build_uri(base_url, url_params, uri_params, use_builder=False):
     param_list = list(uri_params.items()) + [('url', quote_plus(url))]
     param_strings = ('{}={}'.format(key, value) for key, value in param_list)
     return '&'.join(param_strings)
+
+
+def _build_time(settings):
+    """ Builds a time string to be sent to Sentinel Hub service
+    """
+    if settings.is_exact_date and not settings.start_time:
+        return ''
+    if not settings.start_time:
+        return settings.end_time
+
+    if settings.is_exact_date:
+        return '{}/{}/P1D'.format(settings.start_time, settings.start_time)
+    if not settings.end_time:
+        return '{}/{}/P1D'.format(settings.start_time, dt.datetime.now().isoformat())
+
+    return '{}/{}/P1D'.format(settings.start_time, settings.end_time)

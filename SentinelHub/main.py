@@ -22,7 +22,6 @@ import os
 import time
 import calendar
 import datetime
-import math
 
 from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem,\
     QgsCoordinateTransform, QgsRectangle, QgsMessageLog
@@ -30,14 +29,16 @@ from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
-from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ExtentType, ServiceType, \
-    AVAILABLE_SERVICE_TYPES, MAX_CLOUD_COVER_IMAGE_SIZE, DATA_SOURCES
+from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ExtentType, ServiceType, TimeType, \
+    AVAILABLE_SERVICE_TYPES, MAX_CLOUD_COVER_BBOX_SIZE, DATA_SOURCES
 from .dockwidget import SentinelHubDockWidget
-from .settings import Settings
-from .utils import get_plugin_version
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
 from .sentinelhub.ogc import get_service_uri, get_wcs_url, get_wfs_url
+from .settings import Settings
+from .utils.geo import get_bbox, is_bbox_too_large, bbox_to_string
+from .utils.meta import get_plugin_version
+from .utils.time import parse_date
 
 
 class SentinelHubPlugin:
@@ -63,10 +64,9 @@ class SentinelHubPlugin:
         self.client = Client(self.iface, self.plugin_version)
         self.manager = None
 
+        # TODO: remove all below:
         self.qgis_layers = []
         self.cloud_cover = {}
-
-        # TODO: remove all below:
 
         self.custom_bbox_params = {}
         for name in ['latMin', 'latMax', 'lngMin', 'lngMax']:
@@ -124,6 +124,17 @@ class SentinelHubPlugin:
         self.dockwidget.layersComboBox.activated.connect(self.update_layer)
         self.dockwidget.crsComboBox.activated.connect(self.update_crs)
 
+        self.dockwidget.startTimeLineEdit.mousePressEvent = lambda _: self.move_calendar(TimeType.START_TIME)
+        self.dockwidget.endTimeLineEdit.mousePressEvent = lambda _: self.move_calendar(TimeType.END_TIME)
+        self.dockwidget.startTimeLineEdit.editingFinished.connect(self.update_dates)
+        self.dockwidget.endTimeLineEdit.editingFinished.connect(self.update_dates)
+        self.dockwidget.exactDateCheckBox.stateChanged.connect(self.change_exact_date)
+        self.dockwidget.calendarWidget.clicked.connect(self.add_calendar_date)
+        self.dockwidget.calendarWidget.currentPageChanged.connect(self.update_available_calendar_dates)
+
+        self.dockwidget.maxccSlider.valueChanged.connect(self.update_maxcc)
+        self.dockwidget.maxccSlider.sliderReleased.connect(self.update_calendar_from_cloud_cover)
+
         # Create widget bottom buttons
         self.dockwidget.createLayerPushButton.clicked.connect(self.add_qgis_layer)
         self.dockwidget.updateLayerPushButton.clicked.connect(self.update_qgis_layer)
@@ -132,20 +143,11 @@ class SentinelHubPlugin:
         self.layer_selection_event = self.dockwidget.mapLayerComboBox.mousePressEvent
 
         def new_layer_selection_event(event):
-            self.update_current_wms_layers()
+            self.update_current_map_layers()
             self.layer_selection_event(event)
 
         self.dockwidget.mapLayerComboBox.mousePressEvent = new_layer_selection_event
 
-        self.dockwidget.startTimeLineEdit.mousePressEvent = lambda _: self.move_calendar('time0')
-        self.dockwidget.endTimeLineEdit.mousePressEvent = lambda _: self.move_calendar('time1')
-        self.dockwidget.startTimeLineEdit.editingFinished.connect(self.update_dates)
-        self.dockwidget.endTimeLineEdit.editingFinished.connect(self.update_dates)
-        self.dockwidget.calendarWidget.clicked.connect(self.add_time)
-        self.dockwidget.exactDateCheckBox.stateChanged.connect(self.change_exact_date)
-        self.dockwidget.calendarWidget.currentPageChanged.connect(self.update_month)
-        self.dockwidget.maxccSlider.valueChanged.connect(self.update_maxcc_label)
-        self.dockwidget.maxccSlider.sliderReleased.connect(self.update_maxcc)
         self.dockwidget.downloadFolderLineEdit.editingFinished.connect(self.change_download_folder)
 
         # Download input fields changes and events
@@ -167,7 +169,7 @@ class SentinelHubPlugin:
         self.dockwidget.selectDownloadFolderPushButton.clicked.connect(self.select_download_folder)
 
         # Tracks which layer is selected in left menu
-        # self.iface.currentLayerChanged.connect(self.update_current_wms_layers)
+        # self.iface.currentLayerChanged.connect(self.update_current_map_layers)
 
         self.dockwidget.closingPlugin.connect(self.on_close_plugin)
 
@@ -184,16 +186,14 @@ class SentinelHubPlugin:
         self.dockwidget.serviceTypeComboBox.addItems(AVAILABLE_SERVICE_TYPES)
         self.update_service_type(self.settings.service_type.upper())
 
-        self.dockwidget.downloadFolderLineEdit.setText(self.settings.download_folder)
-
-        # TODO:
-        self.dockwidget.priorityComboBox.addItems([priority.nice_name for priority in ImagePriority])
-        self.dockwidget.imageFormatComboBox.addItems([image_format.nice_name for image_format in ImageFormat])
-
-        self.update_month()
         self.dockwidget.calendarSpacer.hide()
-        self.update_current_wms_layers()
+        self.dockwidget.priorityComboBox.addItems([priority.nice_name for priority in ImagePriority])
+
+        self.update_current_map_layers()
+
+        self.dockwidget.imageFormatComboBox.addItems([image_format.nice_name for image_format in ImageFormat])
         self.toggle_extent(self.settings.download_extent_type)
+        self.dockwidget.downloadFolderLineEdit.setText(self.settings.download_folder)
 
     def validate_base_url(self):
         """ Makes sure the base url is in the correct format
@@ -250,10 +250,6 @@ class SentinelHubPlugin:
 
         self._update_available_crs()
 
-        # self.update_instance_props(instance_changed=True)
-        # self.update_parameters()
-        # self.get_cloud_cover()
-
     def update_service_type(self, service_type=None):
         """ Update service type and content that depends on it
         """
@@ -278,31 +274,33 @@ class SentinelHubPlugin:
         if not 0 <= layer_index < len(available_layers):
             self.settings.layer_id = ''
             self.settings.data_source = ''
-            self.clear_calendar_cells()
+            self._clear_calendar_cells()
             return
 
         layer = available_layers[layer_index]
         self.settings.layer_id = layer.id
         self.settings.data_source = layer.data_source.type
 
+        self.update_available_calendar_dates()
+
         # TODO:
-        # if self.is_cloudless_source() and not self.dockwidget.maxccSlider.isHidden():
+        # if layer.data_source.is_cloudless() and not self.dockwidget.maxccSlider.isHidden():
         #     self.dockwidget.maxccSlider.hide()
         #     self.dockwidget.maxccLabel.hide()
-        # if not self.is_cloudless_source() and self.dockwidget.maxccSlider.isHidden():
+        # if not layer.data_source.is_cloudless() and self.dockwidget.maxccSlider.isHidden():
         #     self.dockwidget.maxccSlider.show()
         #     self.dockwidget.maxccLabel.show()
 
         """
         # This doesn't hide vertical spacer and therefore doesn't look good
-        if self.is_timeless_source() and not self.dockwidget.calendarWidget.isHidden():
+        if layer.data_source.is_timeless() and not self.dockwidget.calendarWidget.isHidden():
             self.dockwidget.calendarWidget.hide()
             self.dockwidget.exactDateCheckBox.hide()
             self.dockwidget.timeRangeLabel.hide()
             self.dockwidget.timeLabel.hide()
             self.dockwidget.startTimeLineEdit.hide()
             self.dockwidget.endTimeLineEdit.hide()
-        if not self.is_timeless_source() and self.dockwidget.calendarWidget.isHidden():
+        if not layer.data_source.is_timeless() and self.dockwidget.calendarWidget.isHidden():
             self.dockwidget.calendarWidget.show()
             self.dockwidget.exactDateCheckBox.show()
             self.dockwidget.timeRangeLabel.show()
@@ -314,7 +312,7 @@ class SentinelHubPlugin:
         # TODO:
         # old_data_source = self.settings.data_source
         # if old_data_source != self.settings.data_source:
-        #     self.get_cloud_cover()
+        #     self.update_available_calendar_dates()
 
     def update_crs(self, crs_index=None):
         """ Updates crs with selected Sentinel Hub CRS
@@ -334,6 +332,134 @@ class SentinelHubPlugin:
         self.dockwidget.crsComboBox.addItems([crs.name for crs in self.manager.get_available_crs()])
         crs_index = self.manager.get_crs_index(self.settings.crs)
         self.update_crs(crs_index)
+
+    def move_calendar(self, active):
+        """ Moves calendar between the start and end time line edit fields
+        """
+        if active is TimeType.START_TIME:
+            self.dockwidget.calendarSpacer.hide()
+        else:
+            self.dockwidget.calendarSpacer.show()
+        self.settings.active_time = active.value
+
+    def update_dates(self):
+        """ Checks if newly inserted dates are valid and updates date attributes
+        """
+        new_start_time = parse_date(self.dockwidget.startTimeLineEdit.text())
+        new_end_time = parse_date(self.dockwidget.endTimeLineEdit.text())
+
+        if new_start_time is None or new_end_time is None:
+            self.show_message('Please insert a valid date in a form YYYY-MM-DD', MessageType.INFO)
+        elif new_start_time and new_end_time and new_start_time > new_end_time and not self.settings.is_exact_date:
+            self.show_message('Start date must not be later than end date', MessageType.INFO)
+        else:
+            self.settings.start_time = new_start_time
+            self.settings.end_time = new_end_time
+
+        self.dockwidget.startTimeLineEdit.setText(self.settings.start_time)
+        self.dockwidget.endTimeLineEdit.setText(self.settings.end_time)
+
+    def change_exact_date(self):
+        """ A switch between specifying a time interval and an exact date
+        """
+        self.settings.is_exact_date = self.dockwidget.exactDateCheckBox.isChecked()
+
+        if self.settings.is_exact_date:
+            self.dockwidget.endTimeLineEdit.hide()
+            self.dockwidget.timeLabel.hide()
+            self.move_calendar(TimeType.START_TIME)
+        else:
+            if self.settings.start_time and self.settings.end_time and \
+                    self.settings.start_time > self.settings.end_time:
+                self.settings.end_time = ''
+                self.dockwidget.endTimeLineEdit.setText(self.settings.end_time)
+
+            self.dockwidget.endTimeLineEdit.show()
+            self.dockwidget.timeLabel.show()
+
+    def add_calendar_date(self):
+        """ Handles selected calendar date
+        """
+        calendar_time = str(self.dockwidget.calendarWidget.selectedDate().toPyDate())
+
+        if self.settings.active_time == TimeType.START_TIME.value and \
+                (self.settings.is_exact_date or not self.settings.end_time or calendar_time <= self.settings.end_time):
+            self.settings.start_time = calendar_time
+            self.dockwidget.startTimeLineEdit.setText(calendar_time)
+        elif self.settings.active_time == TimeType.END_TIME.value and \
+                (not self.settings.start_time or self.settings.start_time <= calendar_time):
+            self.settings.end_time = calendar_time
+            self.dockwidget.endTimeLineEdit.setText(calendar_time)
+        else:
+            self.show_message('Start date must not be later than end date', MessageType.INFO)
+
+    def update_available_calendar_dates(self):
+        """ For the current extent, current layer and current month it will find all days for which there is available
+        data for that layer
+        """
+        if self.manager is None or not self.settings.instance_id or not self.settings.layer_id:
+            return
+
+        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
+
+        # TODO
+
+        self.cloud_cover = {}
+        self._clear_calendar_cells()
+
+        bbox = get_bbox(self.iface, self.settings.crs)
+        if is_bbox_too_large(bbox, self.settings.crs, MAX_CLOUD_COVER_BBOX_SIZE):
+            return
+
+        time_range = self.get_calendar_month_interval()
+        bbox_str = bbox_to_string(bbox, self.settings.crs)
+        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
+        wfs_url = get_wfs_url(self.settings, layer, bbox_str, time_range)  # TODO: make sure that is also triggered when maxcc is changed
+        response = self.client.download(wfs_url, ignore_exception=True)
+
+        if response:
+            area_info = response.json()
+            for feature in area_info['features']:
+                date_str = str(feature['properties']['date'])
+                self.cloud_cover[date_str] = feature['properties'].get('cloudCoverPercentage', 0)
+            self.update_calendar_from_cloud_cover()
+
+    def _clear_calendar_cells(self):
+        """ Resets all highlighted calendar cells
+        """
+        style = QTextCharFormat()
+        style.setBackground(Qt.white)
+        self.dockwidget.calendarWidget.setDateTextFormat(QDate(), style)
+
+    def update_maxcc(self):
+        """ Updates maximum cloud coverage and it's label
+        """
+        self.settings.maxcc = str(self.dockwidget.maxccSlider.value())
+        self.dockwidget.maxccLabel.setText('Cloud coverage {}%'.format(self.settings.maxcc))
+
+    def update_calendar_from_cloud_cover(self):
+        """
+        Update painted cells regrading Max Cloud Coverage
+        :return:
+        """
+        self._clear_calendar_cells()
+        for date, value in self.cloud_cover.items():
+            if float(value) <= int(self.settings.maxcc):
+                d = date.split('-')
+                style = QTextCharFormat()
+                style.setBackground(Qt.gray)
+                self.dockwidget.calendarWidget.setDateTextFormat(QDate(int(d[0]), int(d[1]), int(d[2])), style)
+
+    def get_calendar_month_interval(self):
+        year = self.dockwidget.calendarWidget.yearShown()
+        month = self.dockwidget.calendarWidget.monthShown()
+        _, number_of_days = calendar.monthrange(year, month)
+        first = datetime.date(year, month, 1)
+        last = datetime.date(year, month, number_of_days)
+
+        return '{}/{}/P1D'.format(first.strftime('%Y-%m-%d'), last.strftime('%Y-%m-%d'))
+
+# ---------------------------------------------------------
 
     def set_values(self):
         """ Updates some values for the wcs download request
@@ -361,28 +487,8 @@ class SentinelHubPlugin:
         """Show message about missing instance ID"""
         self.show_message("Please set Sentinel Hub Instance ID first.", MessageType.INFO)
 
-    # --------------------------------------------------------------------------
-
-    def update_instance_props(self, instance_changed=False):
-        """ Update lists of service type, layers and CRS available with current Sentinel Hub Instance
-
-        :param instance_changed: True if instance id has changed, False otherwise
-        :type instance_changed: bool
-        """
-        if self.manager is None:
-            return
-
-        layer_index = self.dockwidget.layersComboBox.currentIndex()
-        self.dockwidget.layersComboBox.clear()
-        available_layers = self.manager.get_layers(self.settings.instance_id)
-        self.dockwidget.layersComboBox.addItems([layer.name for layer in available_layers])
-        if not instance_changed:
-            self.dockwidget.layersComboBox.setCurrentIndex(layer_index)
-
-    def update_current_wms_layers(self, selected_layer=None):
-        """
-        Updates List of Qgis layers
-        :return:
+    def update_current_map_layers(self, selected_layer=None):
+        """ Updates the list of QGIS layers
         """
         self.qgis_layers = self.get_qgis_layers()
         layer_names = []
@@ -391,10 +497,9 @@ class SentinelHubPlugin:
         self.dockwidget.mapLayerComboBox.clear()
         self.dockwidget.mapLayerComboBox.addItems(layer_names)
 
-        if selected_layer:
-            for index, layer in enumerate(self.qgis_layers):
-                if layer == selected_layer:
-                    self.dockwidget.mapLayerComboBox.setCurrentIndex(index)
+        if selected_layer and selected_layer in self.qgis_layers:
+            layer_index = self.qgis_layers.index(selected_layer)
+            self.dockwidget.mapLayerComboBox.setCurrentIndex(layer_index)
 
     @staticmethod
     def get_qgis_layers():
@@ -403,41 +508,6 @@ class SentinelHubPlugin:
         :rtype: list(QgsMapLayer)
         """
         return [tree_layer.layer() for tree_layer in QgsProject.instance().layerTreeRoot().findLayers()]
-
-    def get_cloud_cover(self):
-        """ Get cloud cover for current extent.
-        """
-        if self.manager is None:
-            return
-
-        self.cloud_cover = {}
-        self.clear_calendar_cells()
-
-        if not self.settings.instance_id:
-            return
-        if self.settings.base_url != BaseUrl.MAIN:  # Uswest is too slow for this
-            return
-
-        # Check if area is too large
-        try:
-            width, height = self.get_bbox_size(self.get_bbox())
-        except Exception:
-            return
-        if max(width, height) > MAX_CLOUD_COVER_IMAGE_SIZE:
-            return
-
-        time_range = self.get_calendar_month_interval()
-        bbox_str = self.bbox_to_string(self.get_bbox())
-        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
-        wfs_url = get_wfs_url(self.settings, layer, bbox_str, time_range)  # TODO: make sure that is also triggered when maxcc is changed
-        response = self.client.download(wfs_url, ignore_exception=True)
-
-        if response:
-            area_info = response.json()
-            for feature in area_info['features']:
-                date_str = str(feature['properties']['date'])
-                self.cloud_cover[date_str] = feature['properties'].get('cloudCoverPercentage', 0)
-            self.update_calendar_from_cloud_cover()
 
     # ----------------------------------------------------------------------------
 
@@ -485,8 +555,7 @@ class SentinelHubPlugin:
         layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
         name = self.get_qgis_layer_name(layer)
 
-        time_str = self.get_time()
-        service_uri = get_service_uri(self.settings, layer, time_str)
+        service_uri = get_service_uri(self.settings, layer)
 
         QgsMessageLog.logMessage(str(service_uri))
         if self.settings.service_type.upper() == ServiceType.WFS:
@@ -499,38 +568,10 @@ class SentinelHubPlugin:
             if on_top and qgis_layers:
                 self.iface.setActiveLayer(qgis_layers[0])
             QgsProject.instance().addMapLayer(new_layer)
-            self.update_current_wms_layers()
+            self.update_current_map_layers()
         else:
             self.show_message('Failed to create layer {}.'.format(name), MessageType.CRITICAL)
         return new_layer
-
-    def get_bbox(self, crs=None):
-        """
-        Get window bbox
-        """
-        bbox = self.iface.mapCanvas().extent()
-        target_crs = QgsCoordinateReferenceSystem(crs if crs else self.settings.crs)
-        current_crs = QgsCoordinateReferenceSystem(self.iface.mapCanvas().mapSettings().destinationCrs().authid())
-
-        if current_crs != target_crs:
-            xform = QgsCoordinateTransform(current_crs, target_crs, QgsProject.instance())
-            bbox = xform.transform(bbox)  # if target CRS is UTM and bbox is out of UTM bounds this fails, not sure how to fix
-
-        return bbox
-
-    def bbox_to_string(self, bbox, crs=None):
-        """ Transforms BBox object into string
-        """
-        target_crs = QgsCoordinateReferenceSystem(crs if crs else self.settings.crs)
-
-        if target_crs.authid() == CrsType.WGS84:
-            precision = 6
-            bbox_list = [bbox.yMinimum(), bbox.xMinimum(), bbox.yMaximum(), bbox.xMaximum()]
-        else:
-            precision = 2
-            bbox_list = [bbox.xMinimum(), bbox.yMinimum(), bbox.xMaximum(), bbox.yMaximum()]
-
-        return ','.join(map(lambda coord: str(round(coord, precision)), bbox_list))
 
     def get_custom_bbox(self):
         """ Creates BBox from values set by user
@@ -546,34 +587,14 @@ class SentinelHubPlugin:
         From Custom extent get values, save them and show them in UI
         :return:
         """
-        bbox = self.get_bbox(crs=CrsType.WGS84)
-        bbox_list = self.bbox_to_string(bbox, crs=CrsType.WGS84).split(',')
+        bbox = get_bbox(self.iface, CrsType.WGS84)
+        bbox_list = bbox_to_string(bbox, CrsType.WGS84).split(',')
         self.custom_bbox_params['latMin'] = bbox_list[0]
         self.custom_bbox_params['lngMin'] = bbox_list[1]
         self.custom_bbox_params['latMax'] = bbox_list[2]
         self.custom_bbox_params['lngMax'] = bbox_list[3]
 
         self.set_values()
-
-    def get_bbox_size(self, bbox, crs=None):
-        """ Returns approximate width and height of bounding box in meters
-        """
-        bbox_crs = QgsCoordinateReferenceSystem(crs if crs else self.settings.crs)
-        utm_crs = QgsCoordinateReferenceSystem(self.lng_to_utm_zone(
-            (bbox.xMinimum() + bbox.xMaximum()) / 2,
-            (bbox.yMinimum() + bbox.yMaximum()) / 2))
-        xform = QgsCoordinateTransform(bbox_crs, utm_crs, QgsProject.instance())
-        bbox = xform.transform(bbox)
-        width = abs(bbox.xMaximum() - bbox.xMinimum())
-        height = abs(bbox.yMinimum() - bbox.yMaximum())
-        return width, height
-
-    @staticmethod
-    def lng_to_utm_zone(longitude, latitude):
-        """ Calculates UTM zone from latitude and longitude"""
-        zone = int(math.floor((longitude + 180) / 6) + 1)
-        hemisphere = 6 if latitude > 0 else 7
-        return 'EPSG:32{0}{1:02d}'.format(hemisphere, zone)
 
     def update_qgis_layer(self):
         """ Updating layer in pyqgis somehow doesn't work therefore this method creates a new layer and deletes the
@@ -593,11 +614,11 @@ class SentinelHubPlugin:
                 new_layer = self.add_qgis_layer()
                 if new_layer.isValid():
                     QgsProject.instance().removeMapLayer(layer)
-                    self.update_current_wms_layers(selected_layer=new_layer)
+                    self.update_current_map_layers(selected_layer=new_layer)
                 return
         self.show_message('Chosen layer {} does not exist anymore.'
                           ''.format(self.dockwidget.mapLayerComboBox.currentText()), MessageType.INFO)
-        self.update_current_wms_layers()
+        self.update_current_map_layers()
 
     def update_parameters(self):
         """
@@ -606,96 +627,6 @@ class SentinelHubPlugin:
         """
         priority_index = self.dockwidget.priorityComboBox.currentIndex()
         self.settings.priority = list(ImagePriority)[priority_index].url_param
-        self.settings.maxcc = str(self.dockwidget.maxccSlider.value())
-        self.settings.time = self.get_time()
-
-    def is_cloudless_source(self):
-        """
-        :return: True if data source has no clouds and False otherwise
-        :rtype: bool
-        """
-        return self.settings.data_source in ['S1GRD', 'DEM']
-
-    def is_timeless_source(self):
-        """
-        :return: True if data source is time independent and False otherwise
-        :rtype: bool
-        """
-        return self.settings.data_source == 'DEM'
-
-    def update_maxcc_label(self):
-        """
-        Update Max Cloud Coverage Label when slider value change
-        :return:
-        """
-        self.dockwidget.maxccLabel.setText('Cloud coverage {}%'.format(self.dockwidget.maxccSlider.value()))
-
-    def get_time(self):
-        """
-        Format time parameter according to settings
-        :return:
-        """
-        if self.dockwidget.exactDateCheckBox.isChecked():
-            return '{}/{}/P1D'.format(self.settings.time0, self.settings.time0)
-        if self.settings.time0 == '':
-            return self.settings.time1
-        if self.settings.time1 == '':
-            return '{}/{}/P1D'.format(self.settings.time0, datetime.datetime.now().strftime("%Y-%m-%d"))
-        return '{}/{}/P1D'.format(self.settings.time0, self.settings.time1)
-
-    def add_time(self):
-        """
-        Add / update time parameter from calendar regrading which time was chosen and paint calendar
-        time0 - starting time
-        time1 - ending time
-        :return:
-        """
-        calendar_time = str(self.dockwidget.calendarWidget.selectedDate().toPyDate())
-
-        if self.settings.active_time == 'time0' and (self.dockwidget.exactDateCheckBox.isChecked() or not self.settings.time1 or
-                                            calendar_time <= self.settings.time1):
-            self.settings.time0 = calendar_time
-            self.dockwidget.startTimeLineEdit.setText(calendar_time)
-        elif self.settings.active_time == 'time1' and (not self.settings.time0 or self.settings.time0 <= calendar_time):
-            self.settings.time1 = calendar_time
-            self.dockwidget.endTimeLineEdit.setText(calendar_time)
-        else:
-            self.show_message('Start date must not be larger than end date', MessageType.INFO)
-
-    # ------------------------------------------------------------------------
-
-    def clear_calendar_cells(self):
-        """
-        Clear all cells
-        :return:
-        """
-        style = QTextCharFormat()
-        style.setBackground(Qt.white)
-        self.dockwidget.calendarWidget.setDateTextFormat(QDate(), style)
-
-    def update_calendar_from_cloud_cover(self):
-        """
-        Update painted cells regrading Max Cloud Coverage
-        :return:
-        """
-        self.clear_calendar_cells()
-        for date, value in self.cloud_cover.items():
-            if float(value) <= int(self.settings.maxcc):
-                d = date.split('-')
-                style = QTextCharFormat()
-                style.setBackground(Qt.gray)
-                self.dockwidget.calendarWidget.setDateTextFormat(QDate(int(d[0]), int(d[1]), int(d[2])), style)
-
-    def move_calendar(self, active):
-        """
-        :param active:
-        :return:
-        """
-        if active == 'time0':
-            self.dockwidget.calendarSpacer.hide()
-        else:
-            self.dockwidget.calendarSpacer.show()
-        self.settings.active_time = active
 
     def select_download_folder(self):
         """
@@ -729,14 +660,15 @@ class SentinelHubPlugin:
                 return self.show_message("Download canceled. No destination set.", MessageType.CRITICAL)
 
         try:
-            bbox = self.get_bbox() if self.settings.download_extent_type is ExtentType.CURRENT else \
+            is_current_extent = self.settings.download_extent_type is ExtentType.CURRENT
+            bbox = get_bbox(self.iface, self.settings.crs) if is_current_extent else \
                 self.get_custom_bbox()
         except Exception:
             return self.show_message("Unable to transform to selected CRS, please zoom in or change CRS",
                                      MessageType.CRITICAL)
 
         crs = None if self.settings.download_extent_type is ExtentType.CURRENT else CrsType.WGS84
-        bbox_str = self.bbox_to_string(bbox, crs)
+        bbox_str = bbox_to_string(bbox, crs)
         layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
         url = get_wcs_url(self.settings, layer, bbox_str, crs)
         filename = self.get_filename(bbox_str)
@@ -745,16 +677,18 @@ class SentinelHubPlugin:
 
     def get_filename(self, bbox):
         """ Prepare filename which contains some metadata
-        DataSource_LayerName_time0_time1_xmin_y_min_xmax_ymax_maxcc_priority.FORMAT
+        DataSource_LayerName_start_time_end_time_xmin_y_min_xmax_ymax_maxcc_priority.FORMAT
 
         :param bbox:
         :return:
         """
+        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id)
+
         info_list = [self.get_source_name(), self.settings.layer_id]
-        if not self.is_timeless_source():
+        if not layer.data_source.is_timeless():
             info_list.append(self.get_time_name())
         info_list.extend(bbox.split(','))
-        if not self.is_cloudless_source():
+        if not layer.data_source.is_cloudless():
             info_list.append(self.settings.maxcc)
         info_list.append(self.settings.priority)
 
@@ -780,8 +714,8 @@ class SentinelHubPlugin:
         :return: string describing time interval
         :rtype: str
         """
-        time_interval = self.settings.time.split('/')[:2]
-        if self.dockwidget.exactDateCheckBox.isChecked():
+        time_interval = self.settings.start_time, self.settings.end_time
+        if self.settings.is_exact_date:
             time_interval = time_interval[:1]
         if len(time_interval) == 1:
             if not time_interval[0]:
@@ -799,22 +733,16 @@ class SentinelHubPlugin:
         :return: qgis layer name
         :rtype: str
         """
+        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id)
+
         plugin_params = [self.settings.service_type.upper()]
-        if not self.is_timeless_source():
+        if not layer.data_source.is_timelesse():
             plugin_params.append(self.get_time_name())
-        if not self.is_cloudless_source():
+        if not layer.data_source.is_cloudless():
             plugin_params.append('{}%'.format(self.settings.maxcc))
         plugin_params.extend([self.settings.priority, self.settings.crs])
 
         return '{} - {} ({})'.format(self.get_source_name(), layer.name, ', '.join(plugin_params))
-
-    def update_maxcc(self):
-        """
-        Update max cloud cover
-        :return:
-        """
-        self.update_parameters()
-        self.update_calendar_from_cloud_cover()
 
     def update_download_format(self):
         """
@@ -823,24 +751,6 @@ class SentinelHubPlugin:
         """
         image_format_index = self.dockwidget.imageFormatComboBox.currentIndex()
         self.settings.image_format = list(ImageFormat)[image_format_index].url_param
-
-    def change_exact_date(self):
-        """
-        Change if using exact date or not
-        :return:
-        """
-        if self.dockwidget.exactDateCheckBox.isChecked():
-            self.dockwidget.endTimeLineEdit.hide()
-            self.dockwidget.timeLabel.hide()
-            self.move_calendar('time0')
-        else:
-            if self.settings.time0 and self.settings.time1 and self.settings.time0 > self.settings.time1:
-                self.settings.time1 = ''
-                self.settings.time = self.get_time()
-                self.dockwidget.endTimeLineEdit.setText(self.settings.time1)
-
-            self.dockwidget.endTimeLineEdit.show()
-            self.dockwidget.timeLabel.show()
 
     def change_download_folder(self):
         """ Sets new download folder"""
@@ -854,61 +764,6 @@ class SentinelHubPlugin:
             self.dockwidget.downloadFolderLineEdit.setText(self.settings.download_folder)
             self.show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
                               MessageType.CRITICAL)
-
-    def update_month(self):
-        """
-        On Widget Month update, get first and last dates to get Cloud Cover
-        :return:
-        """
-        self.update_parameters()
-        self.get_cloud_cover()
-
-    def get_calendar_month_interval(self):
-        year = self.dockwidget.calendarWidget.yearShown()
-        month = self.dockwidget.calendarWidget.monthShown()
-        _, number_of_days = calendar.monthrange(year, month)
-        first = datetime.date(year, month, 1)
-        last = datetime.date(year, month, number_of_days)
-
-        return '{}/{}/P1D'.format(first.strftime('%Y-%m-%d'), last.strftime('%Y-%m-%d'))
-
-    def update_dates(self):
-        """ Checks if newly inserted dates are valid and updates date attributes
-        """
-        new_time0 = self.parse_date(self.dockwidget.startTimeLineEdit.text())
-        new_time1 = self.parse_date(self.dockwidget.endTimeLineEdit.text())
-
-        if new_time0 is None or new_time1 is None:
-            self.show_message('Please insert a valid date in a form YYYY-MM-DD', MessageType.INFO)
-        elif new_time0 and new_time1 and new_time0 > new_time1 and not self.dockwidget.exactDateCheckBox.isChecked():
-            self.show_message('Start date must be earlier or equal to end date', MessageType.INFO)
-        else:
-            self.settings.time0 = new_time0
-            self.settings.time1 = new_time1
-            self.settings.time = self.get_time()
-
-        self.dockwidget.startTimeLineEdit.setText(self.settings.time0)
-        self.dockwidget.endTimeLineEdit.setText(self.settings.time1)
-
-    @staticmethod
-    def parse_date(date):
-        """Checks if string represents a valid date and puts it into form YYYY-MM-DD
-
-        :param date: string describing a date
-        :type date: str
-        :return:
-        """
-        date = date.strip()
-        if date == '':
-            return date
-        props = date.split('-')
-        if len(props) >= 3:
-            try:
-                parsed_date = datetime.datetime(year=int(props[0]), month=int(props[1]), day=int(props[2]))
-                return parsed_date.strftime("%Y-%m-%d")
-            except ValueError:
-                pass
-        return None
 
     def update_values(self):
         """ Updates numerical values from user input"""
@@ -935,6 +790,7 @@ class SentinelHubPlugin:
             'lngMin': self.dockwidget.lngMinLineEdit.text(),
             'lngMax': self.dockwidget.lngMaxLineEdit.text()
         }
+        QgsMessageLog.logMessage(str(new_values))
         for name, value in new_values.items():
             if value != '':
                 try:

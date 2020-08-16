@@ -5,7 +5,7 @@ import copy
 
 from PyQt5.QtCore import QSettings
 
-from .constants import BaseUrl, ServiceType, CrsType, ExtentType, ImagePriority
+from .constants import BaseUrl, ServiceType, CrsType, ExtentType, ImagePriority, TimeType
 
 
 class Settings:
@@ -26,23 +26,15 @@ class Settings:
     download_extent_type = ExtentType.CURRENT
     download_folder = ''
 
-    active_time = 'time0'
-    time0 = ''
-    time1 = ''
-    time = ''
+    active_time = TimeType.START_TIME.value
+    start_time = ''
+    end_time = ''
+    is_exact_date = False
 
     image_format = 'image/png'
     show_logo = 'false'
     resx = '10'
     resy = '10'
-
-    # WCS parameters
-    parameters_wcs = {
-        'format': 'image/png',
-        'showLogo': 'false',
-        'resx': '10',
-        'resy': '10'
-    }
 
     _STORE_NAMESPACE = 'SentinelHub'
     _AUTO_SAVE_STORE_PARAMETERS = {

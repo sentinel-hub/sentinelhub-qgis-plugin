@@ -62,6 +62,22 @@ class DataSource:
             wfs_id = '{}-{}'.format(wfs_id, self.collection_id)
         return wfs_id
 
+    def is_cloudless(self):
+        """ Decides if a data source cannot contain clouds
+
+        :return: True if data source has no clouds and False otherwise
+        :rtype: bool
+        """
+        return self.type in ['S1GRD', 'DEM']
+
+    def is_timeless(self):
+        """ Decides if a data source doesn't depend on time
+
+        :return: True if data source is time independent and False otherwise
+        :rtype: bool
+        """
+        return self.type == 'DEM'
+
 
 class CRS:
     """ Stores info about an available CRS

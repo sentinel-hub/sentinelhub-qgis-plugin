@@ -32,7 +32,7 @@ def classFactory(iface):
     # The following initializes UI
     from . import resources
 
-    from .utils import ensure_import
+    from .utils.meta import ensure_import
     ensure_import('oauthlib')
     ensure_import('requests_oauthlib')
 

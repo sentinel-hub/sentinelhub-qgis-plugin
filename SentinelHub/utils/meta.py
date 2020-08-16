@@ -1,5 +1,5 @@
 """
-Module containing various utilities
+Utilities for handling meta information and procedures
 """
 import os
 import sys
@@ -12,7 +12,7 @@ def ensure_import(package_name):
     try:
         __import__(package_name)
     except ImportError:
-        plugin_dir = os.path.dirname(__file__)
+        plugin_dir = _get_main_dir()
         external_path = os.path.join(plugin_dir, 'external')
 
         for wheel_name in os.listdir(external_path):
@@ -29,7 +29,7 @@ def get_plugin_version():
     :return: A plugin version
     :rtype: str
     """
-    plugin_dir = os.path.dirname(__file__)
+    plugin_dir = _get_main_dir()
     metadata_path = os.path.join(plugin_dir, 'metadata.txt')
 
     if not os.path.exists(metadata_path):
@@ -43,14 +43,8 @@ def get_plugin_version():
     raise ValueError('Failed to parse version from metadata.txt file')
 
 
-def show_message(iface, message, message_type):
-    """ Show message for user
-
-    :param iface: A QGIS interface instance.
-    :type iface: QgsInterface
-    :param message: Message for user
-    :param message: str
-    :param message_type: Type of message
-    :param message_type: MessageType
+def _get_main_dir():
+    """ Provides a path to the main plugin folder
     """
-    iface.messageBar().pushMessage(message_type.nice_name, message, level=message_type.level)
+    utils_dir = os.path.dirname(__file__)
+    return os.path.abspath(os.path.join(utils_dir, '..'))
