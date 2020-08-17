@@ -165,3 +165,12 @@ class ExtentValidator(BaseValidator):
 
         return plugin.settings.lat_min and plugin.settings.lat_max and \
             plugin.settings.lng_min and plugin.settings.lng_max
+
+
+class DownloadFolderValidator(BaseValidator):
+    """ Check if a download folder is set
+    """
+    MESSAGE = 'Please set a download folder'
+
+    def check(self, plugin):
+        return bool(plugin.settings.download_folder)

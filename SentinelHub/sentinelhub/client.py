@@ -14,25 +14,24 @@ class Client:
 
     _CACHED_SESSIONS = {}
 
-    def __init__(self, iface, plugin_version, settings):
+    def __init__(self, iface, plugin_version):
         self.iface = iface
         self.plugin_version = plugin_version
-        self.settings = settings
 
-    def download(self, url, timeout=None, use_session=False):
+    def download(self, url, timeout=None, session_settings=None):
         """ Downloads data from url and handles possible errors
 
         :param url: download url
         :type url: str
         :param timeout: A number of seconds before a request will timeout
         :type timeout: int or None
-        :param use_session: A flag to specify if a session should be used
-        :type use_session: bool
+        :param session_settings: If specified, these settings will be used to create a session
+        :type session_settings: Settings or None
         :return: download response or None if download failed
         :rtype: requests.response or None
         """
         proxy_dict, auth = get_proxy_config()
-        headers = self._prepare_headers(use_session)
+        headers = self._prepare_headers(session_settings)
         try:
             response = requests.get(
                 url,
@@ -47,15 +46,15 @@ class Client:
 
         return response
 
-    def _prepare_headers(self, use_session):
+    def _prepare_headers(self, session_settings):
         """ Prepares final headers by potentially joining them with session headers
         """
         headers = {
             'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)
         }
 
-        if use_session:
-            session = self._get_session()
+        if session_settings:
+            session = self._get_session(session_settings)
             headers = {
                 **headers,
                 **session.session_headers
@@ -63,17 +62,18 @@ class Client:
 
         return headers
 
-    def _get_session(self):
+    @staticmethod
+    def _get_session(settings):
         """ Provides a session object either from cache or it creates a new one
         """
-        cache_key = self.settings.client_id, self.settings.client_secret, self.settings.base_url
+        cache_key = settings.client_id, settings.client_secret, settings.base_url
         if cache_key in Client._CACHED_SESSIONS:
             return Client._CACHED_SESSIONS[cache_key]
 
         session = Session(
-            base_url=self.settings.base_url,
-            client_id=self.settings.client_id,
-            client_secret=self.settings.client_secret
+            base_url=settings.base_url,
+            client_id=settings.client_id,
+            client_secret=settings.client_secret
         )
 
         Client._CACHED_SESSIONS[cache_key] = session

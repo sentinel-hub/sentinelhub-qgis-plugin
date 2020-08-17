@@ -27,7 +27,7 @@ from PyQt5.QtWidgets import QAction, QFileDialog
 from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ExtentType, ServiceType, TimeType, \
     AVAILABLE_SERVICE_TYPES, COVERAGE_MAX_BBOX_SIZE, ACTION_COOLDOWN
 from .dockwidget import SentinelHubDockWidget
-from .exceptions import action_handler, LayerValidator, ResolutionValidator, ExtentValidator
+from .exceptions import action_handler, LayerValidator, ResolutionValidator, ExtentValidator, DownloadFolderValidator
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
 from .sentinelhub.ogc import get_service_uri
@@ -62,7 +62,7 @@ class SentinelHubPlugin:
 
         self.plugin_version = get_plugin_version()
         self.settings = Settings()
-        self.client = Client(self.iface, self.plugin_version, self.settings)
+        self.client = Client(self.iface, self.plugin_version)
         self.manager = None
 
         self._default_layer_selection_event = None
@@ -394,7 +394,7 @@ class SentinelHubPlugin:
             self.show_message('Start date must not be later than end date', MessageType.INFO)
 
     @action_handler()
-    def update_available_calendar_dates(self):
+    def update_available_calendar_dates(self, *_):
         """ For the current extent, current layer and current month it will find all days for which there is available
         data for that layer
         """
@@ -442,8 +442,8 @@ class SentinelHubPlugin:
         self.settings.priority = list(ImagePriority)[priority_index].url_param
 
     @action_handler(validators=[LayerValidator], cooldown=ACTION_COOLDOWN)
-    def add_qgis_layer(self):
-        """ An action that adds reates and adds a new QGIS layer to the Layers menu
+    def add_qgis_layer(self, *_):
+        """ An action that creates and adds a new QGIS layer to the Layers menu
         """
         self._create_and_add_qgis_layer()
 
@@ -471,7 +471,7 @@ class SentinelHubPlugin:
         return new_layer
 
     @action_handler(validators=[LayerValidator], cooldown=ACTION_COOLDOWN)
-    def update_qgis_layer(self):
+    def update_qgis_layer(self, *_):
         """ Update an existing QGIS map layer by removing it and adding a new one instead of it
         """
         chosen_layer_name = self.dockwidget.mapLayerComboBox.currentText()
@@ -565,7 +565,7 @@ class SentinelHubPlugin:
         self.settings.lat_min = bbox_list[0]
         self.settings.lng_min = bbox_list[1]
         self.settings.lat_max = bbox_list[2]
-        self.settings.lng_min = bbox_list[3]
+        self.settings.lng_max = bbox_list[3]
 
         self._set_download_extent_values()
 
@@ -595,8 +595,11 @@ class SentinelHubPlugin:
         self.dockwidget.downloadFolderLineEdit.setText(folder)
         self.change_download_folder()
 
-    @action_handler(validators=[LayerValidator, ResolutionValidator, ExtentValidator], cooldown=ACTION_COOLDOWN)
-    def download_caption(self):
+    @action_handler(
+        validators=[LayerValidator, ResolutionValidator, ExtentValidator, DownloadFolderValidator],
+        cooldown=ACTION_COOLDOWN
+    )
+    def download_caption(self, *_):
         """ Downloads an image from given parameters
         """
         try:
