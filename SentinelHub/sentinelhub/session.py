@@ -5,7 +5,10 @@ import time
 
 from qgis.core import QgsMessageLog
 from oauthlib.oauth2 import BackendApplicationClient
+from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from requests_oauthlib import OAuth2Session
+
+from ..exceptions import SessionError
 
 
 class Session:
@@ -61,9 +64,12 @@ class Session:
 
         QgsMessageLog.logMessage('Creating a new authentication session with Sentinel Hub service')
 
-        with OAuth2Session(client=oauth_client) as oauth_session:
-            return oauth_session.fetch_token(
-                token_url=self.oauth_url,
-                client_id=self.client_id,
-                client_secret=self.client_secret
-            )
+        try:
+            with OAuth2Session(client=oauth_client) as oauth_session:
+                return oauth_session.fetch_token(
+                    token_url=self.oauth_url,
+                    client_id=self.client_id,
+                    client_secret=self.client_secret
+                )
+        except OAuth2Error:
+            raise SessionError

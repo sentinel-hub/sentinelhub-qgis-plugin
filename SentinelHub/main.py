@@ -25,8 +25,9 @@ from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
 from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ExtentType, ServiceType, TimeType, \
-    AVAILABLE_SERVICE_TYPES, MAX_CLOUD_COVER_BBOX_SIZE
+    AVAILABLE_SERVICE_TYPES, MAX_CLOUD_COVER_BBOX_SIZE, ACTION_COOLDOWN
 from .dockwidget import SentinelHubDockWidget
+from .exceptions import action_handler, LayerValidator
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
 from .sentinelhub.ogc import get_service_uri
@@ -63,11 +64,6 @@ class SentinelHubPlugin:
         self.settings = Settings()
         self.client = Client(self.iface, self.plugin_version)
         self.manager = None
-
-        # TODO: remove all below:
-        self.custom_bbox_params = {}
-        for name in ['latMin', 'latMax', 'lngMin', 'lngMax']:
-            self.custom_bbox_params[name] = ''
 
         self._default_layer_selection_event = None
 
@@ -209,7 +205,8 @@ class SentinelHubPlugin:
         if base_url != expected_base_url:
             self.dockwidget.serviceUrlLineEdit.setText(expected_base_url)
 
-    def login(self):
+    @action_handler(cooldown=ACTION_COOLDOWN)
+    def login(self, *_):
         """ Uses credentials to connect to Sentinel Hub services and updates
         """
         new_settings = self.settings.copy()
@@ -442,13 +439,14 @@ class SentinelHubPlugin:
         priority_index = self.dockwidget.priorityComboBox.currentIndex()
         self.settings.priority = list(ImagePriority)[priority_index].url_param
 
-    def add_qgis_layer(self, on_top=False):
-        """ Creates and adds a new QGIS layer to the Layers menu
+    @action_handler(validators=[LayerValidator], cooldown=ACTION_COOLDOWN)
+    def add_qgis_layer(self):
+        """ An action that adds reates and adds a new QGIS layer to the Layers menu
+        """
+        self._create_and_add_qgis_layer()
 
-        :param on_top: If True the layer will be added on top of all layers, if False it will be added on top of
-            currently selected layer.
-        :type on_top: bool
-        :return: new layer or None if creation failed
+    def _create_and_add_qgis_layer(self):
+        """ Creates, adds and returns a new QGIS layer
         """
         layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
         qgis_layer_name = get_qgis_layer_name(self.settings, layer)
@@ -465,15 +463,12 @@ class SentinelHubPlugin:
             self.show_message('Failed to create layer {}.'.format(qgis_layer_name), MessageType.CRITICAL)
             return None
 
-        qgis_layers = get_qgis_layers()
-        if on_top and qgis_layers:
-            self.iface.setActiveLayer(qgis_layers[0])
-
         QgsProject.instance().addMapLayer(new_layer)
         self.update_current_map_layers()
 
         return new_layer
 
+    @action_handler(validators=[LayerValidator], cooldown=ACTION_COOLDOWN)
     def update_qgis_layer(self):
         """ Update an existing QGIS map layer by removing it and adding a new one instead of it
         """
@@ -484,7 +479,7 @@ class SentinelHubPlugin:
         for layer in get_qgis_layers():
             if layer.name() == chosen_layer_name:
                 self.iface.setActiveLayer(layer)
-                new_layer = self.add_qgis_layer()
+                new_layer = self._create_and_add_qgis_layer()
 
                 if new_layer:
                     QgsProject.instance().removeMapLayer(layer)
@@ -598,6 +593,7 @@ class SentinelHubPlugin:
         self.dockwidget.downloadFolderLineEdit.setText(folder)
         self.change_download_folder()
 
+    @action_handler(validators=[LayerValidator], cooldown=ACTION_COOLDOWN)
     def download_caption(self):
         """ Downloads an image from given parameters
         """
@@ -605,9 +601,9 @@ class SentinelHubPlugin:
             return self.show_message('Spatial resolution parameters are not set.', MessageType.CRITICAL)
 
         if self.settings.download_extent_type is ExtentType.CUSTOM:
-            for value in self.custom_bbox_params.values():
-                if value == '':
-                    return self.show_message('Custom bounding box parameters are missing.', MessageType.CRITICAL)
+            pass
+            # TODO: check
+            # return self.show_message('Custom bounding box parameters are missing.', MessageType.CRITICAL)
 
         if not self.settings.download_folder:
             self.select_download_folder()
@@ -625,11 +621,7 @@ class SentinelHubPlugin:
 
         filename = download_wcs_image(self.settings, layer, bbox, self.client)
 
-        if filename:
-            self.show_message('Done downloading to {}'.format(filename), MessageType.SUCCESS)
-            # time.sleep(1)
-        # else:
-        #     self.show_message('Failed to download from {} to {}'.format(url, filename), MessageType.CRITICAL)
+        self.show_message('Done downloading to {}'.format(filename), MessageType.SUCCESS)
 
     def on_close_plugin(self):
         """ Cleanup necessary items here when a close event on the dockwidget is triggered

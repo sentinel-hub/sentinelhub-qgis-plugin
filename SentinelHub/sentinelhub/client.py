@@ -4,12 +4,10 @@ Download client for Sentinel Hub service
 from xml.etree import ElementTree
 
 import requests
-from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from PyQt5.QtCore import QSettings
 
 from .session import Session
-from ..constants import MessageType
-from ..utils.exceptions import show_message
+from ..exceptions import DownloadError
 
 
 class Client:
@@ -34,12 +32,13 @@ class Client:
         :return: download response or None if download failed
         :rtype: requests.response or None
         """
+        proxy_dict, auth = get_proxy_config()
+        headers = self._prepare_headers(use_session, settings)
         try:
-            proxy_dict, auth = get_proxy_config()
             response = requests.get(
                 url,
                 stream=stream,
-                headers=self._prepare_headers(use_session, settings),
+                headers=headers,
                 proxies=proxy_dict,
                 auth=auth
             )
@@ -48,8 +47,7 @@ class Client:
             if ignore_exception:
                 return
 
-            show_message(self.iface, get_error_message(exception), MessageType.CRITICAL)
-            response = None
+            raise DownloadError(get_error_message(exception))
 
         return response
 
@@ -69,21 +67,19 @@ class Client:
 
         return headers
 
-    def _get_session(self, settings):
+    @staticmethod
+    def _get_session(settings):
         """ Provides a session object either from cache or it creates a new one
         """
         cache_key = settings.client_id, settings.client_secret, settings.base_url
         if cache_key in Client._CACHED_SESSIONS:
             return Client._CACHED_SESSIONS[cache_key]
 
-        try:
-            session = Session(
-                base_url=settings.base_url,
-                client_id=settings.client_id,
-                client_secret=settings.client_secret
-            )
-        except OAuth2Error as exception:
-            show_message(self.iface, exception.error, MessageType.CRITICAL)  # TODO: fix this by moving logging to the main
+        session = Session(
+            base_url=settings.base_url,
+            client_id=settings.client_id,
+            client_secret=settings.client_secret
+        )
 
         Client._CACHED_SESSIONS[cache_key] = session
         return session
