@@ -9,7 +9,7 @@ from PyQt5.QtCore import QSettings
 
 from .session import Session
 from ..constants import MessageType
-from ..utils import show_message
+from ..utils.exceptions import show_message
 
 
 class Client:

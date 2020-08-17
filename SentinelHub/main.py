@@ -20,8 +20,6 @@
 
 import os
 import time
-import calendar
-import datetime
 
 from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem,\
     QgsCoordinateTransform, QgsRectangle, QgsMessageLog
@@ -35,10 +33,11 @@ from .dockwidget import SentinelHubDockWidget
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
 from .sentinelhub.ogc import get_service_uri, get_wcs_url, get_wfs_url
+from .sentinelhub.wfs import get_cloud_cover
 from .settings import Settings
 from .utils.geo import get_bbox, is_bbox_too_large, bbox_to_string
 from .utils.meta import get_plugin_version
-from .utils.time import parse_date
+from .utils.time import parse_date, get_month_time_interval
 
 
 class SentinelHubPlugin:
@@ -66,7 +65,6 @@ class SentinelHubPlugin:
 
         # TODO: remove all below:
         self.qgis_layers = []
-        self.cloud_cover = {}
 
         self.custom_bbox_params = {}
         for name in ['latMin', 'latMax', 'lngMin', 'lngMax']:
@@ -133,7 +131,8 @@ class SentinelHubPlugin:
         self.dockwidget.calendarWidget.currentPageChanged.connect(self.update_available_calendar_dates)
 
         self.dockwidget.maxccSlider.valueChanged.connect(self.update_maxcc)
-        self.dockwidget.maxccSlider.sliderReleased.connect(self.update_calendar_from_cloud_cover)
+        self.dockwidget.maxccSlider.sliderReleased.connect(self.update_available_calendar_dates)
+        self.dockwidget.priorityComboBox.activated.connect(self.update_image_priority)
 
         # Create widget bottom buttons
         self.dockwidget.createLayerPushButton.clicked.connect(self.add_qgis_layer)
@@ -309,11 +308,6 @@ class SentinelHubPlugin:
             self.dockwidget.endTimeLineEdit.show()
         """
 
-        # TODO:
-        # old_data_source = self.settings.data_source
-        # if old_data_source != self.settings.data_source:
-        #     self.update_available_calendar_dates()
-
     def update_crs(self, crs_index=None):
         """ Updates crs with selected Sentinel Hub CRS
         """
@@ -400,29 +394,29 @@ class SentinelHubPlugin:
         if self.manager is None or not self.settings.instance_id or not self.settings.layer_id:
             return
 
-        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
-
-        # TODO
-
-        self.cloud_cover = {}
         self._clear_calendar_cells()
 
         bbox = get_bbox(self.iface, self.settings.crs)
         if is_bbox_too_large(bbox, self.settings.crs, MAX_CLOUD_COVER_BBOX_SIZE):
             return
 
-        time_range = self.get_calendar_month_interval()
-        bbox_str = bbox_to_string(bbox, self.settings.crs)
-        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
-        wfs_url = get_wfs_url(self.settings, layer, bbox_str, time_range)  # TODO: make sure that is also triggered when maxcc is changed
-        response = self.client.download(wfs_url, ignore_exception=True)
+        year = self.dockwidget.calendarWidget.yearShown()
+        month = self.dockwidget.calendarWidget.monthShown()
+        time_interval = get_month_time_interval(year, month)
 
-        if response:
-            area_info = response.json()
-            for feature in area_info['features']:
-                date_str = str(feature['properties']['date'])
-                self.cloud_cover[date_str] = feature['properties'].get('cloudCoverPercentage', 0)
-            self.update_calendar_from_cloud_cover()
+        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
+        cloud_cover_map = get_cloud_cover(self.settings, layer, bbox, time_interval, self.client)
+
+        if cloud_cover_map is None:
+            return
+
+        for date, cloud_cover_percentage in cloud_cover_map.items():
+            if cloud_cover_percentage <= int(self.settings.maxcc):
+                date_props = list(map(int, date.split('-')))
+                qdate = QDate(*date_props)
+                style = QTextCharFormat()
+                style.setBackground(Qt.gray)
+                self.dockwidget.calendarWidget.setDateTextFormat(qdate, style)
 
     def _clear_calendar_cells(self):
         """ Resets all highlighted calendar cells
@@ -437,27 +431,81 @@ class SentinelHubPlugin:
         self.settings.maxcc = str(self.dockwidget.maxccSlider.value())
         self.dockwidget.maxccLabel.setText('Cloud coverage {}%'.format(self.settings.maxcc))
 
-    def update_calendar_from_cloud_cover(self):
+    def update_image_priority(self):
+        """ Updates settings for image priority
         """
-        Update painted cells regrading Max Cloud Coverage
-        :return:
+        priority_index = self.dockwidget.priorityComboBox.currentIndex()
+        self.settings.priority = list(ImagePriority)[priority_index].url_param
+
+    def update_current_map_layers(self, selected_layer=None):
+        """ Updates the list of QGIS layers
         """
-        self._clear_calendar_cells()
-        for date, value in self.cloud_cover.items():
-            if float(value) <= int(self.settings.maxcc):
-                d = date.split('-')
-                style = QTextCharFormat()
-                style.setBackground(Qt.gray)
-                self.dockwidget.calendarWidget.setDateTextFormat(QDate(int(d[0]), int(d[1]), int(d[2])), style)
+        self.qgis_layers = self.get_qgis_layers()
+        layer_names = []
+        for layer in self.qgis_layers:
+            layer_names.append(layer.name())
+        self.dockwidget.mapLayerComboBox.clear()
+        self.dockwidget.mapLayerComboBox.addItems(layer_names)
 
-    def get_calendar_month_interval(self):
-        year = self.dockwidget.calendarWidget.yearShown()
-        month = self.dockwidget.calendarWidget.monthShown()
-        _, number_of_days = calendar.monthrange(year, month)
-        first = datetime.date(year, month, 1)
-        last = datetime.date(year, month, number_of_days)
+        if selected_layer and selected_layer in self.qgis_layers:
+            layer_index = self.qgis_layers.index(selected_layer)
+            self.dockwidget.mapLayerComboBox.setCurrentIndex(layer_index)
 
-        return '{}/{}/P1D'.format(first.strftime('%Y-%m-%d'), last.strftime('%Y-%m-%d'))
+    def add_qgis_layer(self, on_top=False):
+        """ Creates and adds a new QGIS layer to the Layers menu
+
+        :param on_top: If True the layer will be added on top of all layers, if False it will be added on top of
+            currently selected layer.
+        :type on_top: bool
+        :return: new layer
+        """
+        if not self.settings.instance_id:
+            return self.missing_instance_id()
+
+        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
+        name = self.get_qgis_layer_name(layer)
+
+        service_uri = get_service_uri(self.settings, layer)
+
+        QgsMessageLog.logMessage(str(service_uri))
+        if self.settings.service_type.upper() == ServiceType.WFS:
+            new_layer = QgsVectorLayer(service_uri, name, ServiceType.WFS)
+        else:
+            new_layer = QgsRasterLayer(service_uri, name, ServiceType.WMS.lower())
+
+        if new_layer.isValid():
+            qgis_layers = self.get_qgis_layers()
+            if on_top and qgis_layers:
+                self.iface.setActiveLayer(qgis_layers[0])
+            QgsProject.instance().addMapLayer(new_layer)
+            self.update_current_map_layers()
+        else:
+            self.show_message('Failed to create layer {}.'.format(name), MessageType.CRITICAL)
+        return new_layer
+
+    def update_qgis_layer(self):
+        """ Updating layer in pyqgis somehow doesn't work therefore this method creates a new layer and deletes the
+            old one
+        """
+        if not self.settings.instance_id:
+            return self.missing_instance_id()
+
+        selected_index = self.dockwidget.mapLayerComboBox.currentIndex()
+        if selected_index < 0:
+            return
+
+        for layer in self.get_qgis_layers():
+            # QgsMessageLog.logMessage(str(layer.name()) + ' ' + str(self.qgis_layers[selected_index].name()))
+            if layer == self.qgis_layers[selected_index]:
+                self.iface.setActiveLayer(layer)
+                new_layer = self.add_qgis_layer()
+                if new_layer.isValid():
+                    QgsProject.instance().removeMapLayer(layer)
+                    self.update_current_map_layers(selected_layer=new_layer)
+                return
+        self.show_message('Chosen layer {} does not exist anymore.'
+                          ''.format(self.dockwidget.mapLayerComboBox.currentText()), MessageType.INFO)
+        self.update_current_map_layers()
 
 # ---------------------------------------------------------
 
@@ -486,20 +534,6 @@ class SentinelHubPlugin:
     def missing_instance_id(self):
         """Show message about missing instance ID"""
         self.show_message("Please set Sentinel Hub Instance ID first.", MessageType.INFO)
-
-    def update_current_map_layers(self, selected_layer=None):
-        """ Updates the list of QGIS layers
-        """
-        self.qgis_layers = self.get_qgis_layers()
-        layer_names = []
-        for layer in self.qgis_layers:
-            layer_names.append(layer.name())
-        self.dockwidget.mapLayerComboBox.clear()
-        self.dockwidget.mapLayerComboBox.addItems(layer_names)
-
-        if selected_layer and selected_layer in self.qgis_layers:
-            layer_index = self.qgis_layers.index(selected_layer)
-            self.dockwidget.mapLayerComboBox.setCurrentIndex(layer_index)
 
     @staticmethod
     def get_qgis_layers():
@@ -539,40 +573,6 @@ class SentinelHubPlugin:
         else:
             self.show_message("Failed to download from {} to {}".format(url, filename), MessageType.CRITICAL)
 
-    def add_qgis_layer(self, on_top=False):
-        """ Creates and adds a new QGIS layer to the Layers menu
-
-        :param on_top: If True the layer will be added on top of all layers, if False it will be added on top of
-            currently selected layer.
-        :type on_top: bool
-        :return: new layer
-        """
-        if not self.settings.instance_id:
-            return self.missing_instance_id()
-
-        self.update_parameters()
-
-        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
-        name = self.get_qgis_layer_name(layer)
-
-        service_uri = get_service_uri(self.settings, layer)
-
-        QgsMessageLog.logMessage(str(service_uri))
-        if self.settings.service_type.upper() == ServiceType.WFS:
-            new_layer = QgsVectorLayer(service_uri, name, ServiceType.WFS)
-        else:
-            new_layer = QgsRasterLayer(service_uri, name, ServiceType.WMS.lower())
-
-        if new_layer.isValid():
-            qgis_layers = self.get_qgis_layers()
-            if on_top and qgis_layers:
-                self.iface.setActiveLayer(qgis_layers[0])
-            QgsProject.instance().addMapLayer(new_layer)
-            self.update_current_map_layers()
-        else:
-            self.show_message('Failed to create layer {}.'.format(name), MessageType.CRITICAL)
-        return new_layer
-
     def get_custom_bbox(self):
         """ Creates BBox from values set by user
         """
@@ -595,38 +595,6 @@ class SentinelHubPlugin:
         self.custom_bbox_params['lngMax'] = bbox_list[3]
 
         self.set_values()
-
-    def update_qgis_layer(self):
-        """ Updating layer in pyqgis somehow doesn't work therefore this method creates a new layer and deletes the
-            old one
-        """
-        if not self.settings.instance_id:
-            return self.missing_instance_id()
-
-        selected_index = self.dockwidget.mapLayerComboBox.currentIndex()
-        if selected_index < 0:
-            return
-
-        for layer in self.get_qgis_layers():
-            # QgsMessageLog.logMessage(str(layer.name()) + ' ' + str(self.qgis_layers[selected_index].name()))
-            if layer == self.qgis_layers[selected_index]:
-                self.iface.setActiveLayer(layer)
-                new_layer = self.add_qgis_layer()
-                if new_layer.isValid():
-                    QgsProject.instance().removeMapLayer(layer)
-                    self.update_current_map_layers(selected_layer=new_layer)
-                return
-        self.show_message('Chosen layer {} does not exist anymore.'
-                          ''.format(self.dockwidget.mapLayerComboBox.currentText()), MessageType.INFO)
-        self.update_current_map_layers()
-
-    def update_parameters(self):
-        """
-        Update parameters from GUI
-        :return:
-        """
-        priority_index = self.dockwidget.priorityComboBox.currentIndex()
-        self.settings.priority = list(ImagePriority)[priority_index].url_param
 
     def select_download_folder(self):
         """
@@ -651,8 +619,6 @@ class SentinelHubPlugin:
             for value in self.custom_bbox_params.values():
                 if value == '':
                     return self.show_message('Custom bounding box parameters are missing.', MessageType.CRITICAL)
-
-        self.update_parameters()
 
         if not self.settings.download_folder:
             self.select_download_folder()

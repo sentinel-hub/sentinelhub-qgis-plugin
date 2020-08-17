@@ -1,6 +1,9 @@
 """
 Time utilities
 """
+import calendar
+import datetime as dt
+
 import dateutil.parser
 
 
@@ -18,3 +21,14 @@ def parse_date(date):
         return dateutil.parser.parse(date).date().isoformat()
     except ValueError:
         return None
+
+
+def get_month_time_interval(year, month):
+    """ Provides a time interval for the given month in a year
+    """
+    _, number_of_days = calendar.monthrange(year, month)
+
+    first_day = dt.date(year, month, 1)
+    last_day = dt.date(year, month, number_of_days)
+
+    return '{}/{}/P1D'.format(first_day.isoformat(), last_day.isoformat())
