@@ -113,7 +113,7 @@ class BaseValidator(ABC):
     def check(self, plugin):
         """ A method that should return True if validation is successful or False otherwise
         """
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class LoginValidator(BaseValidator):

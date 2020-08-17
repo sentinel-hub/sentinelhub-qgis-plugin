@@ -115,6 +115,7 @@ class SentinelHubPlugin:
             return
 
         self.dockwidget = SentinelHubDockWidget()
+        self.dockwidget.setWindowTitle('{} v{}'.format(self.PLUGIN_NAME, self.plugin_version))
         self.initialize_ui()
 
         # Login widget
