@@ -25,9 +25,9 @@ from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
 from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ExtentType, ServiceType, TimeType, \
-    AVAILABLE_SERVICE_TYPES, MAX_CLOUD_COVER_BBOX_SIZE, ACTION_COOLDOWN
+    AVAILABLE_SERVICE_TYPES, COVERAGE_MAX_BBOX_SIZE, ACTION_COOLDOWN
 from .dockwidget import SentinelHubDockWidget
-from .exceptions import action_handler, LayerValidator
+from .exceptions import action_handler, LayerValidator, ResolutionValidator, ExtentValidator
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
 from .sentinelhub.ogc import get_service_uri
@@ -62,7 +62,7 @@ class SentinelHubPlugin:
 
         self.plugin_version = get_plugin_version()
         self.settings = Settings()
-        self.client = Client(self.iface, self.plugin_version)
+        self.client = Client(self.iface, self.plugin_version, self.settings)
         self.manager = None
 
         self._default_layer_selection_event = None
@@ -230,6 +230,7 @@ class SentinelHubPlugin:
         configuration_index = self.manager.get_configuration_index(self.settings.instance_id)
         self.update_configuration(configuration_index)
 
+    @action_handler()
     def update_configuration(self, configuration_index=None):
         """ A different configuration has been chosen
         """
@@ -251,6 +252,7 @@ class SentinelHubPlugin:
 
         self._update_available_crs()
 
+    @action_handler()
     def update_service_type(self, service_type=None):
         """ Update service type and content that depends on it
         """
@@ -264,6 +266,7 @@ class SentinelHubPlugin:
         if self.manager:
             self._update_available_crs()
 
+    @action_handler()
     def update_layer(self, layer_index=None):
         """ Updates properties of selected Sentinel Hub layer
         """
@@ -310,6 +313,7 @@ class SentinelHubPlugin:
             self.dockwidget.endTimeLineEdit.show()
         """
 
+    @action_handler()
     def update_crs(self, crs_index=None):
         """ Updates crs with selected Sentinel Hub CRS
         """
@@ -389,6 +393,7 @@ class SentinelHubPlugin:
         else:
             self.show_message('Start date must not be later than end date', MessageType.INFO)
 
+    @action_handler()
     def update_available_calendar_dates(self):
         """ For the current extent, current layer and current month it will find all days for which there is available
         data for that layer
@@ -399,7 +404,7 @@ class SentinelHubPlugin:
         self._clear_calendar_cells()
 
         bbox = get_bbox(self.iface, self.settings.crs)
-        if is_bbox_too_large(bbox, self.settings.crs, MAX_CLOUD_COVER_BBOX_SIZE):
+        if is_bbox_too_large(bbox, self.settings.crs, COVERAGE_MAX_BBOX_SIZE):
             return
 
         year = self.dockwidget.calendarWidget.yearShown()
@@ -408,9 +413,6 @@ class SentinelHubPlugin:
 
         layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
         cloud_cover_map = get_cloud_cover(self.settings, layer, bbox, time_interval, self.client)
-
-        if cloud_cover_map is None:
-            return
 
         for date, cloud_cover_percentage in cloud_cover_map.items():
             if cloud_cover_percentage <= int(self.settings.maxcc):
@@ -593,27 +595,14 @@ class SentinelHubPlugin:
         self.dockwidget.downloadFolderLineEdit.setText(folder)
         self.change_download_folder()
 
-    @action_handler(validators=[LayerValidator], cooldown=ACTION_COOLDOWN)
+    @action_handler(validators=[LayerValidator, ResolutionValidator, ExtentValidator], cooldown=ACTION_COOLDOWN)
     def download_caption(self):
         """ Downloads an image from given parameters
         """
-        if self.settings.resx == '' or self.settings.resy == '':
-            return self.show_message('Spatial resolution parameters are not set.', MessageType.CRITICAL)
-
-        if self.settings.download_extent_type is ExtentType.CUSTOM:
-            pass
-            # TODO: check
-            # return self.show_message('Custom bounding box parameters are missing.', MessageType.CRITICAL)
-
-        if not self.settings.download_folder:
-            self.select_download_folder()
-            if not self.settings.download_folder:
-                return self.show_message('Download canceled. No destination set.', MessageType.CRITICAL)
-
         try:
             is_current_extent = self.settings.download_extent_type is ExtentType.CURRENT
             bbox = get_bbox(self.iface, self.settings.crs) if is_current_extent else get_custom_bbox(self.settings)
-        except Exception:
+        except BaseException:
             return self.show_message('Unable to transform to selected CRS, please zoom in or change CRS',
                                      MessageType.CRITICAL)
 
@@ -621,7 +610,7 @@ class SentinelHubPlugin:
 
         filename = download_wcs_image(self.settings, layer, bbox, self.client)
 
-        self.show_message('Done downloading to {}'.format(filename), MessageType.SUCCESS)
+        self.show_message('Image downloaded to file {}'.format(filename), MessageType.SUCCESS)
 
     def on_close_plugin(self):
         """ Cleanup necessary items here when a close event on the dockwidget is triggered

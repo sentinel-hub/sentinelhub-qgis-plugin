@@ -32,7 +32,7 @@ class ConfigurationManager:
 
         if reload or self._configurations is None:
             url = '{}/wms/instances'.format(self.configuration_url)
-            result_list = self.client.download(url, use_session=True, settings=self.settings).json()
+            result_list = self.client.download(url, use_session=True).json()
 
             self._configurations = [Configuration.load(result) for result in result_list]
             self._configurations.sort(key=lambda conf: conf.name.lower())
@@ -50,7 +50,7 @@ class ConfigurationManager:
 
         if reload or configuration.layers is None:
             url = '{}/wms/instances/{}/layers'.format(self.configuration_url, instance_id)
-            result_list = self.client.download(url, use_session=True, settings=self.settings).json()
+            result_list = self.client.download(url, use_session=True).json()
 
             configuration.layers = [Layer.load(result) for result in result_list]
             configuration.layers.sort(key=lambda layer: layer.name.lower())
@@ -72,7 +72,7 @@ class ConfigurationManager:
 
         if load_url and data_source.service_url is None:
             url = '{}/datasets/{}/sources/{}'.format(self.configuration_url, data_source.type, data_source.id)
-            result = self.client.download(url, use_session=True, settings=self.settings).json()
+            result = self.client.download(url, use_session=True).json()
 
             data_source.name = result['description']
             data_source_settings = result['settings']
@@ -87,7 +87,7 @@ class ConfigurationManager:
     def get_datasource_names(self):
         if self._data_sources_names_map is None:
             url = '{}/datasets'.format(self.configuration_url)
-            result_list = self.client.download(url, use_session=True, settings=self.settings).json()
+            result_list = self.client.download(url, use_session=True).json()
 
             self._data_sources_names_map = {result['id']: result['name'] for result in result_list}
             # TODO: save into layer datasource objects

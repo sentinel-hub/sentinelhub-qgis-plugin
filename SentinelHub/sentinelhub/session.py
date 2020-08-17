@@ -42,7 +42,6 @@ class Session:
         if self._token and self._token['expires_at'] > time.time() + self.SECONDS_BEFORE_EXPIRY:
             return self._token
 
-        # TODO: handle errors
         self._token = self._fetch_token()
         return self._token
 

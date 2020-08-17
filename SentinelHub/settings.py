@@ -23,9 +23,6 @@ class Settings:
     maxcc = '100'
     priority = ImagePriority.MOST_RECENT.url_param
 
-    download_extent_type = ExtentType.CURRENT
-    download_folder = ''
-
     active_time = TimeType.START_TIME.value
     start_time = ''
     end_time = ''
@@ -33,13 +30,16 @@ class Settings:
 
     image_format = 'image/png'
     show_logo = 'false'
+
+    download_extent_type = ExtentType.CURRENT
     resx = '10'
     resy = '10'
-
     lat_min = ''
     lat_max = ''
     lng_min = ''
     lng_max = ''
+
+    download_folder = ''
 
     _STORE_NAMESPACE = 'SentinelHub'
     _AUTO_SAVE_STORE_PARAMETERS = {

@@ -14,44 +14,40 @@ class Client:
 
     _CACHED_SESSIONS = {}
 
-    def __init__(self, iface, plugin_version):
+    def __init__(self, iface, plugin_version, settings):
         self.iface = iface
         self.plugin_version = plugin_version
+        self.settings = settings
 
-    def download(self, url, stream=False, use_session=False, ignore_exception=False, settings=None):
+    def download(self, url, timeout=None, use_session=False):
         """ Downloads data from url and handles possible errors
 
         :param url: download url
         :type url: str
-        :param stream: True if download should be streamed and False otherwise
-        :type stream: bool
-        :param raise_invalid_id: If True an InvalidInstanceId exception will be raised in case service returns HTTP 400
-        :type raise_invalid_id: bool
-        :param ignore_exception: If True no error messages will be shown in case of exceptions
-        :type ignore_exception: bool
+        :param timeout: A number of seconds before a request will timeout
+        :type timeout: int or None
+        :param use_session: A flag to specify if a session should be used
+        :type use_session: bool
         :return: download response or None if download failed
         :rtype: requests.response or None
         """
         proxy_dict, auth = get_proxy_config()
-        headers = self._prepare_headers(use_session, settings)
+        headers = self._prepare_headers(use_session)
         try:
             response = requests.get(
                 url,
-                stream=stream,
                 headers=headers,
+                timeout=timeout,
                 proxies=proxy_dict,
                 auth=auth
             )
             response.raise_for_status()
         except requests.RequestException as exception:
-            if ignore_exception:
-                return
-
             raise DownloadError(get_error_message(exception))
 
         return response
 
-    def _prepare_headers(self, use_session, settings):
+    def _prepare_headers(self, use_session):
         """ Prepares final headers by potentially joining them with session headers
         """
         headers = {
@@ -59,7 +55,7 @@ class Client:
         }
 
         if use_session:
-            session = self._get_session(settings)
+            session = self._get_session()
             headers = {
                 **headers,
                 **session.session_headers
@@ -67,18 +63,17 @@ class Client:
 
         return headers
 
-    @staticmethod
-    def _get_session(settings):
+    def _get_session(self):
         """ Provides a session object either from cache or it creates a new one
         """
-        cache_key = settings.client_id, settings.client_secret, settings.base_url
+        cache_key = self.settings.client_id, self.settings.client_secret, self.settings.base_url
         if cache_key in Client._CACHED_SESSIONS:
             return Client._CACHED_SESSIONS[cache_key]
 
         session = Session(
-            base_url=settings.base_url,
-            client_id=settings.client_id,
-            client_secret=settings.client_secret
+            base_url=self.settings.base_url,
+            client_id=self.settings.client_id,
+            client_secret=self.settings.client_secret
         )
 
         Client._CACHED_SESSIONS[cache_key] = session

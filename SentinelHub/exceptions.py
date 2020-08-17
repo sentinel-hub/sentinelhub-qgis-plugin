@@ -4,7 +4,7 @@ Utilities for handling exceptions and error messaging
 import time
 from abc import ABC, abstractmethod
 
-from .constants import MessageType
+from .constants import MessageType, ExtentType
 
 
 def action_handler(validators=None, cooldown=0):
@@ -143,3 +143,25 @@ class LayerValidator(BaseValidator):
     def check(self, plugin):
         ConfigurationValidator().validate(plugin)
         return bool(plugin.settings.layer_id)
+
+
+class ResolutionValidator(BaseValidator):
+    """ Checks if resolution parameters are set
+    """
+    MESSAGE = 'Please set resolution of the image to download'
+
+    def check(self, plugin):
+        return plugin.settings.resx and plugin.settings.resy
+
+
+class ExtentValidator(BaseValidator):
+    """ Check if a custom extent for download is set
+    """
+    MESSAGE = 'Please specify a custom bounding box'
+
+    def check(self, plugin):
+        if plugin.settings.download_extent_type is not ExtentType.CUSTOM:
+            return True
+
+        return plugin.settings.lat_min and plugin.settings.lat_max and \
+            plugin.settings.lng_min and plugin.settings.lng_max
