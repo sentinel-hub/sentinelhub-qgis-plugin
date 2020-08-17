@@ -49,7 +49,7 @@ class DataSource:
         self.id = int(data_source_id)
         self.collection_id = collection_id
         self.name = name
-        self.service_url = None
+        self.service_url = service_url
 
     def get_wfs_id(self):
         """ TODO: find a better way

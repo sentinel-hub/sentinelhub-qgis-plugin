@@ -17,26 +17,27 @@
  ***************************************************************************/
  The main module
 """
-
 import os
-import time
 
-from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem,\
-    QgsCoordinateTransform, QgsRectangle, QgsMessageLog
+from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsMessageLog
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
 from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ExtentType, ServiceType, TimeType, \
-    AVAILABLE_SERVICE_TYPES, MAX_CLOUD_COVER_BBOX_SIZE, DATA_SOURCES
+    AVAILABLE_SERVICE_TYPES, MAX_CLOUD_COVER_BBOX_SIZE
 from .dockwidget import SentinelHubDockWidget
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
-from .sentinelhub.ogc import get_service_uri, get_wcs_url, get_wfs_url
+from .sentinelhub.ogc import get_service_uri
+from .sentinelhub.wcs import download_wcs_image
 from .sentinelhub.wfs import get_cloud_cover
 from .settings import Settings
-from .utils.geo import get_bbox, is_bbox_too_large, bbox_to_string
+from .utils.common import is_float_or_undefined
+from .utils.geo import get_bbox, is_bbox_too_large, bbox_to_string, get_custom_bbox
+from .utils.map import get_qgis_layers
 from .utils.meta import get_plugin_version
+from .utils.naming import get_qgis_layer_name
 from .utils.time import parse_date, get_month_time_interval
 
 
@@ -64,13 +65,11 @@ class SentinelHubPlugin:
         self.manager = None
 
         # TODO: remove all below:
-        self.qgis_layers = []
-
         self.custom_bbox_params = {}
         for name in ['latMin', 'latMax', 'lngMin', 'lngMax']:
             self.custom_bbox_params[name] = ''
 
-        self.layer_selection_event = None
+        self._default_layer_selection_event = None
 
     def initGui(self):
         """ This method is called by QGIS when the main GUI starts up or when the plugin is enabled in the
@@ -102,6 +101,16 @@ class SentinelHubPlugin:
             )
             self.iface.removeToolBarIcon(action)
         del self.toolbar
+
+    def show_message(self, message, message_type):
+        """ Show message for user
+
+        :param message: Message for user
+        :param message: str
+        :param message_type: Type of message
+        :param message_type: MessageType
+        """
+        self.iface.messageBar().pushMessage(message_type.nice_name, message, level=message_type.level)
 
     def run(self):
         """ It loads and starts the plugin and binds all UI actions.
@@ -138,38 +147,33 @@ class SentinelHubPlugin:
         self.dockwidget.createLayerPushButton.clicked.connect(self.add_qgis_layer)
         self.dockwidget.updateLayerPushButton.clicked.connect(self.update_qgis_layer)
 
-        # This overrides a press event, better solution would be to detect changes of QGIS layers
-        self.layer_selection_event = self.dockwidget.mapLayerComboBox.mousePressEvent
+        self._default_layer_selection_event = self.dockwidget.mapLayerComboBox.mousePressEvent
+        self.dockwidget.mapLayerComboBox.mousePressEvent = self.qgis_layer_selection_event
 
-        def new_layer_selection_event(event):
-            self.update_current_map_layers()
-            self.layer_selection_event(event)
+        # Tracks which layer is selected in left menu
+        self.iface.currentLayerChanged.connect(self.update_current_map_layers)
 
-        self.dockwidget.mapLayerComboBox.mousePressEvent = new_layer_selection_event
-
-        self.dockwidget.downloadFolderLineEdit.editingFinished.connect(self.change_download_folder)
-
-        # Download input fields changes and events
+        # Download widget
         self.dockwidget.imageFormatComboBox.currentIndexChanged.connect(self.update_download_format)
-        self.dockwidget.resXLineEdit.editingFinished.connect(self.update_values)
-        self.dockwidget.resYLineEdit.editingFinished.connect(self.update_values)
 
+        self.dockwidget.resXLineEdit.editingFinished.connect(self.update_download_extent_values)
+        self.dockwidget.resYLineEdit.editingFinished.connect(self.update_download_extent_values)
         self.dockwidget.currentExtentRadioButton.clicked.connect(lambda: self.toggle_extent(ExtentType.CURRENT))
         self.dockwidget.customExtentRadioButton.clicked.connect(lambda: self.toggle_extent(ExtentType.CUSTOM))
-        self.dockwidget.latMinLineEdit.editingFinished.connect(self.update_values)
-        self.dockwidget.latMaxLineEdit.editingFinished.connect(self.update_values)
-        self.dockwidget.lngMinLineEdit.editingFinished.connect(self.update_values)
-        self.dockwidget.lngMaxLineEdit.editingFinished.connect(self.update_values)
+        self.dockwidget.latMinLineEdit.editingFinished.connect(self.update_download_extent_values)
+        self.dockwidget.latMaxLineEdit.editingFinished.connect(self.update_download_extent_values)
+        self.dockwidget.lngMinLineEdit.editingFinished.connect(self.update_download_extent_values)
+        self.dockwidget.lngMaxLineEdit.editingFinished.connect(self.update_download_extent_values)
+        self.dockwidget.refreshExtentPushButton.clicked.connect(self.set_window_bbox)
 
         self.dockwidget.showLogoCheckBox.stateChanged.connect(self.change_show_logo)
 
-        self.dockwidget.downloadPushButton.clicked.connect(self.download_caption)
-        self.dockwidget.refreshExtentPushButton.clicked.connect(self.take_window_bbox)
+        self.dockwidget.downloadFolderLineEdit.editingFinished.connect(self.change_download_folder)
         self.dockwidget.selectDownloadFolderPushButton.clicked.connect(self.select_download_folder)
 
-        # Tracks which layer is selected in left menu
-        # self.iface.currentLayerChanged.connect(self.update_current_map_layers)
+        self.dockwidget.downloadPushButton.clicked.connect(self.download_caption)
 
+        # Close event
         self.dockwidget.closingPlugin.connect(self.on_close_plugin)
 
         self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dockwidget)
@@ -191,6 +195,7 @@ class SentinelHubPlugin:
         self.update_current_map_layers()
 
         self.dockwidget.imageFormatComboBox.addItems([image_format.nice_name for image_format in ImageFormat])
+        self._set_download_extent_values()
         self.toggle_extent(self.settings.download_extent_type)
         self.dockwidget.downloadFolderLineEdit.setText(self.settings.download_folder)
 
@@ -437,289 +442,144 @@ class SentinelHubPlugin:
         priority_index = self.dockwidget.priorityComboBox.currentIndex()
         self.settings.priority = list(ImagePriority)[priority_index].url_param
 
-    def update_current_map_layers(self, selected_layer=None):
-        """ Updates the list of QGIS layers
-        """
-        self.qgis_layers = self.get_qgis_layers()
-        layer_names = []
-        for layer in self.qgis_layers:
-            layer_names.append(layer.name())
-        self.dockwidget.mapLayerComboBox.clear()
-        self.dockwidget.mapLayerComboBox.addItems(layer_names)
-
-        if selected_layer and selected_layer in self.qgis_layers:
-            layer_index = self.qgis_layers.index(selected_layer)
-            self.dockwidget.mapLayerComboBox.setCurrentIndex(layer_index)
-
     def add_qgis_layer(self, on_top=False):
         """ Creates and adds a new QGIS layer to the Layers menu
 
         :param on_top: If True the layer will be added on top of all layers, if False it will be added on top of
             currently selected layer.
         :type on_top: bool
-        :return: new layer
+        :return: new layer or None if creation failed
         """
-        if not self.settings.instance_id:
-            return self.missing_instance_id()
-
         layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
-        name = self.get_qgis_layer_name(layer)
+        qgis_layer_name = get_qgis_layer_name(self.settings, layer)
 
         service_uri = get_service_uri(self.settings, layer)
-
         QgsMessageLog.logMessage(str(service_uri))
-        if self.settings.service_type.upper() == ServiceType.WFS:
-            new_layer = QgsVectorLayer(service_uri, name, ServiceType.WFS)
-        else:
-            new_layer = QgsRasterLayer(service_uri, name, ServiceType.WMS.lower())
 
-        if new_layer.isValid():
-            qgis_layers = self.get_qgis_layers()
-            if on_top and qgis_layers:
-                self.iface.setActiveLayer(qgis_layers[0])
-            QgsProject.instance().addMapLayer(new_layer)
-            self.update_current_map_layers()
+        if self.settings.service_type.upper() == ServiceType.WFS:
+            new_layer = QgsVectorLayer(service_uri, qgis_layer_name, ServiceType.WFS)
         else:
-            self.show_message('Failed to create layer {}.'.format(name), MessageType.CRITICAL)
+            new_layer = QgsRasterLayer(service_uri, qgis_layer_name, ServiceType.WMS.lower())
+
+        if not new_layer.isValid():
+            self.show_message('Failed to create layer {}.'.format(qgis_layer_name), MessageType.CRITICAL)
+            return None
+
+        qgis_layers = get_qgis_layers()
+        if on_top and qgis_layers:
+            self.iface.setActiveLayer(qgis_layers[0])
+
+        QgsProject.instance().addMapLayer(new_layer)
+        self.update_current_map_layers()
+
         return new_layer
 
     def update_qgis_layer(self):
-        """ Updating layer in pyqgis somehow doesn't work therefore this method creates a new layer and deletes the
-            old one
+        """ Update an existing QGIS map layer by removing it and adding a new one instead of it
         """
-        if not self.settings.instance_id:
-            return self.missing_instance_id()
-
-        selected_index = self.dockwidget.mapLayerComboBox.currentIndex()
-        if selected_index < 0:
+        chosen_layer_name = self.dockwidget.mapLayerComboBox.currentText()
+        if not chosen_layer_name:
             return
 
-        for layer in self.get_qgis_layers():
-            # QgsMessageLog.logMessage(str(layer.name()) + ' ' + str(self.qgis_layers[selected_index].name()))
-            if layer == self.qgis_layers[selected_index]:
+        for layer in get_qgis_layers():
+            if layer.name() == chosen_layer_name:
                 self.iface.setActiveLayer(layer)
                 new_layer = self.add_qgis_layer()
-                if new_layer.isValid():
+
+                if new_layer:
                     QgsProject.instance().removeMapLayer(layer)
                     self.update_current_map_layers(selected_layer=new_layer)
                 return
-        self.show_message('Chosen layer {} does not exist anymore.'
-                          ''.format(self.dockwidget.mapLayerComboBox.currentText()), MessageType.INFO)
+
+        self.show_message('Chosen layer {} does not exist anymore'.format(chosen_layer_name), MessageType.INFO)
         self.update_current_map_layers()
 
-# ---------------------------------------------------------
-
-    def set_values(self):
-        """ Updates some values for the wcs download request
+    def update_current_map_layers(self, selected_layer=None):
+        """ Updates the list of QGIS layers available in the combo box
         """
-        self.dockwidget.resXLineEdit.setText(self.settings.resx)
-        self.dockwidget.resYLineEdit.setText(self.settings.resy)
-        self.dockwidget.latMinLineEdit.setText(self.custom_bbox_params['latMin'])
-        self.dockwidget.latMaxLineEdit.setText(self.custom_bbox_params['latMax'])
-        self.dockwidget.lngMinLineEdit.setText(self.custom_bbox_params['lngMin'])
-        self.dockwidget.lngMaxLineEdit.setText(self.custom_bbox_params['lngMax'])
+        qgis_layers = get_qgis_layers()
+        layer_names = [layer.name() for layer in qgis_layers]
 
-    # --------------------------------------------------------------------------
+        self.dockwidget.mapLayerComboBox.clear()
+        self.dockwidget.mapLayerComboBox.addItems(layer_names)
 
-    def show_message(self, message, message_type):
-        """ Show message for user
+        if selected_layer and selected_layer in qgis_layers:
+            layer_index = qgis_layers.index(selected_layer)
+            self.dockwidget.mapLayerComboBox.setCurrentIndex(layer_index)
 
-        :param message: Message for user
-        :param message: str
-        :param message_type: Type of message
-        :param message_type: MessageType
+    def qgis_layer_selection_event(self, event):
+        """ An overloaded even of clicking on the combo box of available QGIS layers
         """
-        self.iface.messageBar().pushMessage(message_type.nice_name, message, level=message_type.level)
-
-    def missing_instance_id(self):
-        """Show message about missing instance ID"""
-        self.show_message("Please set Sentinel Hub Instance ID first.", MessageType.INFO)
-
-    @staticmethod
-    def get_qgis_layers():
-        """
-        :return: List of existing QGIS layers in the same order as they are in the QGIS menu
-        :rtype: list(QgsMapLayer)
-        """
-        return [tree_layer.layer() for tree_layer in QgsProject.instance().layerTreeRoot().findLayers()]
-
-    # ----------------------------------------------------------------------------
-
-    def download_wcs_data(self, url, filename):
-        """
-        Download image from provided URL WCS request
-
-        :param url: WCS url request with specified bounding box
-        :param filename: filename of image
-        :return:
-        """
-        with open(os.path.join(self.settings.download_folder, filename), "wb") as download_file:
-            response = self.client.download(url, stream=True)
-
-            if response:
-                total_length = response.headers.get('content-length')
-
-                if total_length is None:
-                    download_file.write(response.content)
-                else:
-                    for data in response.iter_content(chunk_size=4096):
-                        download_file.write(data)
-                downloaded = True
-            else:
-                downloaded = False
-        if downloaded:
-            self.show_message("Done downloading to {}".format(filename), MessageType.SUCCESS)
-            time.sleep(1)
-        else:
-            self.show_message("Failed to download from {} to {}".format(url, filename), MessageType.CRITICAL)
-
-    def get_custom_bbox(self):
-        """ Creates BBox from values set by user
-        """
-        lat_min = min(float(self.custom_bbox_params['latMin']), float(self.custom_bbox_params['latMax']))
-        lat_max = max(float(self.custom_bbox_params['latMin']), float(self.custom_bbox_params['latMax']))
-        lng_min = min(float(self.custom_bbox_params['lngMin']), float(self.custom_bbox_params['lngMax']))
-        lng_max = max(float(self.custom_bbox_params['lngMin']), float(self.custom_bbox_params['lngMax']))
-        return QgsRectangle(lng_min, lat_min, lng_max, lat_max)
-
-    def take_window_bbox(self):
-        """
-        From Custom extent get values, save them and show them in UI
-        :return:
-        """
-        bbox = get_bbox(self.iface, CrsType.WGS84)
-        bbox_list = bbox_to_string(bbox, CrsType.WGS84).split(',')
-        self.custom_bbox_params['latMin'] = bbox_list[0]
-        self.custom_bbox_params['lngMin'] = bbox_list[1]
-        self.custom_bbox_params['latMax'] = bbox_list[2]
-        self.custom_bbox_params['lngMax'] = bbox_list[3]
-
-        self.set_values()
-
-    def select_download_folder(self):
-        """
-        Opens dialog to select destination folder
-        :return:
-        """
-        folder = QFileDialog.getExistingDirectory(self.dockwidget, "Select folder")
-        self.dockwidget.downloadFolderLineEdit.setText(folder)
-        self.change_download_folder()
-
-    def download_caption(self):
-        """
-        Prepare download request and then download images
-        :return:
-        """
-        if not self.settings.instance_id:
-            return self.missing_instance_id()
-
-        if self.settings.resx == '' or self.settings.resy == '':
-            return self.show_message('Spatial resolution parameters are not set.', MessageType.CRITICAL)
-        if self.settings.download_extent_type is ExtentType.CUSTOM:
-            for value in self.custom_bbox_params.values():
-                if value == '':
-                    return self.show_message('Custom bounding box parameters are missing.', MessageType.CRITICAL)
-
-        if not self.settings.download_folder:
-            self.select_download_folder()
-            if not self.settings.download_folder:
-                return self.show_message("Download canceled. No destination set.", MessageType.CRITICAL)
-
-        try:
-            is_current_extent = self.settings.download_extent_type is ExtentType.CURRENT
-            bbox = get_bbox(self.iface, self.settings.crs) if is_current_extent else \
-                self.get_custom_bbox()
-        except Exception:
-            return self.show_message("Unable to transform to selected CRS, please zoom in or change CRS",
-                                     MessageType.CRITICAL)
-
-        crs = None if self.settings.download_extent_type is ExtentType.CURRENT else CrsType.WGS84
-        bbox_str = bbox_to_string(bbox, crs)
-        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
-        url = get_wcs_url(self.settings, layer, bbox_str, crs)
-        filename = self.get_filename(bbox_str)
-
-        self.download_wcs_data(url, filename)
-
-    def get_filename(self, bbox):
-        """ Prepare filename which contains some metadata
-        DataSource_LayerName_start_time_end_time_xmin_y_min_xmax_ymax_maxcc_priority.FORMAT
-
-        :param bbox:
-        :return:
-        """
-        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id)
-
-        info_list = [self.get_source_name(), self.settings.layer_id]
-        if not layer.data_source.is_timeless():
-            info_list.append(self.get_time_name())
-        info_list.extend(bbox.split(','))
-        if not layer.data_source.is_cloudless():
-            info_list.append(self.settings.maxcc)
-        info_list.append(self.settings.priority)
-
-        name = '.'.join(map(str, ['_'.join(map(str, info_list)),
-                                  self.settings.image_format.split(';')[0].split('/')[1]]))
-        return name.replace(' ', '').replace(':', '_').replace('/', '_')
-
-    def get_source_name(self):
-        """ Returns name of the data source or a service name
-
-        :return: A name
-        :rtype: str
-        """
-        if self.settings.base_url == BaseUrl.EOCLOUD:
-            return 'EO Cloud'
-        if self.settings.data_source in DATA_SOURCES:
-            return DATA_SOURCES[self.settings.data_source]['pretty_name']
-        return 'SH'
-
-    def get_time_name(self):
-        """ Returns time interval in a form that will be displayed in qgis layer name
-
-        :return: string describing time interval
-        :rtype: str
-        """
-        time_interval = self.settings.start_time, self.settings.end_time
-        if self.settings.is_exact_date:
-            time_interval = time_interval[:1]
-        if len(time_interval) == 1:
-            if not time_interval[0]:
-                time_interval[0] = '-/-'  # 'all times'
-        else:
-            if not time_interval[0]:
-                time_interval[0] = '-'  # 'start'
-            if not time_interval[1]:
-                time_interval[1] = '-'  # 'end'
-        return '/'.join(time_interval)
-
-    def get_qgis_layer_name(self, layer):  # TODO: move
-        """ Returns name of new qgis layer
-
-        :return: qgis layer name
-        :rtype: str
-        """
-        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id)
-
-        plugin_params = [self.settings.service_type.upper()]
-        if not layer.data_source.is_timelesse():
-            plugin_params.append(self.get_time_name())
-        if not layer.data_source.is_cloudless():
-            plugin_params.append('{}%'.format(self.settings.maxcc))
-        plugin_params.extend([self.settings.priority, self.settings.crs])
-
-        return '{} - {} ({})'.format(self.get_source_name(), layer.name, ', '.join(plugin_params))
+        self.update_current_map_layers()
+        self._default_layer_selection_event(event)
 
     def update_download_format(self):
-        """
-        Update image format
-        :return:
+        """ Update an image format in which to download
         """
         image_format_index = self.dockwidget.imageFormatComboBox.currentIndex()
         self.settings.image_format = list(ImageFormat)[image_format_index].url_param
 
+    def toggle_extent(self, extent_type):
+        """ Switches between an option to download current window bbox or a custom bbox
+        """
+        self.settings.download_extent_type = extent_type
+        if extent_type is ExtentType.CURRENT:
+            self.dockwidget.widgetCustomExtent.hide()
+        else:
+            self.dockwidget.widgetCustomExtent.show()
+
+    def update_download_extent_values(self):
+        """ Updates numerical values from user input
+        """
+        new_values = {
+            'resx': self.dockwidget.resXLineEdit.text(),
+            'resy': self.dockwidget.resYLineEdit.text(),
+            'lat_min': self.dockwidget.latMinLineEdit.text(),
+            'lat_max': self.dockwidget.latMaxLineEdit.text(),
+            'lng_min': self.dockwidget.lngMinLineEdit.text(),
+            'lng_max': self.dockwidget.lngMaxLineEdit.text()
+        }
+
+        if not all(map(is_float_or_undefined, new_values.values())):
+            self.show_message('Please input a numerical value', MessageType.INFO)
+            self._set_download_extent_values()
+            return
+
+        for name, value in new_values.items():
+            setattr(self.settings, name, value)
+
+    def _set_download_extent_values(self):
+        """ Sets values from settings
+        """
+        self.dockwidget.resXLineEdit.setText(self.settings.resx)
+        self.dockwidget.resYLineEdit.setText(self.settings.resy)
+        self.dockwidget.latMinLineEdit.setText(self.settings.lat_min)
+        self.dockwidget.latMaxLineEdit.setText(self.settings.lat_max)
+        self.dockwidget.lngMinLineEdit.setText(self.settings.lng_min)
+        self.dockwidget.lngMaxLineEdit.setText(self.settings.lng_max)
+
+    def set_window_bbox(self):
+        """ Takes the coordinates of the current map window bbox and sets them into the fields
+        :return:
+        """
+        bbox = get_bbox(self.iface, CrsType.WGS84)
+        bbox_list = bbox_to_string(bbox, CrsType.WGS84).split(',')
+
+        self.settings.lat_min = bbox_list[0]
+        self.settings.lng_min = bbox_list[1]
+        self.settings.lat_max = bbox_list[2]
+        self.settings.lng_min = bbox_list[3]
+
+        self._set_download_extent_values()
+
+    def change_show_logo(self):
+        """ Determines if Sentinel Hub logo will be shown in downloaded image
+        """
+        self.settings.show_logo = 'true' if self.dockwidget.showLogoCheckBox.isChecked() else 'false'
+
     def change_download_folder(self):
-        """ Sets new download folder"""
+        """ Sets new download folder from the line edit
+        """
         new_download_folder = self.dockwidget.downloadFolderLineEdit.text()
         if new_download_folder == self.settings.download_folder:
             return
@@ -731,53 +591,45 @@ class SentinelHubPlugin:
             self.show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
                               MessageType.CRITICAL)
 
-    def update_values(self):
-        """ Updates numerical values from user input"""
-        new_values = self.get_values()
-
-        if not new_values:
-            self.show_message('Please input a numerical value.', MessageType.INFO)
-            self.set_values()
-            return
-
-        for name, value in new_values.items():
-            if name in ['resx', 'resy']:
-                setattr(self.settings, name, value)
-            else:
-                self.custom_bbox_params[name] = value
-
-    def get_values(self):
-        """ Retrieves numerical values from user input"""
-        new_values = {
-            'resx': self.dockwidget.resXLineEdit.text(),
-            'resy': self.dockwidget.resYLineEdit.text(),
-            'latMin': self.dockwidget.latMinLineEdit.text(),
-            'latMax': self.dockwidget.latMaxLineEdit.text(),
-            'lngMin': self.dockwidget.lngMinLineEdit.text(),
-            'lngMax': self.dockwidget.lngMaxLineEdit.text()
-        }
-        QgsMessageLog.logMessage(str(new_values))
-        for name, value in new_values.items():
-            if value != '':
-                try:
-                    float(value)
-                except ValueError:
-                    return
-        return new_values
-
-    def change_show_logo(self):
-        """ Determines if Sentinel Hub logo will be shown in downloaded image
+    def select_download_folder(self):
+        """ Opens a dialog to select a download folder
         """
-        self.settings.show_logo = 'true' if self.dockwidget.showLogoCheckBox.isChecked() else 'false'
+        folder = QFileDialog.getExistingDirectory(self.dockwidget, 'Select folder')
+        self.dockwidget.downloadFolderLineEdit.setText(folder)
+        self.change_download_folder()
 
-    def toggle_extent(self, extent_type):
-        """ Switches between an option to download current window bbox or a custom bbox
+    def download_caption(self):
+        """ Downloads an image from given parameters
         """
-        self.settings.download_extent_type = extent_type
-        if extent_type is ExtentType.CURRENT:
-            self.dockwidget.widgetCustomExtent.hide()
-        else:
-            self.dockwidget.widgetCustomExtent.show()
+        if self.settings.resx == '' or self.settings.resy == '':
+            return self.show_message('Spatial resolution parameters are not set.', MessageType.CRITICAL)
+
+        if self.settings.download_extent_type is ExtentType.CUSTOM:
+            for value in self.custom_bbox_params.values():
+                if value == '':
+                    return self.show_message('Custom bounding box parameters are missing.', MessageType.CRITICAL)
+
+        if not self.settings.download_folder:
+            self.select_download_folder()
+            if not self.settings.download_folder:
+                return self.show_message('Download canceled. No destination set.', MessageType.CRITICAL)
+
+        try:
+            is_current_extent = self.settings.download_extent_type is ExtentType.CURRENT
+            bbox = get_bbox(self.iface, self.settings.crs) if is_current_extent else get_custom_bbox(self.settings)
+        except Exception:
+            return self.show_message('Unable to transform to selected CRS, please zoom in or change CRS',
+                                     MessageType.CRITICAL)
+
+        layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
+
+        filename = download_wcs_image(self.settings, layer, bbox, self.client)
+
+        if filename:
+            self.show_message('Done downloading to {}'.format(filename), MessageType.SUCCESS)
+            # time.sleep(1)
+        # else:
+        #     self.show_message('Failed to download from {} to {}'.format(url, filename), MessageType.CRITICAL)
 
     def on_close_plugin(self):
         """ Cleanup necessary items here when a close event on the dockwidget is triggered

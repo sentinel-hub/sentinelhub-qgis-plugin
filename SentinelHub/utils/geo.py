@@ -3,7 +3,7 @@ Geographical utilities
 """
 import math
 
-from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform
+from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle
 
 from ..constants import CrsType
 
@@ -23,6 +23,16 @@ def get_bbox(iface, crs):
         bbox = xform.transform(bbox)
 
     return bbox
+
+
+def get_custom_bbox(settings):
+    """ Creates a bbox from settings parameters
+    """
+    lat_min = min(float(settings.lat_min), float(settings.lat_max))
+    lat_max = max(float(settings.lat_min), float(settings.lat_max))
+    lng_min = min(float(settings.lng_min), float(settings.lng_max))
+    lng_max = max(float(settings.lng_min), float(settings.lng_max))
+    return QgsRectangle(lng_min, lat_min, lng_max, lat_max)
 
 
 def bbox_to_string(bbox, crs):

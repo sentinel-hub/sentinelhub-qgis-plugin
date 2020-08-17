@@ -36,6 +36,11 @@ class Settings:
     resx = '10'
     resy = '10'
 
+    lat_min = ''
+    lat_max = ''
+    lng_min = ''
+    lng_max = ''
+
     _STORE_NAMESPACE = 'SentinelHub'
     _AUTO_SAVE_STORE_PARAMETERS = {
         'instance_id',

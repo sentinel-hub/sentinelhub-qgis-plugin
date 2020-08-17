@@ -3,7 +3,6 @@ Utilities for interacting with Sentinel Hub WFS service
 """
 import functools
 
-from .client import Client
 from .ogc import get_wfs_url
 from ..utils.geo import bbox_to_string
 

@@ -3,14 +3,20 @@ Utilities for handling exceptions and error messaging
 """
 
 
-def show_message(iface, message, message_type):
-    """ Show message for user
+def action_handler(validators=None, timeout=None):
+    pass
 
-    :param iface: A QGIS interface instance.
-    :type iface: QgsInterface
-    :param message: Message for user
-    :param message: str
-    :param message_type: Type of message
-    :param message_type: MessageType
+
+class CustomPluginException(Exception):
+    """ Base class of all custom exceptions defined in the plugin
     """
-    iface.messageBar().pushMessage(message_type.nice_name, message, level=message_type.level)
+    def __init__(self, message, message_type):
+        """
+        :param message: Exception message
+        :type message: str
+        :param message_type: A type of the message
+        :type message_type: MessageType
+        """
+        self.message = message
+        self.message_type = message_type
+        super().__init__(message)
