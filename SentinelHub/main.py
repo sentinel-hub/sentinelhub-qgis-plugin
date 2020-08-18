@@ -36,7 +36,7 @@ from .sentinelhub.wcs import download_wcs_image
 from .sentinelhub.wfs import get_cloud_cover
 from .settings import Settings
 from .utils.common import is_float_or_undefined
-from .utils.geo import get_bbox, is_bbox_too_large, bbox_to_string, get_custom_bbox
+from .utils.geo import get_bbox, is_bbox_too_large, bbox_to_string, get_custom_bbox, is_current_map_crs
 from .utils.map import get_qgis_layers
 from .utils.meta import get_plugin_version
 from .utils.naming import get_qgis_layer_name
@@ -470,6 +470,11 @@ class SentinelHubPlugin:
             self.show_message('Failed to create layer {}.'.format(qgis_layer_name), MessageType.CRITICAL)
             return None
 
+        if self.settings.service_type.upper() == ServiceType.WFS and \
+                not is_current_map_crs(self.iface, CrsType.POP_WEB):
+            self.show_message('WFS layer will only be visible if the underlying CRS on your map is set to '
+                              'Popular Web Mercator (EPSG:3857)', MessageType.WARNING)
+
         QgsProject.instance().addMapLayer(new_layer)
         self.update_current_map_layers()
 
@@ -616,6 +621,10 @@ class SentinelHubPlugin:
 
     def on_close_plugin(self):
         """ Cleanup necessary items here when a close event on the dockwidget is triggered
+
+        Note that all connections to the QGIS interface have to be cleaned here.
         """
+        self.iface.currentLayerChanged.disconnect(self.update_current_map_layers)
+
         self.dockwidget.closingPlugin.disconnect(self.on_close_plugin)
         self.dockwidget = None

@@ -63,6 +63,12 @@ def is_bbox_too_large(bbox, crs, size_limit):
     return max(width, height) > size_limit
 
 
+def is_current_map_crs(iface, crs_id):
+    """ Checks if the current underlying CRS on the map is given CRS
+    """
+    return iface.mapCanvas().mapSettings().destinationCrs().authid() == crs_id
+
+
 def _get_bbox_size(bbox, crs):
     """ Returns an approximate width and height of bounding box in meters
     """
