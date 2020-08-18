@@ -4,7 +4,7 @@ Utilities for interacting with Sentinel Hub WFS service
 import functools
 
 from .ogc import get_wfs_url
-from ..constants import COVERAGE_REQUEST_TIMEOUT
+from ..constants import COVERAGE_REQUEST_TIMEOUT, CrsType
 from ..exceptions import DownloadError
 from ..utils.geo import bbox_to_string
 
@@ -12,7 +12,7 @@ from ..utils.geo import bbox_to_string
 def get_cloud_cover(settings, layer, bbox, time_interval, client):
     """ Finds all available dates and their cloud coverage
     """
-    bbox_str = bbox_to_string(bbox, settings.crs)
+    bbox_str = bbox_to_string(bbox, CrsType.POP_WEB)
 
     wfs_url = get_wfs_url(settings, layer, bbox_str, time_interval)
 

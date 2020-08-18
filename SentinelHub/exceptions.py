@@ -7,26 +7,30 @@ from abc import ABC, abstractmethod
 from .constants import MessageType, ExtentType
 
 
-def action_handler(validators=None, cooldown=0):
+def action_handler(validators=(), cooldown=0, suppressed_exceptions=()):
     """ A decorator for handling plugin actions.
 
     It is designed to handle exceptions, do parameter validations and prevents a method to be called too ofter. It can
     only be applied to the methods of the main SentinelHubPlugin class
 
-    :param validators: A list of validators
-    :type validators: list
+    :param validators: A tuple of validators
+    :type validators: tuple(BaseValidator)
     :param cooldown: A number of seconds after which an action could be called again
     :type cooldown: float or int or None
+    :param suppressed_exceptions: A tuple of exceptions to suppress
+    :type suppressed_exceptions: tuple(Exception)
     """
-    return ActionHandler(validators, cooldown)
+    return ActionHandler(validators, cooldown, suppressed_exceptions)
 
 
 class ActionHandler:
     """ A class for handling plugin actions
     """
-    def __init__(self, validators, cooldown):
-        self.validators = validators or []
+    def __init__(self, validators, cooldown, suppressed_exceptions):
+        self.validators = validators
         self.cooldown = cooldown
+        self.suppressed_exceptions = suppressed_exceptions
+
         self.last_time_called = -1
 
     def __call__(self, action_method):
@@ -43,7 +47,8 @@ class ActionHandler:
                     validator().validate(plugin)
 
                 action_method(plugin, *args, **kwargs)
-
+            except self.suppressed_exceptions:
+                pass
             except PluginException as exception:
                 plugin.show_message(exception.message, exception.message_type)
 
@@ -96,6 +101,14 @@ class SessionError(DownloadError):
     """
     def __init__(self):
         super().__init__('Authentication failed, check your credentials')
+
+
+class BBoxTransformError(PluginException):
+    """ An error that is raised if a bounding box transformation from one CRS to another fails
+    """
+    def __init__(self, crs):
+        super().__init__('Failed to transform the current bounding box into {}, '
+                         'try to zoom in or switch CRS'.format(crs), MessageType.CRITICAL)
 
 
 class BaseValidator(ABC):

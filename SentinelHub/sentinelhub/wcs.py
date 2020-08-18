@@ -12,7 +12,7 @@ from ..utils.naming import get_filename
 def download_wcs_image(settings, layer, bbox, client):
     """ Downloads and saves an image from Sentinel Hub WCS service
     """
-    crs = None if settings.download_extent_type is ExtentType.CURRENT else CrsType.WGS84
+    crs = settings.crs if settings.download_extent_type is ExtentType.CURRENT else CrsType.WGS84
     bbox_str = bbox_to_string(bbox, crs)
     url = get_wcs_url(settings, layer, bbox_str, crs)
 

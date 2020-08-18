@@ -27,7 +27,8 @@ from PyQt5.QtWidgets import QAction, QFileDialog
 from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ExtentType, ServiceType, TimeType, \
     AVAILABLE_SERVICE_TYPES, COVERAGE_MAX_BBOX_SIZE, ACTION_COOLDOWN
 from .dockwidget import SentinelHubDockWidget
-from .exceptions import action_handler, LayerValidator, ResolutionValidator, ExtentValidator, DownloadFolderValidator
+from .exceptions import action_handler, LayerValidator, ResolutionValidator, ExtentValidator, DownloadFolderValidator, \
+    BBoxTransformError
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
 from .sentinelhub.ogc import get_service_uri
@@ -397,7 +398,7 @@ class SentinelHubPlugin:
         else:
             self.show_message('Start date must not be later than end date', MessageType.INFO)
 
-    @action_handler()
+    @action_handler(suppressed_exceptions=(BBoxTransformError,))
     def update_available_calendar_dates(self, *_):
         """ For the current extent, current layer and current month it will find all days for which there is available
         data for that layer
@@ -407,8 +408,8 @@ class SentinelHubPlugin:
 
         self._clear_calendar_cells()
 
-        bbox = get_bbox(self.iface, self.settings.crs)
-        if is_bbox_too_large(bbox, self.settings.crs, COVERAGE_MAX_BBOX_SIZE):
+        bbox = get_bbox(self.iface, CrsType.POP_WEB)
+        if is_bbox_too_large(bbox, CrsType.POP_WEB, COVERAGE_MAX_BBOX_SIZE):
             return
 
         year = self.dockwidget.calendarWidget.yearShown()
@@ -445,7 +446,7 @@ class SentinelHubPlugin:
         priority_index = self.dockwidget.priorityComboBox.currentIndex()
         self.settings.priority = list(ImagePriority)[priority_index].url_param
 
-    @action_handler(validators=[LayerValidator], cooldown=ACTION_COOLDOWN)
+    @action_handler(validators=(LayerValidator,), cooldown=ACTION_COOLDOWN)
     def add_qgis_layer(self, *_):
         """ An action that creates and adds a new QGIS layer to the Layers menu
         """
@@ -474,7 +475,7 @@ class SentinelHubPlugin:
 
         return new_layer
 
-    @action_handler(validators=[LayerValidator], cooldown=ACTION_COOLDOWN)
+    @action_handler(validators=(LayerValidator,), cooldown=ACTION_COOLDOWN)
     def update_qgis_layer(self, *_):
         """ Update an existing QGIS map layer by removing it and adding a new one instead of it
         """
@@ -561,7 +562,6 @@ class SentinelHubPlugin:
 
     def set_window_bbox(self):
         """ Takes the coordinates of the current map window bbox and sets them into the fields
-        :return:
         """
         bbox = get_bbox(self.iface, CrsType.WGS84)
         bbox_list = bbox_to_string(bbox, CrsType.WGS84).split(',')
@@ -600,23 +600,18 @@ class SentinelHubPlugin:
         self.change_download_folder()
 
     @action_handler(
-        validators=[LayerValidator, ResolutionValidator, ExtentValidator, DownloadFolderValidator],
+        validators=(LayerValidator, ResolutionValidator, ExtentValidator, DownloadFolderValidator),
         cooldown=ACTION_COOLDOWN
     )
     def download_caption(self, *_):
         """ Downloads an image from given parameters
         """
-        try:
-            is_current_extent = self.settings.download_extent_type is ExtentType.CURRENT
-            bbox = get_bbox(self.iface, self.settings.crs) if is_current_extent else get_custom_bbox(self.settings)
-        except BaseException:
-            return self.show_message('Unable to transform to selected CRS, please zoom in or change CRS',
-                                     MessageType.CRITICAL)
-
         layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
 
-        filename = download_wcs_image(self.settings, layer, bbox, self.client)
+        is_current_extent = self.settings.download_extent_type is ExtentType.CURRENT
+        bbox = get_bbox(self.iface, self.settings.crs) if is_current_extent else get_custom_bbox(self.settings)
 
+        filename = download_wcs_image(self.settings, layer, bbox, self.client)
         self.show_message('Image downloaded to file {}'.format(filename), MessageType.SUCCESS)
 
     def on_close_plugin(self):

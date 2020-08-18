@@ -99,7 +99,7 @@ def get_wcs_url(settings, layer, bbox, crs=None):
     params = {
         'service': 'wcs',
         'request': 'GetCoverage',
-        'version': '1.1.1',
+        'version': '1.1.2',
         'coverage': settings.layer_id,
         'time': _build_time(settings),
         'bbox': bbox,

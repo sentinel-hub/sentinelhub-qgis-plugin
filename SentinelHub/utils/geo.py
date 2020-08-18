@@ -3,9 +3,10 @@ Geographical utilities
 """
 import math
 
-from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle
+from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsCsException
 
 from ..constants import CrsType
+from ..exceptions import BBoxTransformError
 
 
 def get_bbox(iface, crs):
@@ -19,8 +20,10 @@ def get_bbox(iface, crs):
 
     if current_crs != target_crs:
         xform = QgsCoordinateTransform(current_crs, target_crs, QgsProject.instance())
-        # if target CRS is UTM and bbox is out of UTM bounds this fails, not sure how to fix
-        bbox = xform.transform(bbox)
+        try:
+            bbox = xform.transform(bbox)
+        except QgsCsException:
+            raise BBoxTransformError(crs)
 
     return bbox
 
@@ -39,13 +42,15 @@ def bbox_to_string(bbox, crs):
     """ Transforms a bounding box into string a string of comma-separated values
     """
     target_crs = QgsCoordinateReferenceSystem(crs)
-
     if target_crs.authid() == CrsType.WGS84:
         precision = 6
         bbox_list = [bbox.yMinimum(), bbox.xMinimum(), bbox.yMaximum(), bbox.xMaximum()]
     else:
         precision = 2
         bbox_list = [bbox.xMinimum(), bbox.yMinimum(), bbox.xMaximum(), bbox.yMaximum()]
+
+    from qgis.core import QgsMessageLog
+    QgsMessageLog.logMessage(crs + ' ' + target_crs.authid() + ' ' + CrsType.WGS84)
 
     return ','.join(map(lambda coord: str(round(coord, precision)), bbox_list))
 
@@ -55,8 +60,8 @@ def is_bbox_too_large(bbox, crs, size_limit):
     """
     try:
         width, height = _get_bbox_size(bbox, crs)
-    except BaseException:
-        return
+    except BBoxTransformError:
+        return True
 
     return max(width, height) > size_limit
 
@@ -66,15 +71,19 @@ def _get_bbox_size(bbox, crs):
     """
     bbox_crs = QgsCoordinateReferenceSystem(crs)
 
-    utm_crs = QgsCoordinateReferenceSystem(
-        _lng_to_utm_zone(
-            (bbox.xMinimum() + bbox.xMaximum()) / 2,
-            (bbox.yMinimum() + bbox.yMaximum()) / 2
-        )
+    utm_epsg = _lng_to_utm_zone(
+        (bbox.xMinimum() + bbox.xMaximum()) / 2,
+        (bbox.yMinimum() + bbox.yMaximum()) / 2
     )
+    utm_crs = QgsCoordinateReferenceSystem(utm_epsg)
 
     xform = QgsCoordinateTransform(bbox_crs, utm_crs, QgsProject.instance())
-    bbox = xform.transform(bbox)
+
+    try:
+        bbox = xform.transform(bbox)
+    except QgsCsException:
+        raise BBoxTransformError(utm_epsg)
+
     width = abs(bbox.xMaximum() - bbox.xMinimum())
     height = abs(bbox.yMinimum() - bbox.yMaximum())
     return width, height

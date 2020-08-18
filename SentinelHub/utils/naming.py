@@ -24,8 +24,7 @@ def get_qgis_layer_name(settings, layer):
 
 
 def get_filename(settings, layer, bbox):
-    """ Creates a filename from meta-information
-    DataSource_LayerName_start_time_end_time_xmin_y_min_xmax_ymax_maxcc_priority.FORMAT
+    """ Creates a filename from request meta-information
     """
     info_list = [_get_source_name(layer), layer.id]
 
@@ -33,12 +32,16 @@ def get_filename(settings, layer, bbox):
         info_list.append(_get_time_interval_name(settings))
 
     info_list.extend(bbox.split(','))
+    info_list.append(settings.crs)
 
     if not layer.data_source.is_cloudless():
         info_list.append(settings.maxcc)
 
     if not (layer.data_source.is_timeless() and layer.data_source.is_cloudless()):
         info_list.append(settings.priority)
+
+    if settings.show_logo:
+        info_list.append('logo')
 
     filename = '_'.join(map(str, info_list))
 
