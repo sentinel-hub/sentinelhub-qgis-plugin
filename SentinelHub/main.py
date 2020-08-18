@@ -27,8 +27,8 @@ from PyQt5.QtWidgets import QAction, QFileDialog
 from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ExtentType, ServiceType, TimeType, \
     AVAILABLE_SERVICE_TYPES, COVERAGE_MAX_BBOX_SIZE, ACTION_COOLDOWN
 from .dockwidget import SentinelHubDockWidget
-from .exceptions import action_handler, LayerValidator, ResolutionValidator, ExtentValidator, DownloadFolderValidator, \
-    BBoxTransformError
+from .exceptions import show_message, action_handler, LayerValidator, ResolutionValidator, ExtentValidator, \
+    DownloadFolderValidator, BBoxTransformError
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
 from .sentinelhub.ogc import get_service_uri
@@ -38,7 +38,7 @@ from .settings import Settings
 from .utils.common import is_float_or_undefined
 from .utils.geo import get_bbox, is_bbox_too_large, bbox_to_string, get_custom_bbox, is_current_map_crs
 from .utils.map import get_qgis_layers
-from .utils.meta import get_plugin_version
+from .utils.meta import get_plugin_version, PLUGIN_NAME
 from .utils.naming import get_qgis_layer_name
 from .utils.time import parse_date, get_month_time_interval
 
@@ -46,24 +46,22 @@ from .utils.time import parse_date, get_month_time_interval
 class SentinelHubPlugin:
     """ The main class defining plugin logic
     """
-    PLUGIN_NAME = 'SentinelHub'
     ICON_PATH = ':/plugins/SentinelHub/favicon.ico'
 
     def __init__(self, iface):
         """ Called by QGIS at the beginning when you open QGIS or when the plugin is enabled in the
         Plugin Manager.
 
-        :param iface: A QGIS interface instance.
+        :param iface: A QGIS interface instance, it is the same object as qgis.utils.iface
         :type iface: QgsInterface
         """
         self.iface = iface
-        self.toolbar = self.iface.addToolBar(self.PLUGIN_NAME)
+        self.toolbar = self.iface.addToolBar(PLUGIN_NAME)
         self.plugin_actions = []
         self.dockwidget = None
 
-        self.plugin_version = get_plugin_version()
         self.settings = Settings()
-        self.client = Client(self.iface, self.plugin_version)
+        self.client = Client()
         self.manager = None
 
         self._default_layer_selection_event = None
@@ -73,14 +71,14 @@ class SentinelHubPlugin:
         Plugin Manager.
         """
         icon = QIcon(self.ICON_PATH)
-        bold_plugin_name = '<b>{}</b>'.format(self.PLUGIN_NAME)
+        bold_plugin_name = '<b>{}</b>'.format(PLUGIN_NAME)
         action = QAction(icon, bold_plugin_name, self.iface.mainWindow())
 
         action.triggered.connect(self.run)
         action.setEnabled(True)
 
         self.toolbar.addAction(action)
-        self.iface.addPluginToWebMenu(self.PLUGIN_NAME, action)
+        self.iface.addPluginToWebMenu(PLUGIN_NAME, action)
 
         self.plugin_actions.append(action)
 
@@ -93,21 +91,11 @@ class SentinelHubPlugin:
 
         for action in self.plugin_actions:
             self.iface.removePluginWebMenu(
-                self.PLUGIN_NAME,
+                PLUGIN_NAME,
                 action
             )
             self.iface.removeToolBarIcon(action)
         del self.toolbar
-
-    def show_message(self, message, message_type):
-        """ Show message for user
-
-        :param message: Message for user
-        :param message: str
-        :param message_type: Type of message
-        :param message_type: MessageType
-        """
-        self.iface.messageBar().pushMessage(message_type.nice_name, message, level=message_type.level)
 
     def run(self):
         """ It loads and starts the plugin and binds all UI actions.
@@ -116,7 +104,7 @@ class SentinelHubPlugin:
             return
 
         self.dockwidget = SentinelHubDockWidget()
-        self.dockwidget.setWindowTitle('{} v{}'.format(self.PLUGIN_NAME, self.plugin_version))
+        self.dockwidget.setWindowTitle('{} v{}'.format(PLUGIN_NAME, get_plugin_version()))
         self.initialize_ui()
 
         # Login widget
@@ -354,9 +342,9 @@ class SentinelHubPlugin:
         new_end_time = parse_date(self.dockwidget.endTimeLineEdit.text())
 
         if new_start_time is None or new_end_time is None:
-            self.show_message('Please insert a valid date in a form YYYY-MM-DD', MessageType.INFO)
+            show_message('Please insert a valid date in a form YYYY-MM-DD', MessageType.INFO)
         elif new_start_time and new_end_time and new_start_time > new_end_time and not self.settings.is_exact_date:
-            self.show_message('Start date must not be later than end date', MessageType.INFO)
+            show_message('Start date must not be later than end date', MessageType.INFO)
         else:
             self.settings.start_time = new_start_time
             self.settings.end_time = new_end_time
@@ -396,7 +384,7 @@ class SentinelHubPlugin:
             self.settings.end_time = calendar_time
             self.dockwidget.endTimeLineEdit.setText(calendar_time)
         else:
-            self.show_message('Start date must not be later than end date', MessageType.INFO)
+            show_message('Start date must not be later than end date', MessageType.INFO)
 
     @action_handler(suppressed_exceptions=(BBoxTransformError,))
     def update_available_calendar_dates(self, *_):
@@ -408,7 +396,7 @@ class SentinelHubPlugin:
 
         self._clear_calendar_cells()
 
-        bbox = get_bbox(self.iface, CrsType.POP_WEB)
+        bbox = get_bbox(CrsType.POP_WEB)
         if is_bbox_too_large(bbox, CrsType.POP_WEB, COVERAGE_MAX_BBOX_SIZE):
             return
 
@@ -467,13 +455,13 @@ class SentinelHubPlugin:
             new_layer = QgsRasterLayer(service_uri, qgis_layer_name, ServiceType.WMS.lower())
 
         if not new_layer.isValid():
-            self.show_message('Failed to create layer {}.'.format(qgis_layer_name), MessageType.CRITICAL)
+            show_message('Failed to create layer {}.'.format(qgis_layer_name), MessageType.CRITICAL)
             return None
 
         if self.settings.service_type.upper() == ServiceType.WFS and \
-                not is_current_map_crs(self.iface, CrsType.POP_WEB):
-            self.show_message('WFS layer will only be visible if the underlying CRS on your map is set to '
-                              'Popular Web Mercator (EPSG:3857)', MessageType.WARNING)
+                not is_current_map_crs(CrsType.POP_WEB):
+            show_message('WFS layer will only be visible if the underlying CRS on your map is set to '
+                         'Popular Web Mercator (EPSG:3857)', MessageType.WARNING)
 
         QgsProject.instance().addMapLayer(new_layer)
         self.update_current_map_layers()
@@ -498,7 +486,7 @@ class SentinelHubPlugin:
                     self.update_current_map_layers(selected_layer=new_layer)
                 return
 
-        self.show_message('Chosen layer {} does not exist anymore'.format(chosen_layer_name), MessageType.INFO)
+        show_message('Chosen layer {} does not exist anymore'.format(chosen_layer_name), MessageType.INFO)
         self.update_current_map_layers()
 
     def update_current_map_layers(self, selected_layer=None):
@@ -548,7 +536,7 @@ class SentinelHubPlugin:
         }
 
         if not all(map(is_float_or_undefined, new_values.values())):
-            self.show_message('Please input a numerical value', MessageType.INFO)
+            show_message('Please input a numerical value', MessageType.INFO)
             self._set_download_extent_values()
             return
 
@@ -568,7 +556,7 @@ class SentinelHubPlugin:
     def set_window_bbox(self):
         """ Takes the coordinates of the current map window bbox and sets them into the fields
         """
-        bbox = get_bbox(self.iface, CrsType.WGS84)
+        bbox = get_bbox(CrsType.WGS84)
         bbox_list = bbox_to_string(bbox, CrsType.WGS84).split(',')
 
         self.settings.lat_min = bbox_list[0]
@@ -594,8 +582,8 @@ class SentinelHubPlugin:
             self.settings.download_folder = new_download_folder
         else:
             self.dockwidget.downloadFolderLineEdit.setText(self.settings.download_folder)
-            self.show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
-                              MessageType.CRITICAL)
+            show_message('Folder {} does not exist. Please set a valid folder'.format(new_download_folder),
+                         MessageType.CRITICAL)
 
     def select_download_folder(self):
         """ Opens a dialog to select a download folder
@@ -614,10 +602,10 @@ class SentinelHubPlugin:
         layer = self.manager.get_layer(self.settings.instance_id, self.settings.layer_id, load_url=True)
 
         is_current_extent = self.settings.download_extent_type is ExtentType.CURRENT
-        bbox = get_bbox(self.iface, self.settings.crs) if is_current_extent else get_custom_bbox(self.settings)
+        bbox = get_bbox(self.settings.crs) if is_current_extent else get_custom_bbox(self.settings)
 
         filename = download_wcs_image(self.settings, layer, bbox, self.client)
-        self.show_message('Image downloaded to file {}'.format(filename), MessageType.SUCCESS)
+        show_message('Image downloaded to file {}'.format(filename), MessageType.SUCCESS)
 
     def on_close_plugin(self):
         """ Cleanup necessary items here when a close event on the dockwidget is triggered

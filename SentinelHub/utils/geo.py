@@ -4,12 +4,13 @@ Geographical utilities
 import math
 
 from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsCsException
+from qgis.utils import iface
 
 from ..constants import CrsType
 from ..exceptions import BBoxTransformError
 
 
-def get_bbox(iface, crs):
+def get_bbox(crs):
     """ Get a bounding box of the current window
     """
     bbox = iface.mapCanvas().extent()
@@ -63,7 +64,7 @@ def is_bbox_too_large(bbox, crs, size_limit):
     return max(width, height) > size_limit
 
 
-def is_current_map_crs(iface, crs_id):
+def is_current_map_crs(crs_id):
     """ Checks if the current underlying CRS on the map is given CRS
     """
     return iface.mapCanvas().mapSettings().destinationCrs().authid() == crs_id

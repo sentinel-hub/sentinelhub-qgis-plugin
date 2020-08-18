@@ -4,7 +4,20 @@ Utilities for handling exceptions and error messaging
 import time
 from abc import ABC, abstractmethod
 
+from qgis.utils import iface
+
 from .constants import MessageType, ExtentType
+
+
+def show_message(message, message_type):
+    """ Show message for user
+
+    :param message: Message for user
+    :param message: str
+    :param message_type: Type of message
+    :param message_type: MessageType
+    """
+    iface.messageBar().pushMessage(message_type.nice_name, message, level=message_type.level)
 
 
 def action_handler(validators=(), cooldown=0, suppressed_exceptions=()):
@@ -50,7 +63,7 @@ class ActionHandler:
             except self.suppressed_exceptions:
                 pass
             except PluginException as exception:
-                plugin.show_message(exception.message, exception.message_type)
+                show_message(exception.message, exception.message_type)
 
         return new_action_method
 

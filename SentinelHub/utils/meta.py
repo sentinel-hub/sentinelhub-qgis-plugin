@@ -3,6 +3,9 @@ Utilities for handling meta information and procedures
 """
 import os
 import sys
+from configparser import ConfigParser
+
+from qgis.utils import plugins_metadata_parser
 
 
 def ensure_import(package_name):
@@ -23,24 +26,28 @@ def ensure_import(package_name):
         raise ImportError('Package {} not found'.format(package_name))
 
 
+def _get_plugin_name(missing='SentinelHub'):
+    """ Reads the plugin name from metadata
+    """
+    plugin_dir = _get_main_dir()
+    metadata_path = os.path.join(plugin_dir, 'metadata.txt')
+
+    if not os.path.exists(metadata_path):
+        return missing
+
+    config = ConfigParser()
+    config.read(metadata_path)
+
+    return config['general']['name']
+
+
 def get_plugin_version():
     """ Provides the current plugin version by looking into a metadata file
 
     :return: A plugin version
     :rtype: str
     """
-    plugin_dir = _get_main_dir()
-    metadata_path = os.path.join(plugin_dir, 'metadata.txt')
-
-    if not os.path.exists(metadata_path):
-        return '?'
-
-    with open(metadata_path) as metadata_file:
-        for line in metadata_file:
-            if line.startswith('version'):
-                return line.split('=')[1].strip()
-
-    raise ValueError('Failed to parse version from metadata.txt file')
+    return plugins_metadata_parser[PLUGIN_NAME]['general']['version']
 
 
 def _get_main_dir():
@@ -48,3 +55,6 @@ def _get_main_dir():
     """
     utils_dir = os.path.dirname(__file__)
     return os.path.abspath(os.path.join(utils_dir, '..'))
+
+
+PLUGIN_NAME = _get_plugin_name()

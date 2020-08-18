@@ -8,15 +8,12 @@ from PyQt5.QtCore import QSettings
 
 from .session import Session
 from ..exceptions import DownloadError
+from ..utils.meta import get_plugin_version
 
 
 class Client:
 
     _CACHED_SESSIONS = {}
-
-    def __init__(self, iface, plugin_version):
-        self.iface = iface
-        self.plugin_version = plugin_version
 
     def download(self, url, timeout=None, session_settings=None):
         """ Downloads data from url and handles possible errors
@@ -50,7 +47,7 @@ class Client:
         """ Prepares final headers by potentially joining them with session headers
         """
         headers = {
-            'User-Agent': 'sh_qgis_plugin_{}'.format(self.plugin_version)
+            'User-Agent': 'sh_qgis_plugin_{}'.format(get_plugin_version())
         }
 
         if session_settings:
