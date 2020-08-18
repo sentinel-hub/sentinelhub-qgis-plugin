@@ -288,30 +288,34 @@ class SentinelHubPlugin:
 
         self.update_available_calendar_dates()
 
-        if layer.data_source.is_cloudless() and not self.dockwidget.maxccSlider.isHidden():
+        if layer.data_source.is_cloudless():
             self.dockwidget.maxccSlider.hide()
             self.dockwidget.maxccLabel.hide()
-        if not layer.data_source.is_cloudless() and self.dockwidget.maxccSlider.isHidden():
+        else:
             self.dockwidget.maxccSlider.show()
             self.dockwidget.maxccLabel.show()
 
-        # This doesn't hide vertical spacer and therefore doesn't look good
-        if layer.data_source.is_timeless() and not self.dockwidget.calendarWidget.isHidden():
+        if layer.data_source.is_timeless():
             self.dockwidget.calendarWidget.hide()
-            self.dockwidget.exactDateCheckBox.hide()
             self.dockwidget.timeRangeLabel.hide()
             self.dockwidget.timeLabel.hide()
             self.dockwidget.startTimeLineEdit.hide()
             self.dockwidget.endTimeLineEdit.hide()
-            self.dockwidget.verticalCalendarLayout.
-            # self.dockwidget.verticalCalendarSpacer.hide()
-        if not layer.data_source.is_timeless() and self.dockwidget.calendarWidget.isHidden():
+            self.dockwidget.verticalCalendarWidget.hide()
+        else:
             self.dockwidget.calendarWidget.show()
-            self.dockwidget.exactDateCheckBox.show()
             self.dockwidget.timeRangeLabel.show()
             self.dockwidget.timeLabel.show()
             self.dockwidget.startTimeLineEdit.show()
             self.dockwidget.endTimeLineEdit.show()
+            self.dockwidget.verticalCalendarWidget.show()
+
+        if layer.data_source.is_cloudless() and layer.data_source.is_timeless():
+            self.dockwidget.priorityLabel.hide()
+            self.dockwidget.priorityComboBox.hide()
+        else:
+            self.dockwidget.priorityLabel.show()
+            self.dockwidget.priorityComboBox.show()
 
     @action_handler()
     def update_crs(self, crs_index=None):

@@ -15,8 +15,10 @@ def get_qgis_layer_name(settings, layer):
         plugin_params.append(_get_time_interval_name(settings))
     if not layer.data_source.is_cloudless():
         plugin_params.append('{}%'.format(settings.maxcc))
+    if not (layer.data_source.is_timeless() and layer.data_source.is_cloudless()):
+        plugin_params.append(settings.priority)
 
-    plugin_params.extend([settings.priority, settings.crs])
+    plugin_params.append(settings.crs)
 
     return '{} - {} ({})'.format(_get_source_name(layer), layer.name, ', '.join(plugin_params))
 
@@ -35,7 +37,8 @@ def get_filename(settings, layer, bbox):
     if not layer.data_source.is_cloudless():
         info_list.append(settings.maxcc)
 
-    info_list.append(settings.priority)
+    if not (layer.data_source.is_timeless() and layer.data_source.is_cloudless()):
+        info_list.append(settings.priority)
 
     filename = '_'.join(map(str, info_list))
 

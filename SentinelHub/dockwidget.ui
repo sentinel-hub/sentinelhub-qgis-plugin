@@ -1159,37 +1159,6 @@
                 </property>
                </widget>
               </item>
-              <item row="10" column="0">
-               <layout class="QVBoxLayout" name="verticalCalendarLayout">
-                <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_4">
-                  <item>
-                   <widget class="QCheckBox" name="exactDateCheckBox">
-                    <property name="layoutDirection">
-                     <enum>Qt::RightToLeft</enum>
-                    </property>
-                    <property name="text">
-                     <string>Use exact date</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item>
-                 <spacer name="verticalCalendarSpacer">
-                  <property name="orientation">
-                   <enum>Qt::Vertical</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>20</width>
-                    <height>40</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
               <item row="5" column="0">
                <widget class="QLabel" name="serviceTypeLabel">
                 <property name="text">
@@ -1235,6 +1204,42 @@
                  <string>Configuration</string>
                 </property>
                </widget>
+              </item>
+              <item row="10" column="0">
+               <layout class="QVBoxLayout" name="verticalCalendarLayout">
+                <item>
+                 <widget class="QWidget" name="verticalCalendarWidget" native="true">
+                  <property name="minimumSize">
+                   <size>
+                    <width>130</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="baseSize">
+                   <size>
+                    <width>0</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <widget class="QCheckBox" name="exactDateCheckBox">
+                   <property name="geometry">
+                    <rect>
+                     <x>0</x>
+                     <y>0</y>
+                     <width>126</width>
+                     <height>23</height>
+                    </rect>
+                   </property>
+                   <property name="layoutDirection">
+                    <enum>Qt::RightToLeft</enum>
+                   </property>
+                   <property name="text">
+                    <string>Use exact date</string>
+                   </property>
+                  </widget>
+                 </widget>
+                </item>
+               </layout>
               </item>
              </layout>
             </widget>
