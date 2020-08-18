@@ -288,15 +288,13 @@ class SentinelHubPlugin:
 
         self.update_available_calendar_dates()
 
-        # TODO:
-        # if layer.data_source.is_cloudless() and not self.dockwidget.maxccSlider.isHidden():
-        #     self.dockwidget.maxccSlider.hide()
-        #     self.dockwidget.maxccLabel.hide()
-        # if not layer.data_source.is_cloudless() and self.dockwidget.maxccSlider.isHidden():
-        #     self.dockwidget.maxccSlider.show()
-        #     self.dockwidget.maxccLabel.show()
+        if layer.data_source.is_cloudless() and not self.dockwidget.maxccSlider.isHidden():
+            self.dockwidget.maxccSlider.hide()
+            self.dockwidget.maxccLabel.hide()
+        if not layer.data_source.is_cloudless() and self.dockwidget.maxccSlider.isHidden():
+            self.dockwidget.maxccSlider.show()
+            self.dockwidget.maxccLabel.show()
 
-        """
         # This doesn't hide vertical spacer and therefore doesn't look good
         if layer.data_source.is_timeless() and not self.dockwidget.calendarWidget.isHidden():
             self.dockwidget.calendarWidget.hide()
@@ -305,6 +303,8 @@ class SentinelHubPlugin:
             self.dockwidget.timeLabel.hide()
             self.dockwidget.startTimeLineEdit.hide()
             self.dockwidget.endTimeLineEdit.hide()
+            self.dockwidget.verticalCalendarLayout.
+            # self.dockwidget.verticalCalendarSpacer.hide()
         if not layer.data_source.is_timeless() and self.dockwidget.calendarWidget.isHidden():
             self.dockwidget.calendarWidget.show()
             self.dockwidget.exactDateCheckBox.show()
@@ -312,7 +312,6 @@ class SentinelHubPlugin:
             self.dockwidget.timeLabel.show()
             self.dockwidget.startTimeLineEdit.show()
             self.dockwidget.endTimeLineEdit.show()
-        """
 
     @action_handler()
     def update_crs(self, crs_index=None):

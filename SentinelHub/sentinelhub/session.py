@@ -23,7 +23,12 @@ class Session:
 
     def __init__(self, base_url, client_id, client_secret):
         """
-        TODO
+        :param base_url: Base service URL
+        :type base_url: str
+        :param client_id: A Sentinel Hub OAuth client ID
+        :type client_id: str
+        :param client_secret: A Sentinel Hub Oauth client secret
+        :type client_secret: str
         """
         self.oauth_url = '{}/oauth/token'.format(base_url)
         self.client_id = client_id
