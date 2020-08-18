@@ -25,7 +25,7 @@ from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 
 from .constants import MessageType, CrsType, ImagePriority, ImageFormat, BaseUrl, ExtentType, ServiceType, TimeType, \
-    AVAILABLE_SERVICE_TYPES, COVERAGE_MAX_BBOX_SIZE, ACTION_COOLDOWN
+    AVAILABLE_SERVICE_TYPES, COVERAGE_MAX_BBOX_SIZE, ACTION_COOLDOWN, VECTOR_LAYER_COLOR_OPACITY
 from .dockwidget import SentinelHubDockWidget
 from .exceptions import show_message, action_handler, LayerValidator, ResolutionValidator, ExtentValidator, \
     DownloadFolderValidator, BBoxTransformError
@@ -37,7 +37,7 @@ from .sentinelhub.wfs import get_cloud_cover
 from .settings import Settings
 from .utils.common import is_float_or_undefined
 from .utils.geo import get_bbox, is_bbox_too_large, bbox_to_string, get_custom_bbox, is_current_map_crs
-from .utils.map import get_qgis_layers
+from .utils.map import get_qgis_layers, set_layer_fill_color_opacity
 from .utils.meta import get_plugin_version, PLUGIN_NAME
 from .utils.naming import get_qgis_layer_name
 from .utils.time import parse_date, get_month_time_interval
@@ -451,6 +451,7 @@ class SentinelHubPlugin:
 
         if self.settings.service_type.upper() == ServiceType.WFS:
             new_layer = QgsVectorLayer(service_uri, qgis_layer_name, ServiceType.WFS)
+            set_layer_fill_color_opacity(new_layer, VECTOR_LAYER_COLOR_OPACITY)
         else:
             new_layer = QgsRasterLayer(service_uri, qgis_layer_name, ServiceType.WMS.lower())
 
