@@ -220,7 +220,7 @@ class SentinelHubPlugin:
         configuration_index = self.manager.get_configuration_index(self.settings.instance_id)
         self.update_configuration(configuration_index)
 
-        show_message('Login successful', MessageType.INFO)
+        show_message('Login successful', MessageType.SUCCESS)
 
     @action_handler()
     def update_configuration(self, configuration_index=None):

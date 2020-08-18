@@ -122,7 +122,7 @@
             <item row="0" column="3">
              <widget class="QLineEdit" name="serviceUrlLineEdit">
               <property name="toolTip">
-               <string>Test</string>
+               <string/>
               </property>
               <property name="clearButtonEnabled">
                <bool>true</bool>
