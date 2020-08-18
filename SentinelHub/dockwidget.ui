@@ -79,7 +79,11 @@
            </property>
            <layout class="QGridLayout" name="gridLayout_8">
             <item row="1" column="3">
-             <widget class="QLineEdit" name="clientIdLineEdit"/>
+             <widget class="QLineEdit" name="clientIdLineEdit">
+              <property name="clearButtonEnabled">
+               <bool>true</bool>
+              </property>
+             </widget>
             </item>
             <item row="1" column="2">
              <widget class="QLabel" name="clientIdLabel">
@@ -116,12 +120,22 @@
              </widget>
             </item>
             <item row="0" column="3">
-             <widget class="QLineEdit" name="serviceUrlLineEdit"/>
+             <widget class="QLineEdit" name="serviceUrlLineEdit">
+              <property name="toolTip">
+               <string>Test</string>
+              </property>
+              <property name="clearButtonEnabled">
+               <bool>true</bool>
+              </property>
+             </widget>
             </item>
             <item row="2" column="3">
              <widget class="QLineEdit" name="clientSecretLineEdit">
               <property name="echoMode">
                <enum>QLineEdit::Password</enum>
+              </property>
+              <property name="clearButtonEnabled">
+               <bool>true</bool>
               </property>
              </widget>
             </item>
@@ -1075,6 +1089,9 @@
                   <property name="placeholderText">
                    <string>Select start date from calendar</string>
                   </property>
+                  <property name="clearButtonEnabled">
+                   <bool>true</bool>
+                  </property>
                  </widget>
                 </item>
                 <item>
@@ -1115,6 +1132,9 @@
                   </property>
                   <property name="placeholderText">
                    <string>Select end date from calendar</string>
+                  </property>
+                  <property name="clearButtonEnabled">
+                   <bool>true</bool>
                   </property>
                  </widget>
                 </item>
@@ -1391,6 +1411,9 @@
                     <height>16777215</height>
                    </size>
                   </property>
+                  <property name="clearButtonEnabled">
+                   <bool>true</bool>
+                  </property>
                  </widget>
                 </item>
                 <item>
@@ -1428,6 +1451,9 @@
                     <width>140</width>
                     <height>16777215</height>
                    </size>
+                  </property>
+                  <property name="clearButtonEnabled">
+                   <bool>true</bool>
                   </property>
                  </widget>
                 </item>
@@ -1492,6 +1518,9 @@
                    <property name="readOnly">
                     <bool>false</bool>
                    </property>
+                   <property name="clearButtonEnabled">
+                    <bool>true</bool>
+                   </property>
                   </widget>
                  </item>
                  <item row="0" column="2">
@@ -1510,6 +1539,9 @@
                    </property>
                    <property name="readOnly">
                     <bool>false</bool>
+                   </property>
+                   <property name="clearButtonEnabled">
+                    <bool>true</bool>
                    </property>
                   </widget>
                  </item>
@@ -1530,6 +1562,9 @@
                    <property name="readOnly">
                     <bool>false</bool>
                    </property>
+                   <property name="clearButtonEnabled">
+                    <bool>true</bool>
+                   </property>
                   </widget>
                  </item>
                  <item row="0" column="1">
@@ -1545,6 +1580,9 @@
                      <width>140</width>
                      <height>16777215</height>
                     </size>
+                   </property>
+                   <property name="clearButtonEnabled">
+                    <bool>true</bool>
                    </property>
                   </widget>
                  </item>
@@ -1613,6 +1651,9 @@
                     <width>340</width>
                     <height>16777215</height>
                    </size>
+                  </property>
+                  <property name="clearButtonEnabled">
+                   <bool>true</bool>
                   </property>
                  </widget>
                 </item>
