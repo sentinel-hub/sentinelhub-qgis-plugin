@@ -49,9 +49,6 @@ def bbox_to_string(bbox, crs):
         precision = 2
         bbox_list = [bbox.xMinimum(), bbox.yMinimum(), bbox.xMaximum(), bbox.yMaximum()]
 
-    from qgis.core import QgsMessageLog
-    QgsMessageLog.logMessage(crs + ' ' + target_crs.authid() + ' ' + CrsType.WGS84)
-
     return ','.join(map(lambda coord: str(round(coord, precision)), bbox_list))
 
 
