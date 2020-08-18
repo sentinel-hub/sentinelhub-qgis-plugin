@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 
 from qgis.utils import iface
 
+from .utils.meta import PLUGIN_NAME
 from .constants import MessageType, ExtentType
 
 
@@ -17,7 +18,7 @@ def show_message(message, message_type):
     :param message_type: Type of message
     :param message_type: MessageType
     """
-    iface.messageBar().pushMessage(message_type.nice_name, message, level=message_type.level)
+    iface.messageBar().pushMessage(PLUGIN_NAME, message, level=message_type.level)
 
 
 def action_handler(validators=(), cooldown=0, suppressed_exceptions=()):
