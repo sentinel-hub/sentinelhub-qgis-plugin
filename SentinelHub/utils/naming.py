@@ -1,6 +1,7 @@
 """
 Utilities for creating names
 """
+from ..constants import ServiceType
 
 
 def get_qgis_layer_name(settings, layer):
@@ -20,7 +21,12 @@ def get_qgis_layer_name(settings, layer):
 
     plugin_params.append(settings.crs)
 
-    return '{} - {} ({})'.format(_get_source_name(layer), layer.name, ', '.join(plugin_params))
+    source_name = _get_source_name(layer)
+    plugin_param_str = ', '.join(plugin_params)
+
+    if settings.service_type.upper() == ServiceType.WFS:
+        return '{} ({})'.format(source_name, plugin_param_str)
+    return '{} - {} ({})'.format(source_name, layer.name, plugin_param_str)
 
 
 def get_filename(settings, layer, bbox):
