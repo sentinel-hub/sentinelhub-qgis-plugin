@@ -107,8 +107,8 @@ def get_wcs_url(settings, layer, bbox, crs=None):
         'maxcc': settings.maxcc,
         'priority': settings.priority,
         'format': settings.image_format,
-        'resx': settings.resx.strip('m') + 'm',
-        'resy': settings.resy.strip('m') + 'm',
+        'resx': settings.resx + 'm',
+        'resy': settings.resy + 'm',
         'showLogo': settings.show_logo,
         'transparent': 'false',
     }
