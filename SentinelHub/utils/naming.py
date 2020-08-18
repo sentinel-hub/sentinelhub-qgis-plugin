@@ -1,6 +1,8 @@
 """
 Utilities for creating names
 """
+import datetime as dt
+
 from ..constants import ServiceType
 
 
@@ -63,12 +65,16 @@ def _get_time_interval_name(settings):
     :return: string describing time interval
     :rtype: str
     """
-    time_interval = _get_time_name(settings.start_time), _get_time_name(settings.end_time)
+    start_time = _get_time_name(settings.start_time)
+    end_time = _get_time_name(settings.end_time)
 
     if settings.is_exact_date:
-        return time_interval[0]
+        return start_time
 
-    return '{}/{}'.format(time_interval[0], time_interval[1])
+    if settings.start_time and not settings.end_time:
+        end_time = dt.datetime.now().isoformat()
+
+    return '{}/{}'.format(start_time, end_time)
 
 
 def _get_time_name(time_str):

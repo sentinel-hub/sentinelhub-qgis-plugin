@@ -9,6 +9,9 @@ from qgis.core import QgsDataSourceUri
 from ..constants import ServiceType
 
 
+DEFAULT_START_TIME = '1985-01-01'
+
+
 def get_service_uri(settings, layer):
     service_type = settings.service_type.upper()
 
@@ -152,14 +155,17 @@ def _build_uri(base_url, url_params, uri_params, use_builder=False):
 def _build_time(settings):
     """ Builds a time string to be sent to Sentinel Hub service
     """
-    if settings.is_exact_date and not settings.start_time:
+    if (settings.is_exact_date and not settings.start_time) or (not settings.start_time and not settings.end_time):
         return ''
-    if not settings.start_time:
-        return settings.end_time
+
+    start_time = settings.start_time
+    end_time = settings.end_time
 
     if settings.is_exact_date:
-        return '{}/{}/P1D'.format(settings.start_time, settings.start_time)
-    if not settings.end_time:
-        return '{}/{}/P1D'.format(settings.start_time, dt.datetime.now().isoformat())
+        end_time = start_time
+    if not start_time:
+        start_time = DEFAULT_START_TIME
+    if not end_time:
+        end_time = dt.datetime.now().isoformat()
 
-    return '{}/{}/P1D'.format(settings.start_time, settings.end_time)
+    return '{}/{}/P1D'.format(start_time, end_time)
