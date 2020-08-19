@@ -6,7 +6,7 @@ name=SentinelHub
 qgisMinimumVersion=3.0
 qgisMaximumVersion=3.99
 description=SentinelHub plugin enables users to harness the power of Sentinel Hub services directly from QGIS.
-version=1.4.0
+version=2.0.0
 author=Sinergise
 email=info@sentinel-hub.com
 
@@ -21,6 +21,13 @@ repository=https://github.com/sentinel-hub/sentinelhub-qgis-plugin
 
 # Recommended items:
 changelog=
+    2.0.0
+        - support for any production Sentinel Hub deployment and data source
+        - authentication with OAuth client instead of a configuration instance ID
+        - support for WFS layers
+        - removed support for QGIS 2 and Python 2
+        - extensive code refactoring
+        - various minor improvements and fixes
     1.3.3
         - bug fix about failing to parse local variables in OSX
     1.3.2

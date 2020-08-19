@@ -2,7 +2,7 @@
 
 SentinelHub QGIS Plugin enables users to harness the power of [Sentinel Hub services](https://www.sentinel-hub.com/) directly from QGIS.
 
-Since version `1.4.0` the plugin only works with QGIS 3 while earlier versions support both QGIS 2 and QGIS 3.
+Since version `2.0.0` the plugin only works with QGIS 3 and Python version `>=3.5` while earlier versions support both QGIS 2 and QGIS 3.
 
 ## Install
 
