@@ -75,13 +75,12 @@ class WmsCapabilities:
     def _sort_crs_list(self):
         """ Sorts list of CRS so that 3857 and 4326 are on the top
         """
-        new_crs_list = []
-        for main_crs in [CrsType.POP_WEB, CrsType.WGS84]:
-            for index, crs in enumerate(self._crs_list):
-                if crs and crs.id == main_crs:
-                    new_crs_list.append(crs)
-                    self._crs_list[index] = None
-        for crs in self._crs_list:
-            if crs:
-                new_crs_list.append(crs)
-        self._crs_list = new_crs_list
+        main_crs_ids = [CrsType.POP_WEB, CrsType.WGS84]
+
+        main_crs_list = [crs for crs in self._crs_list if crs.id in main_crs_ids]
+        other_crs_list = [crs for crs in self._crs_list if crs.id not in main_crs_ids]
+
+        main_crs_list.sort(key=lambda crs: crs.id)
+        other_crs_list.sort(key=lambda crs: crs.id)
+
+        self._crs_list = main_crs_list + other_crs_list
