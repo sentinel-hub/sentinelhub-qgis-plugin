@@ -7,6 +7,7 @@ import requests
 from PyQt5.QtCore import QSettings
 
 from .session import Session
+from ..constants import DEFAULT_REQUEST_TIMEOUT
 from ..exceptions import DownloadError
 from ..utils.meta import get_plugin_version
 
@@ -15,13 +16,13 @@ class Client:
 
     _CACHED_SESSIONS = {}
 
-    def download(self, url, timeout=None, session_settings=None):
+    def download(self, url, timeout=DEFAULT_REQUEST_TIMEOUT, session_settings=None):
         """ Downloads data from url and handles possible errors
 
         :param url: download url
         :type url: str
         :param timeout: A number of seconds before a request will timeout
-        :type timeout: int or None
+        :type timeout: int
         :param session_settings: If specified, these settings will be used to create a session
         :type session_settings: Settings or None
         :return: download response or None if download failed
@@ -87,8 +88,11 @@ def get_error_message(exception):
     """
     message = '{}: '.format(exception.__class__.__name__)
 
-    if isinstance(exception, requests.ConnectionError):
-        message += 'Cannot access service, check your internet connection.'
+    if isinstance(exception, (requests.ConnectionError, requests.Timeout)):
+        if isinstance(exception, requests.ConnectionError):
+            message += 'Cannot access service, check your internet connection.'
+        else:
+            message += 'Connection timed out, service is too slow'
 
         enabled, host, port, _, _ = get_proxy_from_qsettings()
         if enabled:
@@ -106,10 +110,8 @@ def get_error_message(exception):
                     server_message += elem.text.strip('\n\t ')
         except ElementTree.ParseError:
             server_message = exception.response.text.strip('\n\t ')
+
         server_message = server_message.encode('ascii', errors='ignore').decode('utf-8')
-        if 'Config instance "instance.' in server_message:
-            instance_id = server_message.split('"')[1][9:]
-            server_message = 'Invalid instance id: {}'.format(instance_id)
         return message + 'server response: "{}"'.format(server_message)
 
     return message + str(exception)
