@@ -21,7 +21,12 @@ For a quick tutorial check this [blog post](https://medium.com/sentinel-hub/cont
 - Set up an empty Python environment.
 - Install development requirements
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements.txt -r requirements-dev.txt
+```
+- Download Python packages that QGIS might not have by default and will be packed together with the plugin:
+```
+mkdir ./SentinelHub/external
+pip download -d ./SentinelHub/external --no-deps -r requirements.txt
 ```
 - Configure a path to QGIS Python environment. The path depends on your OS and QGIS installation. Here is an example for Linux:
 ```bash
