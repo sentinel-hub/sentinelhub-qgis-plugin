@@ -217,7 +217,7 @@ class SentinelHubPlugin:
         self.dockwidget.crsComboBox.clear()
 
         username = get_username(self.settings, self.client)
-        login_text = 'Logged in as user {}'.format(username) if username else ''
+        login_text = 'Logged in as {}'.format(username) if username else ''
         self.dockwidget.loginInfoLabel.setText(login_text)
 
         configuration_names = [configuration.name for configuration in configurations]

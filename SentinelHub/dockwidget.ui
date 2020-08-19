@@ -75,14 +75,14 @@
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_8">
-              <item row="5" column="2">
+              <item row="6" column="2">
                <widget class="QLabel" name="clientIdSecret">
                 <property name="text">
                  <string>Client secret</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="4">
+              <item row="4" column="4">
                <spacer name="mainLoginHorizontalSpacer">
                 <property name="orientation">
                  <enum>Qt::Horizontal</enum>
@@ -95,7 +95,7 @@
                 </property>
                </spacer>
               </item>
-              <item row="5" column="3">
+              <item row="6" column="3">
                <widget class="QLineEdit" name="clientSecretLineEdit">
                 <property name="minimumSize">
                  <size>
@@ -117,7 +117,14 @@
                 </property>
                </widget>
               </item>
-              <item row="4" column="3">
+              <item row="9" column="3">
+               <widget class="QLabel" name="loginInfoLabel">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="3">
                <widget class="QLineEdit" name="clientIdLineEdit">
                 <property name="minimumSize">
                  <size>
@@ -136,21 +143,21 @@
                 </property>
                </widget>
               </item>
-              <item row="4" column="2">
+              <item row="5" column="2">
                <widget class="QLabel" name="clientIdLabel">
                 <property name="text">
                  <string>Client ID</string>
                 </property>
                </widget>
               </item>
-              <item row="7" column="3">
+              <item row="8" column="3">
                <widget class="QPushButton" name="loginPushButton">
                 <property name="text">
                  <string>Login</string>
                 </property>
                </widget>
               </item>
-              <item row="10" column="3">
+              <item row="11" column="3">
                <spacer name="mainLoginVerticalSpacer">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
@@ -166,7 +173,32 @@
                 </property>
                </spacer>
               </item>
-              <item row="3" column="3">
+              <item row="7" column="3">
+               <widget class="QLabel" name="oauthHelpLabel">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>25</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>25</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://docs.sentinel-hub.com/api/latest/api/overview/authentication/&quot;&gt;&lt;span style=&quot; font-size:8pt; text-decoration: underline; color:#0000ff;&quot;&gt;Create new OAuth2 client&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+                </property>
+                <property name="textInteractionFlags">
+                 <set>Qt::TextBrowserInteraction</set>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="3">
                <widget class="QLineEdit" name="serviceUrlLineEdit">
                 <property name="minimumSize">
                  <size>
@@ -201,7 +233,7 @@
                 </property>
                </widget>
               </item>
-              <item row="3" column="1">
+              <item row="4" column="1">
                <spacer name="indentLoginHorizontalSpacer">
                 <property name="orientation">
                  <enum>Qt::Horizontal</enum>
@@ -217,7 +249,7 @@
                 </property>
                </spacer>
               </item>
-              <item row="3" column="2">
+              <item row="4" column="2">
                <widget class="QLabel" name="serviceUrlLabel">
                 <property name="text">
                  <string>Service URL</string>
@@ -239,38 +271,6 @@
                  </size>
                 </property>
                </spacer>
-              </item>
-              <item row="6" column="3">
-               <widget class="QLabel" name="oauthHelpLabel">
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>25</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>25</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://docs.sentinel-hub.com/api/latest/api/overview/authentication/&quot;&gt;&lt;span style=&quot; font-size:8pt; text-decoration: underline; color:#0000ff;&quot;&gt;Create new OAuth2 client&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
-                </property>
-                <property name="textInteractionFlags">
-                 <set>Qt::TextBrowserInteraction</set>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="3">
-               <widget class="QLabel" name="loginInfoLabel">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
               </item>
              </layout>
             </widget>
