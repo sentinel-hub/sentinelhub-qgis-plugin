@@ -201,9 +201,7 @@ class SentinelHubPlugin:
         """ Uses credentials to connect to Sentinel Hub services and updates
         """
         new_settings = self.settings.copy()
-        new_settings.base_url = self.dockwidget.serviceUrlLineEdit.text()
-        new_settings.client_id = self.dockwidget.clientIdLineEdit.text()
-        new_settings.client_secret = self.dockwidget.clientSecretLineEdit.text()
+        self._load_new_credentials(new_settings)
 
         new_manager = ConfigurationManager(new_settings, self.client)
         configurations = new_manager.get_configurations(reload=True)
