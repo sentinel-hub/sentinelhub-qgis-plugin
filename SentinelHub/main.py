@@ -141,7 +141,7 @@ class SentinelHubPlugin:
         self.iface.currentLayerChanged.connect(self.update_current_map_layers)
 
         # Download widget
-        self.dockwidget.imageFormatComboBox.currentIndexChanged.connect(self.update_download_format)
+        self.dockwidget.imageFormatComboBox.activated.connect(self.update_download_format)
 
         self.dockwidget.resXLineEdit.editingFinished.connect(self.update_download_extent_values)
         self.dockwidget.resYLineEdit.editingFinished.connect(self.update_download_extent_values)
@@ -176,12 +176,28 @@ class SentinelHubPlugin:
         self.dockwidget.serviceTypeComboBox.addItems(AVAILABLE_SERVICE_TYPES)
         self.update_service_type(self.settings.service_type.upper())
 
+        self.dockwidget.startTimeLineEdit.setText(self.settings.start_time)
+        self.dockwidget.endTimeLineEdit.setText(self.settings.end_time)
         self.dockwidget.calendarSpacer.hide()
+
         self.dockwidget.priorityComboBox.addItems([priority.nice_name for priority in ImagePriority])
+        priorities = [priority.url_param for priority in ImagePriority]
+        if self.settings.priority in priorities:
+            priority_index = priorities.index(self.settings.priority)
+            self.dockwidget.priorityComboBox.setCurrentIndex(priority_index)
+        else:
+            self.update_image_priority()
 
         self.update_current_map_layers()
 
         self.dockwidget.imageFormatComboBox.addItems([image_format.nice_name for image_format in ImageFormat])
+        image_formats = [image_format.url_param for image_format in ImageFormat]
+        if self.settings.image_format in image_formats:
+            image_format_index = image_formats.index(self.settings.image_format)
+            self.dockwidget.imageFormatComboBox.setCurrentIndex(image_format_index)
+        else:
+            self.update_download_format()
+
         self._set_download_extent_values()
         self.toggle_extent(self.settings.download_extent_type)
         self.dockwidget.downloadFolderLineEdit.setText(self.settings.download_folder)
@@ -340,7 +356,7 @@ class SentinelHubPlugin:
             self.dockwidget.calendarSpacer.hide()
         else:
             self.dockwidget.calendarSpacer.show()
-        self.settings.active_time = active.value
+        self.settings.active_time = active
 
     def update_dates(self):
         """ Checks if newly inserted dates are valid and updates date attributes
@@ -382,11 +398,11 @@ class SentinelHubPlugin:
         """
         calendar_time = str(self.dockwidget.calendarWidget.selectedDate().toPyDate())
 
-        if self.settings.active_time == TimeType.START_TIME.value and \
+        if self.settings.active_time is TimeType.START_TIME and \
                 (self.settings.is_exact_date or not self.settings.end_time or calendar_time <= self.settings.end_time):
             self.settings.start_time = calendar_time
             self.dockwidget.startTimeLineEdit.setText(calendar_time)
-        elif self.settings.active_time == TimeType.END_TIME.value and \
+        elif self.settings.active_time is TimeType.END_TIME and \
                 (not self.settings.start_time or self.settings.start_time <= calendar_time):
             self.settings.end_time = calendar_time
             self.dockwidget.endTimeLineEdit.setText(calendar_time)

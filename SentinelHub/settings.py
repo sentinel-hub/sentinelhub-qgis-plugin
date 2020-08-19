@@ -5,7 +5,7 @@ import copy
 
 from PyQt5.QtCore import QSettings
 
-from .constants import BaseUrl, ServiceType, CrsType, ExtentType, ImagePriority, TimeType
+from .constants import BaseUrl, ServiceType, CrsType, ExtentType, ImagePriority, ImageFormat, TimeType
 
 
 class Settings:
@@ -23,12 +23,12 @@ class Settings:
     maxcc = '100'
     priority = ImagePriority.MOST_RECENT.url_param
 
-    active_time = TimeType.START_TIME.value
+    active_time = TimeType.START_TIME
     start_time = ''
     end_time = ''
     is_exact_date = False
 
-    image_format = 'image/png'
+    image_format = ImageFormat.PNG.url_param
     show_logo = 'false'
 
     download_extent_type = ExtentType.CURRENT
@@ -47,6 +47,16 @@ class Settings:
         'service_type',
         'layer_id',
         'crs',
+        'start_time',
+        'end_time',
+        'priority',
+        'image_format',
+        'resx',
+        'resy',
+        'lat_min',
+        'lat_max',
+        'lng_min',
+        'lng_max',
         'download_folder'
     }
     _auto_save = False
