@@ -20,6 +20,8 @@ class WmsCapabilities:
         self._crs_to_index_map = None
 
     def get_available_crs(self):
+        """ Provides a list of all available CRS from Sentinel Hub WMS capabilities
+        """
         if self._crs_list is None:
             self._load_xml()
             namespace = self._get_xml_namespace()
@@ -38,6 +40,8 @@ class WmsCapabilities:
         return self._crs_list
 
     def get_crs_index(self, crs_id):
+        """ For a given CRS it provides its position in the list of all available CRS
+        """
         if self._crs_to_index_map is None:
             crs_list = self.get_available_crs()
             self._crs_to_index_map = {crs.id: index for index, crs in enumerate(crs_list)}
@@ -49,6 +53,8 @@ class WmsCapabilities:
         return crs_index
 
     def _load_xml(self):
+        """ Downloads and provides an xml
+        """
         if self._xml_root is None:
             url = self._get_capabilities_url()
             response = self.client.download(url)
@@ -68,6 +74,8 @@ class WmsCapabilities:
         return url
 
     def _get_xml_namespace(self):
+        """ Parses a namespace string out of the xml
+        """
         if self._xml_root.tag.startswith('{'):
             return '{}}}'.format(self._xml_root.tag.split('}')[0])
         return ''

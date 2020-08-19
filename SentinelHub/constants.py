@@ -67,12 +67,16 @@ class ImageFormat(_BaseParameter):
 
 
 class BaseUrl:
+    """ Base URLs of some of the Sentinel Hub service deployments
+    """
     MAIN = 'https://services.sentinel-hub.com'
     USWEST = 'https://services-uswest2.sentinel-hub.com'
     EOCLOUD = 'http://services.eocloud.sentinel-hub.com/v1/'
 
 
 class ServiceType:
+    """ Types of service used in the plugin
+    """
     WMS = 'WMS'
     WCS = 'WCS'
     WMTS = 'WMTS'

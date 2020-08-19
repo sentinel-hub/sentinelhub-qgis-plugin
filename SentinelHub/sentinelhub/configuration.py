@@ -6,8 +6,17 @@ from .common import Configuration, Layer
 
 
 class ConfigurationManager:
+    """ The main class for providing any kind of configuration info obtained from Sentinel Hub service
 
+    Mainly it interacts with Sentinel Hub configuration API, which is the same as Sentinel Hub Configurator app
+    """
     def __init__(self, settings, client):
+        """
+        :param settings: A settings object. When parameters in settings change this will be also reflected in this class
+        :type settings: Settings
+        :param client: An instance of a client for download from Sentinel Hub
+        :type client: Client
+        """
         self.settings = settings
         self.client = client
 
@@ -20,16 +29,21 @@ class ConfigurationManager:
 
     @property
     def configuration_url(self):
+        """ An URL of configuration API
+        """
         return '{}/configuration/v1'.format(self.settings.base_url)
 
     @property
     def wms_capabilities(self):
+        """ Provides a class in charge of WMS capabilities info
+        """
         if self._wms_capabilities is None:
             self._wms_capabilities = WmsCapabilities(self.settings, self.client)
         return self._wms_capabilities
 
     def get_configurations(self, reload=False):
-
+        """ Provides a list of data configurations for the current user
+        """
         if reload or self._configurations is None:
             url = '{}/wms/instances'.format(self.configuration_url)
             result_list = self.client.download(url, session_settings=self.settings).json()
@@ -42,9 +56,13 @@ class ConfigurationManager:
         return self._configurations
 
     def get_configuration_index(self, instance_id):
+        """ For an instance ID it provides a position of it's configuration in the list of configurations
+        """
         return self._instance_to_index_map.get(instance_id, -1)
 
     def get_layers(self, instance_id, reload=False):
+        """ Provides a list of layers defined for a given instance ID (configuration) and the current user
+        """
         conf_index = self.get_configuration_index(instance_id)
         configuration = self._configurations[conf_index]
 
@@ -62,9 +80,23 @@ class ConfigurationManager:
         return configuration.layers
 
     def get_layer_index(self, instance_id, layer_id):
+        """ Provides a position of a layer in the list of all layers for a given configuration
+        """
         return self._layer_to_index_maps[instance_id].get(layer_id, 0)
 
     def get_layer(self, instance_id, layer_id, load_url=False):
+        """ Provides a single layer object, optionally it loads additional info about it's data source and service URL
+
+        :param instance_id: A configuration instance ID
+        :type instance_id: str
+        :param layer_id: A layer ID
+        :type layer_id: str
+        :param load_url: If True it will make an additional request to find out which at which service URL a layer can
+            be accessed
+        :type load_url: bool
+        :return: A layer
+        :rtype: Layer
+        """
         conf_index = self.get_configuration_index(instance_id)
         layer_index = self.get_layer_index(instance_id, layer_id)
         layer = self._configurations[conf_index].layers[layer_index]
@@ -85,17 +117,18 @@ class ConfigurationManager:
         return layer
 
     def get_datasource_names(self):
-        if self._data_sources_names_map is None:
-            url = '{}/datasets'.format(self.configuration_url)
-            result_list = self.client.download(url, session_settings=self.settings).json()
+        """ The method that could obtain data source names in case data sources will be ever displayed
 
-            self._data_sources_names_map = {result['id']: result['name'] for result in result_list}
-            # TODO: save into layer datasource objects
-
-        # TODO: join with layers...
+        A query should be made to configuration/v1/datasets endpoint
+        """
+        raise NotImplementedError
 
     def get_available_crs(self):
+        """ Provides a list of available CRS
+        """
         return self.wms_capabilities.get_available_crs()
 
     def get_crs_index(self, crs_id):
+        """ Provides a position of a CRS in the list of available CRS
+        """
         return self.wms_capabilities.get_crs_index(crs_id)

@@ -29,8 +29,18 @@ from .utils.time import parse_date, get_month_time_interval
 
 
 class SentinelHubPlugin:
-    """ The main class defining plugin logic
+    """ The main class defining the high-level plugin logic and interactions with UI
+
+    The methods that are called externally by QGIS are:
+      - __init__
+      - initGui
+      - unload
+
+    Any other public method is connected to UI and can be triggered by a user's action in QGIS. Non-public methods are
+    the ones that are only called by other methods.
     """
+    # pylint: disable=too-many-public-methods
+
     ICON_PATH = ':/plugins/SentinelHub/favicon.ico'
 
     def __init__(self, iface):

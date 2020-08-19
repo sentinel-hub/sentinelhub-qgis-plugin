@@ -13,6 +13,8 @@ class Configuration:
 
     @classmethod
     def load(cls, payload):
+        """ Creates an instance of the class from a payload
+        """
         return cls(
             configuration_id=payload['id'],
             name=payload['name']
@@ -29,6 +31,8 @@ class Layer:
 
     @classmethod
     def load(cls, payload):
+        """ Creates an instance of the class from a payload
+        """
         defaults_payload = payload['datasourceDefaults']
         return cls(
             layer_id=payload['id'],
@@ -52,7 +56,7 @@ class DataSource:
         self.service_url = service_url
 
     def get_wfs_id(self):
-        """ TODO: find a better way
+        """ Provides a datasource ID used by Sentinel Hub WFS
         """
         if self.id == 1:
             return 'S2.TILE'

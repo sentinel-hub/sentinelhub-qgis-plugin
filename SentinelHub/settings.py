@@ -9,8 +9,10 @@ from .constants import BaseUrl, ServiceType, CrsType, ExtentType, ImagePriority,
 
 
 class Settings:
-    """ A class in charge of all settings
+    """ A class in charge of all settings. It also handles loading and saving of settings to QGIS settings store
     """
+    # pylint: disable=too-many-instance-attributes
+
     base_url = BaseUrl.MAIN
     client_id = ''
     client_secret = ''
@@ -72,6 +74,9 @@ class Settings:
         self._auto_save = True
 
     def __setattr__(self, key, value):
+        """ Whenever one of the attributes from _AUTO_SAVE_STORE_PARAMETERS is set it is automatically saved to
+        QGIS store
+        """
         if self._auto_save and key in self._AUTO_SAVE_STORE_PARAMETERS:
             store_path = self._get_store_path(key)
             QSettings().setValue(store_path, value)

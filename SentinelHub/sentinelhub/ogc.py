@@ -13,6 +13,8 @@ DEFAULT_START_TIME = '1985-01-01'
 
 
 def get_service_uri(settings, layer):
+    """ Generates URI for any type of supported Sentinel Hub service
+    """
     service_type = settings.service_type.upper()
 
     if service_type in [ServiceType.WMS, ServiceType.WMTS]:

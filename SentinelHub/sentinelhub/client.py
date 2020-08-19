@@ -13,7 +13,11 @@ from ..utils.meta import get_plugin_version
 
 
 class Client:
+    """ Handles all interactions with Sentinel Hub service
 
+    Note that the class is caching sessions to a class attribute in order to minimize the number of times a new
+    session has to be created.
+    """
     _CACHED_SESSIONS = {}
 
     def download(self, url, timeout=DEFAULT_REQUEST_TIMEOUT, session_settings=None):
