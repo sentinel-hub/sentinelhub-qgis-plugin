@@ -227,6 +227,13 @@ class SentinelHubPlugin:
 
         show_message('Login successful', MessageType.SUCCESS)
 
+    def _load_new_credentials(self, settings):
+        """ Loads new credentials into settings
+        """
+        settings.base_url = self.dockwidget.serviceUrlLineEdit.text()
+        settings.client_id = self.dockwidget.clientIdLineEdit.text()
+        settings.client_secret = self.dockwidget.clientSecretLineEdit.text()
+
     @action_handler()
     def update_configuration(self, configuration_index=None):
         """ A different configuration has been chosen
@@ -620,6 +627,9 @@ class SentinelHubPlugin:
 
         Note that all connections to the QGIS interface have to be cleaned here.
         """
+        self._load_new_credentials(self.settings)
+        self.settings.save_credentials()
+
         self.iface.currentLayerChanged.disconnect(self.update_current_map_layers)
 
         self.dockwidget.closingPlugin.disconnect(self.on_close_plugin)
