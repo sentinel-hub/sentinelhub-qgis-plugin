@@ -32,6 +32,7 @@ from .exceptions import show_message, action_handler, LayerValidator, Resolution
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.client import Client
 from .sentinelhub.ogc import get_service_uri
+from .sentinelhub.user import get_username
 from .sentinelhub.wcs import download_wcs_image
 from .sentinelhub.wfs import get_cloud_cover
 from .settings import Settings
@@ -104,7 +105,7 @@ class SentinelHubPlugin:
             return
 
         self.dockwidget = SentinelHubDockWidget()
-        self.dockwidget.setWindowTitle('{} v{}'.format(PLUGIN_NAME, get_plugin_version()))
+        self.dockwidget.setWindowTitle('{} plugin v{}'.format(PLUGIN_NAME, get_plugin_version()))
         self.initialize_ui()
 
         # Login widget
@@ -214,6 +215,10 @@ class SentinelHubPlugin:
         self.dockwidget.configurationComboBox.clear()
         self.dockwidget.layersComboBox.clear()
         self.dockwidget.crsComboBox.clear()
+
+        username = get_username(self.settings, self.client)
+        login_text = 'Logged in as user {}'.format(username) if username else ''
+        self.dockwidget.loginInfoLabel.setText(login_text)
 
         configuration_names = [configuration.name for configuration in configurations]
         self.dockwidget.configurationComboBox.addItems(configuration_names)
