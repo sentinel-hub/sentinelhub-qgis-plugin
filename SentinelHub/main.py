@@ -316,10 +316,9 @@ class SentinelHubPlugin:
         else:
             self.dockwidget.calendarWidget.show()
             self.dockwidget.timeRangeLabel.show()
-            self.dockwidget.timeLabel.show()
             self.dockwidget.startTimeLineEdit.show()
-            self.dockwidget.endTimeLineEdit.show()
             self.dockwidget.verticalCalendarWidget.show()
+            self.change_exact_date()
 
         if layer.data_source.is_cloudless() and layer.data_source.is_timeless():
             self.dockwidget.priorityLabel.hide()
