@@ -4,7 +4,7 @@ Module handling Sentinel Hub service capabilities
 from xml.etree import ElementTree
 
 from .common import CRS
-from ..constants import ServiceType
+from ..constants import ServiceType, CrsType
 from ..utils.geo import is_supported_crs
 
 
@@ -18,7 +18,6 @@ class WmsCapabilities:
         self._xml_root = None
 
         self._crs_list = None
-        self._crs_to_index_map = None
 
     def get_available_crs(self):
         """ Provides a list of all available CRS from Sentinel Hub WMS capabilities
@@ -38,21 +37,17 @@ class WmsCapabilities:
             # - for WMTS CRS is specified with TileMatrixSet parameter which has different names and for UTM something
             #   is not configured correctly
             # - for WFS the problem is that QGIS would pass CRS in a way that the service couldn't parse
-            return self._crs_list[:1]
+            return [crs for crs in self._crs_list if crs.id == CrsType.POP_WEB]
         return self._crs_list
 
     def get_crs_index(self, crs_id):
         """ For a given CRS it provides its position in the list of all available CRS
         """
-        if self._crs_to_index_map is None:
-            crs_list = self.get_available_crs()
-            self._crs_to_index_map = {crs.id: index for index, crs in enumerate(crs_list)}
+        crs_id_list = [crs.id for crs in self.get_available_crs()]
 
-        crs_index = self._crs_to_index_map.get(crs_id, 0)
-
-        if crs_index >= len(self.get_available_crs()):
-            return 0
-        return crs_index
+        if crs_id in crs_id_list:
+            return crs_id_list.index(crs_id)
+        return 0
 
     def _load_xml(self):
         """ Downloads and provides an xml
