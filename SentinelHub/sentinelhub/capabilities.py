@@ -83,7 +83,7 @@ class WmsCapabilities:
         self._crs_list = [crs for crs in self._crs_list if is_supported_crs(crs.id)]
 
     def _sort_crs_list(self):
-        """ Sorts list of CRS so that 3857 and 4326 are on the top
+        """ Sorts list of CRS
         """
         self._crs_list.sort(key=_crs_sort_function)
 
