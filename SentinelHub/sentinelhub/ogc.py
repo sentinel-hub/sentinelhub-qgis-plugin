@@ -78,7 +78,7 @@ def get_wfs_uri(settings, layer):
     return _build_uri(base_url, url_params, uri_params, use_builder=True)
 
 
-def get_wfs_url(settings, layer, bbox_str, time_range):
+def get_wfs_url(settings, layer, bbox_str, time_range, maxcc=None):
     """ Generate URL for WFS request from parameters
     """
     base_url = _get_service_endpoint(settings, layer, ServiceType.WFS)
@@ -92,7 +92,7 @@ def get_wfs_url(settings, layer, bbox_str, time_range):
         'bbox': bbox_str,
         'time': time_range,
         'srsname': settings.crs,
-        'maxcc': settings.maxcc
+        'maxcc': settings.maxcc if maxcc is None else maxcc
     }
     return _build_url(base_url, params)
 

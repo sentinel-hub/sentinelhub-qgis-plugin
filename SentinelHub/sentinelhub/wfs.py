@@ -14,7 +14,7 @@ def get_cloud_cover(settings, layer, bbox, time_interval, client):
     """
     bbox_str = bbox_to_string(bbox, CrsType.POP_WEB)
 
-    wfs_url = get_wfs_url(settings, layer, bbox_str, time_interval)
+    wfs_url = get_wfs_url(settings, layer, bbox_str, time_interval, maxcc=100)
 
     try:
         return _cached_cloud_cover(wfs_url, client)
