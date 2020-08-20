@@ -4,7 +4,8 @@ Module handling Sentinel Hub service capabilities
 from xml.etree import ElementTree
 
 from .common import CRS
-from ..constants import CrsType, ServiceType
+from ..constants import ServiceType
+from ..utils.geo import is_supported_crs
 
 
 class WmsCapabilities:
@@ -29,6 +30,7 @@ class WmsCapabilities:
             crs_tag_iter = self._xml_root.findall('./{0}Capability/{0}Layer/{0}CRS'.format(namespace))
             self._crs_list = [CRS(crs.text, crs.text.replace(':', ': ')) for crs in crs_tag_iter]
 
+            self._filter_unknown_crs()
             self._sort_crs_list()
 
         if self.settings.service_type.upper() != ServiceType.WMS:
@@ -80,15 +82,21 @@ class WmsCapabilities:
             return '{}}}'.format(self._xml_root.tag.split('}')[0])
         return ''
 
+    def _filter_unknown_crs(self):
+        """ Filters CRS that are unknown to QGIS
+        """
+        self._crs_list = [crs for crs in self._crs_list if is_supported_crs(crs.id)]
+
     def _sort_crs_list(self):
         """ Sorts list of CRS so that 3857 and 4326 are on the top
         """
-        main_crs_ids = [CrsType.POP_WEB, CrsType.WGS84]
+        self._crs_list.sort(key=_crs_sort_function)
 
-        main_crs_list = [crs for crs in self._crs_list if crs.id in main_crs_ids]
-        other_crs_list = [crs for crs in self._crs_list if crs.id not in main_crs_ids]
 
-        main_crs_list.sort(key=lambda crs: crs.id)
-        other_crs_list.sort(key=lambda crs: crs.id)
-
-        self._crs_list = main_crs_list + other_crs_list
+def _crs_sort_function(crs):
+    """ Sorts by EPSG integer code
+    """
+    try:
+        return int(crs.id.lower().strip('epsg: '))
+    except ValueError:
+        return 10 ** 8

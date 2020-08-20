@@ -70,6 +70,12 @@ def is_current_map_crs(crs_id):
     return iface.mapCanvas().mapSettings().destinationCrs().authid() == crs_id
 
 
+def is_supported_crs(crs_id):
+    """ Determines if QGIS recognizes the CRS from a given id string
+    """
+    return bool(QgsCoordinateReferenceSystem(crs_id).authid())
+
+
 def _get_bbox_size(bbox, crs):
     """ Returns an approximate width and height of bounding box in meters
     """
