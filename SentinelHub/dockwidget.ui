@@ -1045,7 +1045,7 @@
                    <bool>false</bool>
                   </property>
                   <property name="placeholderText">
-                   <string>Select start date from calendar</string>
+                   <string>Select start date</string>
                   </property>
                   <property name="clearButtonEnabled">
                    <bool>true</bool>
@@ -1089,7 +1089,7 @@
                    <bool>false</bool>
                   </property>
                   <property name="placeholderText">
-                   <string>Select end date from calendar</string>
+                   <string>Select end date</string>
                   </property>
                   <property name="clearButtonEnabled">
                    <bool>true</bool>

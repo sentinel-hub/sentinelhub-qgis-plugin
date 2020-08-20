@@ -382,6 +382,7 @@ class SentinelHubPlugin:
         if self.settings.is_exact_date:
             self.dockwidget.endTimeLineEdit.hide()
             self.dockwidget.timeLabel.hide()
+            self.dockwidget.startTimeLineEdit.setPlaceholderText('Select date')
             self.move_calendar(TimeType.START_TIME)
         else:
             if self.settings.start_time and self.settings.end_time and \
@@ -391,6 +392,7 @@ class SentinelHubPlugin:
 
             self.dockwidget.endTimeLineEdit.show()
             self.dockwidget.timeLabel.show()
+            self.dockwidget.startTimeLineEdit.setPlaceholderText('Select start date')
 
     def add_calendar_date(self):
         """ Handles selected calendar date
