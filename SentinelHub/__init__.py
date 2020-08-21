@@ -1,14 +1,10 @@
-# -*- coding: utf-8 -*-
 """
 /***************************************************************************
  SentinelHub
-                                 A QGIS plugin
- SentinelHub
                              -------------------
         begin                : 2017-07-07
-        copyright            : (C) 2017 by s
-        email                : s
-        git sha              : $Format:%H$
+        copyright            : (C) 2020 by Sinergise
+        email                : info@sentinel-hub.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -22,15 +18,23 @@
  This script initializes the plugin, making it known to QGIS.
 """
 
-# noinspection PyPep8Naming
-# pylint: disable=invalid-name
-
 
 def classFactory(iface):
-    """Load SentinelHub class from file SentinelHub.
+    """ Load SentinelHub class from file SentinelHub.
 
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface
     """
-    from .SentinelHub import SentinelHub
-    return SentinelHub(iface)
+    # pylint: disable=invalid-name
+    # pylint: disable=import-outside-toplevel
+    # pylint: disable=unused-import
+
+    # The following initializes UI
+    from . import resources
+
+    from .utils.meta import ensure_import
+    ensure_import('oauthlib')
+    ensure_import('requests_oauthlib')
+
+    from .main import SentinelHubPlugin
+    return SentinelHubPlugin(iface)
