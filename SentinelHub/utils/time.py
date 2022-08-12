@@ -30,4 +30,4 @@ def get_month_time_interval(year, month):
     first_day = dt.date(year, month, 1)
     last_day = dt.date(year, month, number_of_days)
 
-    return "{}/{}/P1D".format(first_day.isoformat(), last_day.isoformat())
+    return f"{first_day.isoformat()}/{last_day.isoformat()}/P1D"

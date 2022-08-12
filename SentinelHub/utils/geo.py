@@ -93,4 +93,4 @@ def _lng_to_utm_zone(longitude, latitude):
     """Calculates UTM zone from latitude and longitude"""
     zone = int(math.floor((longitude + 180) / 6) + 1)
     hemisphere = 6 if latitude > 0 else 7
-    return "EPSG:32{0}{1:02d}".format(hemisphere, zone)
+    return f"EPSG:32{hemisphere}{zone:02d}"

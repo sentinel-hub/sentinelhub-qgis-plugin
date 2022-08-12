@@ -45,7 +45,7 @@ class Client:
 
     def _prepare_headers(self, session_settings):
         """Prepares final headers by potentially joining them with session headers"""
-        headers = {"User-Agent": "sh_qgis_plugin_{}".format(get_plugin_version())}
+        headers = {"User-Agent": f"sh_qgis_plugin_{get_plugin_version()}"}
 
         if session_settings:
             session = self._get_session(session_settings)
@@ -76,7 +76,7 @@ def get_error_message(exception):
     :return: error message
     :rtype: str
     """
-    message = "{}: ".format(exception.__class__.__name__)
+    message = f"{exception.__class__.__name__}: "
 
     if isinstance(exception, (requests.ConnectionError, requests.Timeout)):
         if isinstance(exception, requests.ConnectionError):
@@ -86,9 +86,9 @@ def get_error_message(exception):
 
         enabled, host, port, _, _ = get_proxy_from_qsettings()
         if enabled:
-            message += " QGIS is configured to use proxy: {}".format(host)
+            message += f" QGIS is configured to use proxy: {host}"
             if port:
-                message += ":{}".format(port)
+                message += f":{port}"
 
         return message
 
@@ -102,7 +102,7 @@ def get_error_message(exception):
             server_message = exception.response.text.strip("\n\t ")
 
         server_message = server_message.encode("ascii", errors="ignore").decode("utf-8")
-        return message + 'server response: "{}"'.format(server_message)
+        return message + f'server response: "{server_message}"'
 
     return message + str(exception)
 
@@ -117,9 +117,9 @@ def get_proxy_config():
 
     proxy_dict = {}
     if enabled and host:
-        port_str = ":{}".format(port) if port else ""
+        port_str = f":{port}" if port else ""
         for protocol in ["http", "https", "ftp"]:
-            proxy_dict[protocol] = "{}://{}{}".format(protocol, host, port_str)
+            proxy_dict[protocol] = f"{protocol}://{host}{port_str}"
 
     auth = requests.auth.HTTPProxyAuth(user, password) if enabled and user and password else None
 

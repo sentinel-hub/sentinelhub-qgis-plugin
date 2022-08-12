@@ -86,7 +86,7 @@ class SentinelHubPlugin:
         Plugin Manager.
         """
         icon = QIcon(self.ICON_PATH)
-        bold_plugin_name = "<b>{}</b>".format(PLUGIN_NAME)
+        bold_plugin_name = f"<b>{PLUGIN_NAME}</b>"
         action = QAction(icon, bold_plugin_name, self.iface.mainWindow())
 
         action.triggered.connect(self.run)
@@ -115,7 +115,7 @@ class SentinelHubPlugin:
             return
 
         self.dockwidget = SentinelHubDockWidget()
-        self.dockwidget.setWindowTitle("{} plugin v{}".format(PLUGIN_NAME, get_plugin_version()))
+        self.dockwidget.setWindowTitle(f"{PLUGIN_NAME} plugin v{get_plugin_version()}")
         self.initialize_ui()
 
         # Login widget
@@ -238,7 +238,7 @@ class SentinelHubPlugin:
         self.dockwidget.crsComboBox.clear()
 
         username = get_username(self.settings, self.client)
-        login_text = "Logged in as {}".format(username) if username else ""
+        login_text = f"Logged in as {username}" if username else ""
         self.dockwidget.loginInfoLabel.setText(login_text)
 
         configuration_names = [configuration.name for configuration in configurations]
@@ -283,7 +283,7 @@ class SentinelHubPlugin:
             self.dockwidget.serviceTypeComboBox.setCurrentIndex(index)
 
         self.settings.service_type = self.dockwidget.serviceTypeComboBox.currentText().lower()
-        self.dockwidget.createLayerLabel.setText("Create new {} layer".format(self.settings.service_type.upper()))
+        self.dockwidget.createLayerLabel.setText(f"Create new {self.settings.service_type.upper()} layer")
 
         if self.manager:
             self._update_available_crs()
@@ -455,7 +455,7 @@ class SentinelHubPlugin:
     def update_maxcc(self):
         """Updates maximum cloud coverage and it's label"""
         self.settings.maxcc = str(self.dockwidget.maxccSlider.value())
-        self.dockwidget.maxccLabel.setText("Cloud coverage {}%".format(self.settings.maxcc))
+        self.dockwidget.maxccLabel.setText(f"Cloud coverage {self.settings.maxcc}%")
 
     def update_image_priority(self):
         """Updates settings for image priority"""
@@ -482,7 +482,7 @@ class SentinelHubPlugin:
             new_layer = QgsRasterLayer(service_uri, qgis_layer_name, ServiceType.WMS.lower())
 
         if not new_layer.isValid():
-            show_message("Failed to create layer {}.".format(qgis_layer_name), MessageType.CRITICAL)
+            show_message(f"Failed to create layer {qgis_layer_name}.", MessageType.CRITICAL)
             return None
 
         if self.settings.service_type.upper() == ServiceType.WFS and not is_current_map_crs(CrsType.POP_WEB):
@@ -514,7 +514,7 @@ class SentinelHubPlugin:
                     self.update_current_map_layers(selected_layer=new_layer)
                 return
 
-        show_message("Chosen layer {} does not exist anymore".format(chosen_layer_name), MessageType.INFO)
+        show_message(f"Chosen layer {chosen_layer_name} does not exist anymore", MessageType.INFO)
         self.update_current_map_layers()
 
     def update_current_map_layers(self, selected_layer=None):
@@ -602,7 +602,7 @@ class SentinelHubPlugin:
         else:
             self.dockwidget.downloadFolderLineEdit.setText(self.settings.download_folder)
             show_message(
-                "Folder {} does not exist. Please set a valid folder".format(new_download_folder), MessageType.CRITICAL
+                f"Folder {new_download_folder} does not exist. Please set a valid folder", MessageType.CRITICAL
             )
 
     def select_download_folder(self):
@@ -623,7 +623,7 @@ class SentinelHubPlugin:
         bbox = get_bbox(self.settings.crs) if is_current_extent else get_custom_bbox(self.settings)
 
         filename = download_wcs_image(self.settings, layer, bbox, self.client)
-        show_message("Image downloaded to file {}".format(filename), MessageType.SUCCESS)
+        show_message(f"Image downloaded to file {filename}", MessageType.SUCCESS)
 
     def on_close_plugin(self):
         """Cleanup necessary items here when a close event on the dockwidget is triggered

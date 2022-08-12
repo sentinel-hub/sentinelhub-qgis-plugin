@@ -69,7 +69,8 @@ class WmsCapabilities:
     def _get_xml_namespace(self):
         """Parses a namespace string out of the xml"""
         if self._xml_root.tag.startswith("{"):
-            return "{}}}".format(self._xml_root.tag.split("}")[0])
+            item = self._xml_root.tag.split("}")[0]
+            return f"{item}}}"
         return ""
 
     def _filter_unknown_crs(self):

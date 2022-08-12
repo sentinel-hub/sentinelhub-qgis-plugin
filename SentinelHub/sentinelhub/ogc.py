@@ -21,7 +21,7 @@ def get_service_uri(settings, layer):
     if service_type == ServiceType.WFS:
         return get_wfs_uri(settings, layer)
 
-    raise ValueError("Unsupported service type {}".format(service_type))
+    raise ValueError(f"Unsupported service type {service_type}")
 
 
 def get_wms_or_wmts_uri(settings, layer):
@@ -93,7 +93,7 @@ def get_wfs_url(settings, layer, bbox_str, time_range, maxcc=None):
 
 
 def get_wcs_url(settings, layer, bbox, crs=None):
-    """Generate an URL for WCS request from parameters"""
+    """Generate a URL for WCS request from parameters"""
     base_url = _get_service_endpoint(settings, layer, ServiceType.WCS)
     params = {
         "service": "wcs",
@@ -119,16 +119,16 @@ def _get_service_endpoint(settings, layer, service_type=None):
     base_url = layer.data_source.service_url
     if service_type is None:
         service_type = settings.service_type
-    return "{}/ogc/{}/{}".format(base_url, service_type.lower(), settings.instance_id)
+    return f"{base_url}/ogc/{service_type.lower()}/{settings.instance_id}"
 
 
 def _build_url(base_url, params):
-    """Builds an URL with encoded parameters"""
-    return "{}?{}".format(base_url, urlencode(params))
+    """Builds a URL with encoded parameters"""
+    return f"{base_url}?{urlencode(params)}"
 
 
 def _build_uri(base_url, url_params, uri_params, use_builder=False):
-    """Builds an URI for a QGIS layer. In some cases a builder class should be used and in some cases it shouldn't."""
+    """Builds a URI for a QGIS layer. In some cases a builder class should be used and in some cases it shouldn't."""
     url = _build_url(base_url, url_params)
 
     if use_builder:
@@ -141,7 +141,7 @@ def _build_uri(base_url, url_params, uri_params, use_builder=False):
         return uri_builder.uri()
 
     param_list = list(uri_params.items()) + [("url", quote_plus(url))]
-    param_strings = ("{}={}".format(key, value) for key, value in param_list)
+    param_strings = (f"{key}={value}" for key, value in param_list)
     return "&".join(param_strings)
 
 
@@ -160,4 +160,4 @@ def _build_time(settings):
     if not end_time:
         end_time = dt.datetime.now().isoformat()
 
-    return "{}/{}/P1D".format(start_time, end_time)
+    return f"{start_time}/{end_time}/P1D"

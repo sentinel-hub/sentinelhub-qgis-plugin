@@ -19,7 +19,10 @@ disable = [
     "unsubscriptable-object",
     "invalid-unary-operand-type",
     "unspecified-encoding",
-    "unnecessary-ellipsis"
+    "unnecessary-ellipsis",
+    "import-error",
+    "no-name-in-module",
+    "invalid-name"
 ]
 
 [tool.pylint.design]

@@ -31,7 +31,7 @@ class Session:
         :param client_secret: A Sentinel Hub Oauth client secret
         :type client_secret: str
         """
-        self.oauth_url = "{}/oauth/token".format(base_url)
+        self.oauth_url = f"{base_url}/oauth/token"
         self.client_id = client_id
         self.client_secret = client_secret
 
@@ -58,7 +58,7 @@ class Session:
         :return: A dictionary with authorization headers
         :rtype: dict
         """
-        return {"Authorization": "Bearer {}".format(self.token["access_token"])}
+        return {"Authorization": f"Bearer {self.token['access_token']}"}
 
     def _fetch_token(self):
         """Collects a new token from Sentinel Hub service"""

@@ -55,9 +55,9 @@ class DataSource:
         if self.id == 1:
             return "S2.TILE"
 
-        wfs_id = "DSS{}".format(self.id)
+        wfs_id = f"DSS{self.id}"
         if self.collection_id is not None:
-            wfs_id = "{}-{}".format(wfs_id, self.collection_id)
+            wfs_id = f"{wfs_id}-{self.collection_id}"
         return wfs_id
 
     def is_cloudless(self):

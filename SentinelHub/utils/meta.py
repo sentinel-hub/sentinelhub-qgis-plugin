@@ -23,7 +23,7 @@ def ensure_import(package_name):
                 wheel_path = os.path.join(external_path, wheel_name)
                 sys.path.append(wheel_path)
                 return
-        raise ImportError("Package {} not found".format(package_name))
+        raise ImportError(f"Package {package_name} not found")
 
 
 def _get_plugin_name(missing="SentinelHub"):

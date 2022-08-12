@@ -100,7 +100,7 @@ class Settings:
 
     def _get_store_path(self, parameter_name):
         """Provides a location of the parameter in the local store"""
-        return "{}/{}".format(self._STORE_NAMESPACE, parameter_name)
+        return f"{self._STORE_NAMESPACE}/{parameter_name}"
 
     def copy(self):
         """Provides a copy of a Settings object instance"""

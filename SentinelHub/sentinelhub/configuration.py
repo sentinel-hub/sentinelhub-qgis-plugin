@@ -30,8 +30,8 @@ class ConfigurationManager:
 
     @property
     def configuration_url(self):
-        """An URL of configuration API"""
-        return "{}/configuration/v1".format(self.settings.base_url)
+        """A URL of configuration API"""
+        return f"{self.settings.base_url}/configuration/v1"
 
     @property
     def wms_capabilities(self):
@@ -43,7 +43,7 @@ class ConfigurationManager:
     def get_configurations(self, reload=False):
         """Provides a list of data configurations for the current user"""
         if reload or self._configurations is None:
-            url = "{}/wms/instances".format(self.configuration_url)
+            url = f"{self.configuration_url}/wms/instances"
             result_list = self.client.download(url, session_settings=self.settings).json()
 
             self._configurations = [Configuration.load(result) for result in result_list]
@@ -63,7 +63,7 @@ class ConfigurationManager:
         configuration = self._configurations[conf_index]
 
         if reload or configuration.layers is None:
-            url = "{}/wms/instances/{}/layers".format(self.configuration_url, instance_id)
+            url = f"{self.configuration_url}/wms/instances/{instance_id}/layers"
             result_list = self.client.download(url, session_settings=self.settings).json()
 
             configuration.layers = [Layer.load(result) for result in result_list]
@@ -98,7 +98,7 @@ class ConfigurationManager:
         data_source = layer.data_source
 
         if load_url and data_source.service_url is None:
-            url = "{}/datasets/{}/sources/{}".format(self.configuration_url, data_source.type, data_source.id)
+            url = f"{self.configuration_url}/datasets/{data_source.type}/sources/{data_source.id}"
             result = self.client.download(url, session_settings=self.settings).json()
 
             data_source.name = result["description"]

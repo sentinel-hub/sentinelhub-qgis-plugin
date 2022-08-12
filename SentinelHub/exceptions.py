@@ -91,7 +91,7 @@ class CooldownException(PluginException):
         :param cooldown: A number of seconds after which an action could be called again
         :type cooldown: float or int
         """
-        message = "Please wait at least {} seconds before doing this again".format(cooldown)
+        message = f"Please wait at least {cooldown} seconds before doing this again"
         super().__init__(message, MessageType.WARNING)
 
 
@@ -121,7 +121,7 @@ class BBoxTransformError(PluginException):
 
     def __init__(self, crs):
         super().__init__(
-            "Failed to transform the current bounding box into {}, try to zoom in or switch CRS".format(crs),
+            f"Failed to transform the current bounding box into {crs}, try to zoom in or switch CRS",
             MessageType.CRITICAL,
         )
 

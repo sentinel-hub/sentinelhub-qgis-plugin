@@ -17,7 +17,7 @@ def get_qgis_layer_name(settings, layer):
     if not layer.data_source.is_timeless():
         plugin_params.append(_get_time_interval_name(settings))
     if not layer.data_source.is_cloudless():
-        plugin_params.append("{}%".format(settings.maxcc))
+        plugin_params.append(f"{settings.maxcc}%")
     if not (layer.data_source.is_timeless() and layer.data_source.is_cloudless()):
         plugin_params.append(settings.priority)
 
@@ -27,8 +27,8 @@ def get_qgis_layer_name(settings, layer):
     plugin_param_str = ", ".join(plugin_params)
 
     if settings.service_type.upper() == ServiceType.WFS:
-        return "{} ({})".format(source_name, plugin_param_str)
-    return "{} - {} ({})".format(source_name, layer.name, plugin_param_str)
+        return f"{source_name} ({plugin_param_str})"
+    return f"{source_name} - {layer.name} ({plugin_param_str})"
 
 
 def get_filename(settings, layer, bbox):
@@ -53,7 +53,7 @@ def get_filename(settings, layer, bbox):
     filename = "_".join(map(str, info_list))
 
     image_format = settings.image_format.split("/")[1]
-    filename = "{}.{}".format(filename, image_format)
+    filename = f"{filename}.{image_format}"
 
     return filename.replace(" ", "").replace(":", "_").replace("/", "_")
 
@@ -73,7 +73,7 @@ def _get_time_interval_name(settings):
     if settings.start_time and not settings.end_time:
         end_time = dt.datetime.now().isoformat()
 
-    return "{}/{}".format(start_time, end_time)
+    return f"{start_time}/{end_time}"
 
 
 def _get_time_name(time_str):
