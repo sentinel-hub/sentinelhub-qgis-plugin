@@ -1,4 +1,7 @@
 pb_tool
+black
+isort
+flake8
 pylint
 requests
 python-dateutil

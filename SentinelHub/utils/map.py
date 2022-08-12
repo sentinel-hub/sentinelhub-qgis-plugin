@@ -6,7 +6,7 @@ from qgis.utils import iface
 
 
 def get_qgis_layers():
-    """ Provides a list of QGIS map layers
+    """Provides a list of QGIS map layers
 
     :return: List of existing QGIS layers in the same order as they are in the QGIS menu
     :rtype: list(QgsMapLayer)
@@ -15,7 +15,7 @@ def get_qgis_layers():
 
 
 def set_layer_fill_color_opacity(layer, opacity, repaint=False):
-    """ Changes a fill color opacity of a QGIS vector layer
+    """Changes a fill color opacity of a QGIS vector layer
 
     :param layer: A QGIS map layer
     :type layer: QgsVectorLayer
