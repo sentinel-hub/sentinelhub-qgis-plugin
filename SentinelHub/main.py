@@ -355,7 +355,7 @@ class SentinelHubPlugin:
         self.update_crs(crs_index)
 
     def move_calendar(self, active):
-        """Moves calendar between the start and end time line edit fields"""
+        """Moves calendar between the "start time" and "end time" line edit fields"""
         if active is TimeType.START_TIME:
             self.dockwidget.calendarSpacer.hide()
         else:

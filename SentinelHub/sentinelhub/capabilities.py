@@ -48,7 +48,7 @@ class WmsCapabilities:
         return 0
 
     def _load_xml(self):
-        """Downloads and provides an xml"""
+        """Downloads and provides an XML"""
         if self._xml_root is None:
             url = self._get_capabilities_url()
             response = self.client.download(url)

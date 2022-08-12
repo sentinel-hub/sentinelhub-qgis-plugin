@@ -54,7 +54,7 @@ class ConfigurationManager:
         return self._configurations
 
     def get_configuration_index(self, instance_id):
-        """For an instance ID it provides a position of it's configuration in the list of configurations"""
+        """For an instance ID it provides a position of its configuration in the list of configurations"""
         return self._instance_to_index_map.get(instance_id, -1)
 
     def get_layers(self, instance_id, reload=False):
@@ -80,7 +80,7 @@ class ConfigurationManager:
         return self._layer_to_index_maps[instance_id].get(layer_id, 0)
 
     def get_layer(self, instance_id, layer_id, load_url=False):
-        """Provides a single layer object, optionally it loads additional info about it's data source and service URL
+        """Provides a single layer object, optionally it loads additional info about its data source and service URL
 
         :param instance_id: A configuration instance ID
         :type instance_id: str

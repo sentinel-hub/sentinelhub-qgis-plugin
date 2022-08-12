@@ -4,6 +4,7 @@ Download client for Sentinel Hub service
 from xml.etree import ElementTree
 
 import requests
+import requests.auth
 from PyQt5.QtCore import QSettings
 
 from ..constants import DEFAULT_REQUEST_TIMEOUT
@@ -26,12 +27,12 @@ class Client:
 
         :param url: download url
         :type url: str
-        :param timeout: A number of seconds before a request will timeout
+        :param timeout: A number of seconds before a request will time out
         :type timeout: int
         :param session_settings: If specified, these settings will be used to create a session
         :type session_settings: Settings or None
         :return: download response or None if download failed
-        :rtype: requests.response or None
+        :rtype: requests.Response or None
         """
         proxy_dict, auth = get_proxy_config()
         headers = self._prepare_headers(session_settings)
@@ -110,7 +111,7 @@ def get_error_message(exception):
 def get_proxy_config():
     """Get proxy config from QSettings and builds proxy parameters
 
-    :return: dictionary of transfer protocols mapped to addresses, also authentication if set in QSettings
+    :return: A dictionary of transfer protocols mapped to an address, also authentication if set in QSettings
     :rtype: (dict, requests.auth.HTTPProxyAuth) or (dict, None)
     """
     enabled, host, port, user, password = get_proxy_from_qsettings()
