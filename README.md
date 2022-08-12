@@ -2,13 +2,18 @@
 
 SentinelHub QGIS Plugin enables users to harness the power of [Sentinel Hub services](https://www.sentinel-hub.com/) directly from QGIS.
 
-Since version `2.0.0` the plugin only works with QGIS 3 and Python version `>=3.5` while earlier versions support both QGIS 2 and QGIS 3.
-
 ## Install
 
-SentinelHub QGIS Plugin is available in QGIS Official Plugin Repository. For install just open QGIS, select `Plugins -> Manage and Install Plugins` and search for the plugin.
+SentinelHub QGIS Plugin is available in the official [QGIS Python Plugins Repository](https://plugins.qgis.org/plugins/SentinelHub/). For install just open QGIS, select `Plugins -> Manage and Install Plugins` and search for `SentinelHub` plugin.
 
-In case of manual installation, you can download [latest release](https://github.com/sentinel-hub/sentinelhub-qgis-plugin/releases/latest), unzip it into QGIS Plugin directory and enable plugin under QGIS Installed Plugins.
+In case of manual installation, you can download a [released version](https://github.com/sentinel-hub/sentinelhub-qgis-plugin/releases), unzip it into QGIS Plugin directory and enable the plugin under QGIS Installed Plugins.
+
+Compatibility:
+
+- versions `<2.0.0` support both QGIS 2 and QGIS 3,
+- version `2.0.0` supports QGIS 3 and Python version `>=3.5,
+- version `2.1.0` supports QGIS versions `>=3.22` and Python versions `>=3.8`.
+
 
 ## Usage
 
