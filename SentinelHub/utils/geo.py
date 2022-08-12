@@ -22,8 +22,8 @@ def get_bbox(crs):
         xform = QgsCoordinateTransform(current_crs, target_crs, QgsProject.instance())
         try:
             bbox = xform.transform(bbox)
-        except QgsCsException:
-            raise BBoxTransformError(crs)
+        except QgsCsException as exception:
+            raise BBoxTransformError(crs) from exception
 
     return bbox
 
@@ -81,8 +81,8 @@ def _get_bbox_size(bbox, crs):
 
     try:
         bbox = xform.transform(bbox)
-    except QgsCsException:
-        raise BBoxTransformError(utm_epsg)
+    except QgsCsException as exception:
+        raise BBoxTransformError(utm_epsg) from exception
 
     width = abs(bbox.xMaximum() - bbox.xMinimum())
     height = abs(bbox.yMinimum() - bbox.yMaximum())

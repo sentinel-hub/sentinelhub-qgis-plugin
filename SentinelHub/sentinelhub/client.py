@@ -39,7 +39,7 @@ class Client:
             response = requests.get(url, headers=headers, timeout=timeout, proxies=proxy_dict, auth=auth)
             response.raise_for_status()
         except requests.RequestException as exception:
-            raise DownloadError(get_error_message(exception))
+            raise DownloadError(get_error_message(exception)) from exception
 
         return response
 

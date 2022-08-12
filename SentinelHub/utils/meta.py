@@ -14,7 +14,7 @@ def ensure_import(package_name):
     """
     try:
         __import__(package_name)
-    except ImportError:
+    except ImportError as exception:
         plugin_dir = _get_main_dir()
         external_path = os.path.join(plugin_dir, "external")
 
@@ -23,7 +23,7 @@ def ensure_import(package_name):
                 wheel_path = os.path.join(external_path, wheel_name)
                 sys.path.append(wheel_path)
                 return
-        raise ImportError(f"Package {package_name} not found")
+        raise ImportError(f"Package {package_name} not found") from exception
 
 
 def _get_plugin_name(missing="SentinelHub"):

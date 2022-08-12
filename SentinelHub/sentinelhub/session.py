@@ -71,5 +71,5 @@ class Session:
                 return oauth_session.fetch_token(
                     token_url=self.oauth_url, client_id=self.client_id, client_secret=self.client_secret
                 )
-        except OAuth2Error:
-            raise SessionError
+        except OAuth2Error as exception:
+            raise SessionError from exception

@@ -25,7 +25,7 @@ class WmsCapabilities:
             self._load_xml()
             namespace = self._get_xml_namespace()
 
-            crs_tag_iter = self._xml_root.findall("./{0}Capability/{0}Layer/{0}CRS".format(namespace))
+            crs_tag_iter = self._xml_root.findall(f"./{namespace}Capability/{namespace}Layer/{namespace}CRS")
             self._crs_list = [CRS(crs.text, crs.text.replace(":", ": ")) for crs in crs_tag_iter]
 
             self._filter_unknown_crs()
@@ -59,8 +59,10 @@ class WmsCapabilities:
 
     def _get_capabilities_url(self, get_json=False):
         """Generates url for obtaining service capabilities"""
-        url = "{0}/ogc/{1}/{2}?service={1}&request=GetCapabilities&version=1.3.0".format(
-            self.settings.base_url, ServiceType.WMS.lower(), self.settings.instance_id
+        service_type = ServiceType.WMS.lower()
+        url = (
+            f"{self.settings.base_url}/ogc/{service_type}/{self.settings.instance_id}?"
+            f"service={service_type}&request=GetCapabilities&version=1.3.0"
         )
         if get_json:
             return url + "&format=application/json"

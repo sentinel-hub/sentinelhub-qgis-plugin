@@ -8,6 +8,11 @@ known_first_party = "sentinelhub"
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "LOCALFOLDER"]
 line_length = 120
 
+[tool.pylint]
+ignore = [
+    "resources.py"
+]
+
 [tool.pylint.format]
 max-line-length = 120
 
