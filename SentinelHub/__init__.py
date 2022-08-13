@@ -29,13 +29,19 @@ def classFactory(iface):
     # pylint: disable=import-outside-toplevel
     # pylint: disable=unused-import
 
+    from .utils.meta import configure_external_import_path
+
+    configure_external_import_path()
+
+    # TODO: this import is just for testing purpose:
+    import sentinelhub
+
+    from .exceptions import MessageType, show_message
+
+    show_message(f"Imported sentinelhub-py {sentinelhub.__version__} !!", MessageType.INFO)
+
     # The following initializes UI
     from . import resources
-    from .utils.meta import ensure_import
-
-    ensure_import("oauthlib")
-    ensure_import("requests_oauthlib")
-
     from .main import SentinelHubPlugin
 
     return SentinelHubPlugin(iface)

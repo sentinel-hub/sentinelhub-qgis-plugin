@@ -1,2 +1,14 @@
 oauthlib
 requests-oauthlib
+click
+aenum>=2.1.4
+utm
+tqdm
+dataclasses-json
+marshmallow
+marshmallow-enum
+packaging
+typing-inspect
+mypy-extensions
+typing-extensions
+sentinelhub
