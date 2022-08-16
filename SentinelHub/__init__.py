@@ -18,6 +18,21 @@
  This script initializes the plugin, making it known to QGIS.
 """
 
+WHEELS = [  # TODO: separate wheels requirements and import them from requirements file
+    "oauthlib",
+    "requests-oauthlib",
+    "click",
+    "aenum",
+    "tqdm",
+    "dataclasses-json",
+    "marshmallow",
+    "marshmallow-enum",
+    "packaging",
+    "typing-inspect",
+    "mypy-extensions",
+    "typing-extensions",
+]
+
 
 def classFactory(iface):
     """Load SentinelHub class from file SentinelHub.
@@ -29,13 +44,21 @@ def classFactory(iface):
     # pylint: disable=import-outside-toplevel
     # pylint: disable=unused-import
 
+    from .utils.meta import configure_external_import_path, ensure_wheel_import
+
+    configure_external_import_path()
+    for package_name in WHEELS:
+        ensure_wheel_import(package_name)
+
+    # TODO: this import is just for testing purpose:
+    import sentinelhub
+
+    from .exceptions import MessageType, show_message
+
+    show_message(f"Imported sentinelhub-py {sentinelhub.__version__} !!", MessageType.INFO)
+
     # The following initializes UI
     from . import resources
-    from .utils.meta import ensure_import
-
-    ensure_import("oauthlib")
-    ensure_import("requests_oauthlib")
-
     from .main import SentinelHubPlugin
 
     return SentinelHubPlugin(iface)

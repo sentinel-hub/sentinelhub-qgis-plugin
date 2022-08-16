@@ -8,22 +8,37 @@ from configparser import ConfigParser
 from qgis.utils import plugins_metadata_parser
 
 
-def ensure_import(package_name):
+def configure_external_import_path() -> None:
+    """Adds path to the folder with external packages to the list of Python package import paths. This way if a package
+    doesn't exist in the Python environment used by QGIS it will be imported from the external folder.
+
+    Note that on Windows QGIS typically uses its own Python environment with an installation of most common Python
+    packages. But on Linux and macOS it typically uses the default system Python environment.
+    """
+    plugin_dir = _get_main_dir()
+    external_path = os.path.join(plugin_dir, "external")
+
+    sys.path.append(external_path)
+
+
+def ensure_wheel_import(package_name: str) -> None:
     """Ensures that a dependency package could be imported. It is either already available in the QGIS environment or
     it is available in a subfolder `external` of this plugin and should be added to PATH
     """
+    package_name = package_name.replace("-", "_")
+
     try:
         __import__(package_name)
     except ImportError as exception:
         plugin_dir = _get_main_dir()
         external_path = os.path.join(plugin_dir, "external")
 
-        for wheel_name in os.listdir(external_path):
-            if wheel_name.startswith(package_name):
+        for wheel_name in sorted(os.listdir(external_path)):
+            if wheel_name.startswith(package_name) and wheel_name.endswith(".whl"):
                 wheel_path = os.path.join(external_path, wheel_name)
                 sys.path.append(wheel_path)
                 return
-        raise ImportError(f"Package {package_name} not found") from exception
+        raise ImportError(f"A wheel of a package {package_name} not found in {external_path}") from exception
 
 
 def _get_plugin_name(missing="SentinelHub"):
