@@ -15,7 +15,7 @@ about=
 
     For more questions please check Sentinel Hub <a href="https://www.sentinel-hub.com/faq/">FAQ</a> or <a href="https://forum.sentinel-hub.com/">forum</a>.
 
-homepage=https://github.com/sentinel-hub/sentinelhub-qgis-plugin/blob/master/README.md
+homepage=https://github.com/sentinel-hub/sentinelhub-qgis-plugin/blob/main/README.md
 tracker=https://github.com/sentinel-hub/sentinelhub-qgis-plugin/issues
 repository=https://github.com/sentinel-hub/sentinelhub-qgis-plugin
 
