@@ -1,7 +1,7 @@
-pb_tool
 black
-isort
 flake8
+isort
+pb_tool
 pylint
-requests
 python-dateutil
+requests

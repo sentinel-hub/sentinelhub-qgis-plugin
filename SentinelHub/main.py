@@ -487,8 +487,10 @@ class SentinelHubPlugin:
 
         if self.settings.service_type.upper() == ServiceType.WFS and not is_current_map_crs(CrsType.POP_WEB):
             show_message(
-                "WFS layer will only be visible if the underlying CRS on your map is set to "
-                "Popular Web Mercator (EPSG:3857)",
+                (
+                    "WFS layer will only be visible if the underlying CRS on your map is set to "
+                    "Popular Web Mercator (EPSG:3857)"
+                ),
                 MessageType.WARNING,
             )
 

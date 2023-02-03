@@ -47,7 +47,7 @@ def bbox_to_string(bbox, crs):
         precision = 2
         bbox_list = [bbox.xMinimum(), bbox.yMinimum(), bbox.xMaximum(), bbox.yMaximum()]
 
-    return ",".join(map(lambda coord: str(round(coord, precision)), bbox_list))
+    return ",".join((str(round(coord, precision)) for coord in bbox_list))
 
 
 def is_bbox_too_large(bbox, crs, size_limit):
