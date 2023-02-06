@@ -1,17 +1,17 @@
 [tool.black]
 line-length = 120
 preview = true
-extend-exclude = "SentinelHub/resources.py|SentinelHub/external|SentinelHub/zip_build"
+extend-exclude = "resources.py"
 
 [tool.isort]
 profile = "black"
 known_first_party = "sentinelhub"
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "LOCALFOLDER"]
 line_length = 120
-skip = ["SentinelHub/resources.py", "SentinelHub/external", "SentinelHub/zip_build"]
+skip = ["resources.py"]
 
 [tool.pylint]
-ignore = ["resources.py", "external", "zip_build"]
+ignore = ["resources.py"]
 
 [tool.pylint.format]
 max-line-length = 120
@@ -39,8 +39,3 @@ min-similarity-lines = 5
 
 [tool.pylint.classes]
 valid-metaclass-classmethod-first-arg = "mcs"
-
-[tool.nbqa.addopts]
-flake8 = [
-    "--extend-ignore=E402"
-]

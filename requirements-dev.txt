@@ -1,7 +1,5 @@
-black
-flake8
-isort
 pb_tool
+pre-commit
 pylint
 python-dateutil
 requests

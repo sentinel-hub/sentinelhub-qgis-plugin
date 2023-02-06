@@ -118,5 +118,3 @@ zip_build
 
 # Repo with external package wheels
 external
-
-SentinelHub/config.json
