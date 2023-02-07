@@ -7,6 +7,7 @@ from utils import get_month_time_interval, parse_date
 @pytest.mark.parametrize(
     "input_date, parsed_date",
     [
+        ("01-02-2020", "2020-01-02"),
         ("2022/12/25", "2022-12-25"),
         ("2022, 12, 25", "2022-12-25"),
         ("14.7.2019", "2019-07-14"),
