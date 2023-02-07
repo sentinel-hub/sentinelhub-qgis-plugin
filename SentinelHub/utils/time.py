@@ -3,11 +3,12 @@ Time utilities
 """
 import calendar
 import datetime as dt
+from typing import Optional
 
 import dateutil.parser
 
 
-def parse_date(date):
+def parse_date(date: str) -> Optional[str]:
     """If a date string is set it parses it into a format YYYY-MM-DD. In case parsing fails None is returned.
 
     :param date: A string describing a date
@@ -23,8 +24,12 @@ def parse_date(date):
         return None
 
 
-def get_month_time_interval(year, month):
-    """Provides a time interval for the given month in a year"""
+def get_month_time_interval(year: int, month: int) -> str:
+    """Provides a time interval for the given month in a year
+
+    :param year: An integer representing a year.
+    :param month: An integer representing a month.
+    """
     _, number_of_days = calendar.monthrange(year, month)
 
     first_day = dt.date(year, month, 1)

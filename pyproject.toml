@@ -39,3 +39,8 @@ min-similarity-lines = 5
 
 [tool.pylint.classes]
 valid-metaclass-classmethod-first-arg = "mcs"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "SentinelHub"
+]
