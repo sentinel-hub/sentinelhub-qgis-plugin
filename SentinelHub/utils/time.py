@@ -12,9 +12,7 @@ def parse_date(date: str) -> Optional[str]:
     """If a date string is set it parses it into a format YYYY-MM-DD. In case parsing fails None is returned.
 
     :param date: A string describing a date
-    :type date: str
     :return: A string in a format YYYY-MM-DD, an empty string, or None
-    :rtype: str or None
     """
     if date == "":
         return date
@@ -29,6 +27,7 @@ def get_month_time_interval(year: int, month: int) -> str:
 
     :param year: An integer representing a year.
     :param month: An integer representing a month.
+    :return: A string representing the time interval
     """
     _, number_of_days = calendar.monthrange(year, month)
 
