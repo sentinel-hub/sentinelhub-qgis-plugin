@@ -61,6 +61,8 @@ jobs:
       - name: Install packages
         run: |
           sudo apt-get update
+          pip install pytest
+          pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run tests
         run: pytest
