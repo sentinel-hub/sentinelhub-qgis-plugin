@@ -2,4 +2,6 @@ pb_tool
 pre-commit
 pylint
 python-dateutil
+qgis-plugin-ci==2.5.2
+qgis.core==0.0.1
 requests
