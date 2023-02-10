@@ -2,7 +2,10 @@
 import os
 
 import pytest
-from qgis.core import QgsCoordinateReferenceSystem, QgsProviderRegistry, QgsRasterLayer
+
+pytest.importorskip("qgis.core")
+
+from qgis.core import QgsCoordinateReferenceSystem, QgsProviderRegistry, QgsRasterLayer  # noqa: E402
 
 CRS = "EPSG:4326"
 WKT = (
@@ -13,14 +16,12 @@ WKT = (
 )
 
 
-@pytest.mark.skip(reason="unsupported configuration for testing in CI")
 def test_providers_registry() -> None:
     r = QgsProviderRegistry.instance()
     assert "gdal" in r.providerList()
     assert "ogr" in r.providerList()
 
 
-@pytest.mark.skip(reason="unsupported configuration for testing in CI")
 def test_projection_reading() -> None:
     crs = QgsCoordinateReferenceSystem()
     crs.createFromWkt(WKT)
@@ -28,7 +29,6 @@ def test_projection_reading() -> None:
     assert auth_id == CRS
 
 
-@pytest.mark.skip(reason="unsupported configuration for testing in CI")
 def test_loaded_raster(input_folder: str) -> None:
     input_raster = os.path.join(input_folder, "raster_sample.tiff")
     title = "TestRaster"
