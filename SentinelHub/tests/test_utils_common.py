@@ -1,7 +1,7 @@
 from typing import Union
 
 import pytest
-from utils import is_float_or_undefined
+from utils.common import is_float_or_undefined
 
 
 @pytest.mark.parametrize(
