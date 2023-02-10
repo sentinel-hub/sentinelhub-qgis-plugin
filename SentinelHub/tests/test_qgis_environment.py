@@ -25,13 +25,11 @@ def test_providers_registry() -> None:
 def test_projection_reading() -> None:
     crs = QgsCoordinateReferenceSystem()
     crs.createFromWkt(WKT)
-    auth_id = crs.authid()
-    assert auth_id == CRS
+    assert crs.authid() == CRS
 
 
 def test_loaded_raster(input_folder: str) -> None:
     input_raster = os.path.join(input_folder, "raster_sample.tiff")
     title = "TestRaster"
     layer = QgsRasterLayer(input_raster, title)
-    auth_id = layer.crs().authid()
-    assert auth_id == CRS
+    assert layer.crs().authid() == CRS
