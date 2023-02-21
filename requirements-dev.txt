@@ -1,5 +1,6 @@
 pb_tool
 pre-commit
 pylint
+PyQt5
 python-dateutil
 requests
