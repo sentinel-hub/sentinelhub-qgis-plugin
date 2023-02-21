@@ -2,12 +2,14 @@
 from typing import Tuple, TypeVar
 
 import pytest
-from qgis.core import QgsRectangle
 
 from ..settings import Settings
 from ..utils.geo import bbox_to_string, get_custom_bbox, is_bbox_too_large, is_supported_crs
 
 pytestmark = pytest.mark.qgis_integration
+
+from qgis.core import QgsRectangle  # noqa: E402
+
 T = TypeVar("T", float, int)
 
 
