@@ -2,10 +2,9 @@
 import os
 
 import pytest
-
-pytest.importorskip("qgis.core")
-
 from qgis.core import QgsCoordinateReferenceSystem, QgsProviderRegistry, QgsRasterLayer  # noqa: E402
+
+pytestmark = pytest.mark.qgis_integration
 
 CRS = "EPSG:4326"
 WKT = (
