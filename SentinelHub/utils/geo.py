@@ -2,15 +2,14 @@
 Geographical utilities
 """
 import math
-from typing import Any, Tuple, Union
+from typing import Tuple
 
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsCsException, QgsProject, QgsRectangle
 from qgis.utils import iface
 
 from ..constants import CrsType
 from ..exceptions import BBoxTransformError
-
-U = Union[int, float]
+from ..settings import Settings
 
 
 def get_bbox(crs: str) -> QgsRectangle:
@@ -31,7 +30,7 @@ def get_bbox(crs: str) -> QgsRectangle:
     return bbox
 
 
-def get_custom_bbox(settings: Any) -> QgsRectangle:
+def get_custom_bbox(settings: Settings) -> QgsRectangle:
     """Creates a bbox from settings parameters"""
     lat_min = min(float(settings.lat_min), float(settings.lat_max))
     lat_max = max(float(settings.lat_min), float(settings.lat_max))
@@ -53,7 +52,7 @@ def bbox_to_string(bbox: QgsRectangle, crs: str) -> str:
     return ",".join((str(round(coord, precision)) for coord in bbox_list))
 
 
-def is_bbox_too_large(bbox: QgsRectangle, crs: str, size_limit: U) -> bool:
+def is_bbox_too_large(bbox: QgsRectangle, crs: str, size_limit: float) -> bool:
     """Checks if any of the QgsRectangle dimensions is larger than a given size limit"""
     try:
         width, height = _get_bbox_size(bbox, crs)
@@ -92,7 +91,7 @@ def _get_bbox_size(bbox: QgsRectangle, crs: str) -> Tuple[float, float]:
     return width, height
 
 
-def _lng_to_utm_zone(longitude: U, latitude: U) -> str:
+def _lng_to_utm_zone(longitude: float, latitude: float) -> str:
     """Calculates UTM zone from latitude and longitude"""
     zone = int(math.floor((longitude + 180) / 6) + 1)
     hemisphere = 6 if latitude > 0 else 7

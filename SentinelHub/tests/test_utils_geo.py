@@ -1,5 +1,5 @@
 # coding=utf-8
-from typing import Tuple, TypeVar
+from typing import Tuple
 
 import pytest
 
@@ -10,37 +10,26 @@ from qgis.core import QgsRectangle  # noqa: E402
 from ..settings import Settings  # noqa: E402
 from ..utils.geo import bbox_to_string, get_custom_bbox, is_bbox_too_large, is_supported_crs  # noqa: E402
 
-T = TypeVar("T", float, int)
-
 
 @pytest.mark.parametrize(
-    "lat_max, lat_min, lng_max, lng_min, coords",
+    "input_coords, expected_coords",
     [
-        ("1", "0", "1", "0", (0, 0, 1, 1)),
-        ("0", "0", "0", "0", (0, 0, 0, 0)),
-        (
-            "2.0",
-            "1.0",
-            "8.0",
-            "9.0",
-            (8, 1, 9, 2),
-        ),
+        (("1", "0", "1", "0"), (0, 0, 1, 1)),
+        (("0", "0", "0", "0"), (0, 0, 0, 0)),
+        (("2.0", "1.0", "8.0", "9.0"), (8, 1, 9, 2)),
     ],
 )
 def test_get_custom_bbox(
-    lat_max: str,
-    lat_min: str,
-    lng_max: str,
-    lng_min: str,
-    coords: Tuple[T, T, T, T],
+    input_coords: Tuple[str, str, str, str], expected_coords: Tuple[float, float, float, float]
 ) -> None:
+    lat_max, lat_min, lng_max, lng_min = input_coords
     sett = Settings()
     sett.lat_max = lat_max
     sett.lat_min = lat_min
     sett.lng_max = lng_max
     sett.lng_min = lng_min
 
-    assert get_custom_bbox(sett) == QgsRectangle(*coords)
+    assert get_custom_bbox(sett) == QgsRectangle(*expected_coords)
 
 
 @pytest.mark.parametrize(
@@ -51,14 +40,14 @@ def test_get_custom_bbox(
         ((1.123456, 2.123456, 3.123456, 4.123456), "EPSG:3535", "1.12,2.12,3.12,4.12"),
     ],
 )
-def test_bbox_to_string(coords: Tuple[T, T, T, T], crs: str, output: str) -> None:
+def test_bbox_to_string(coords: Tuple[float, float, float, float], crs: str, output: str) -> None:
     coordinates = bbox_to_string(QgsRectangle(*coords), crs)
     assert coordinates == output
 
 
 def test_is_bbox_too_large() -> None:
-    assert is_bbox_too_large(QgsRectangle(0, 0, 0, 1), "EPSG:4326", 100000)
-    assert not is_bbox_too_large(QgsRectangle(0, 0, 0, 1), "EPSG:4326", 10000000)
+    assert is_bbox_too_large(QgsRectangle(0, 0, 0, 1), "EPSG:4326", 1e5)
+    assert not is_bbox_too_large(QgsRectangle(0, 0, 0, 1), "EPSG:4326", 1e6)
 
 
 @pytest.mark.parametrize(
