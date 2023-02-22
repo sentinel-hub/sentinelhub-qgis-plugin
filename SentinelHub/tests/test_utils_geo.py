@@ -6,7 +6,7 @@ import pytest
 from ..settings import Settings
 from ..utils.geo import bbox_to_string, get_custom_bbox, is_bbox_too_large, is_supported_crs
 
-pytestmark = pytest.mark.qgis_integration
+pytest.importorskip("qgis.core")
 
 from qgis.core import QgsRectangle  # noqa: E402
 

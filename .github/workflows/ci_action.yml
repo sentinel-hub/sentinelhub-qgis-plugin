@@ -65,8 +65,7 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run tests
-        run: |
-          pytest -m "not qgis_integration"
+        run: pytest
 
   mirror-to-gitlab:
     if: github.event_name == 'push'
