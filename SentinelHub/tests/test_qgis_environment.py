@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-pytestmark = pytest.mark.qgis_integration
+pytest.importorskip("qgis.core")
 
 from qgis.core import QgsCoordinateReferenceSystem, QgsProviderRegistry, QgsRasterLayer  # noqa: E402
 

@@ -44,6 +44,3 @@ valid-metaclass-classmethod-first-arg = "mcs"
 pythonpath = [
   "SentinelHub"
 ]
-markers = [
-  "qgis_integration: marks tests with qgis API interaction."
-]
