@@ -2,7 +2,8 @@
 Module with global fixtures
 """
 import pytest
-from testing_utilities import get_input_folder
+
+from .testing_utilities import get_input_folder
 
 INPUT_FOLDER = get_input_folder(__file__)
 
