@@ -3,7 +3,7 @@ from typing import Tuple
 
 import pytest
 
-pytest.importorskip("qgis.core")
+pytestmark = pytest.mark.qgis_integration
 
 from qgis.core import QgsRectangle  # noqa: E402
 
