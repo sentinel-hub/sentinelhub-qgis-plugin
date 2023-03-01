@@ -3,9 +3,19 @@ import pytest
 pytest.importorskip("qgis.core")
 
 from qgis.core import QgsApplication  # noqa: E402
+from qgis.PyQt.QtCore import QPoint, Qt  # noqa: E402
+from qgis.PyQt.QtTest import QTest  # noqa: E402
+from qgis.PyQt.QtWidgets import QAbstractButton  # noqa: E402
 
 from ..dockwidget import SentinelHubDockWidget  # noqa: E402
-from .testing_utilities import click_button  # noqa: E402
+
+
+def click_button(button: QAbstractButton) -> None:
+    QTest.mouseClick(
+        button,
+        Qt.LeftButton,
+        pos=QPoint(0, int(button.height() / 2)),
+    )
 
 
 def test_widget_creation(qgis_app: QgsApplication) -> None:
