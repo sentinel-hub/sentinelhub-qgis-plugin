@@ -2,7 +2,6 @@
 Module with global fixtures
 """
 import pytest
-from qgis.core import QgsApplication
 
 from .testing_utilities import get_input_folder
 
@@ -17,6 +16,8 @@ def input_folder_fixture() -> str:
 @pytest.fixture(scope="session")
 def qgis_app() -> None:
     """Initialize a QgsApplication"""
+    from qgis.core import QgsApplication  # noqa: E402
+
     qgis_app = QgsApplication([], True)
     qgis_app.initQgis()
 
