@@ -1,7 +1,11 @@
-from qgis.core import QgsApplication
+import pytest
 
-from ..dockwidget import SentinelHubDockWidget
-from .testing_utilities import click_button
+pytest.importorskip("qgis.core")
+
+from qgis.core import QgsApplication  # noqa: E402
+
+from ..dockwidget import SentinelHubDockWidget  # noqa: E402
+from .testing_utilities import click_button  # noqa: E402
 
 
 def test_widget_creation(qgis_app: QgsApplication) -> None:
