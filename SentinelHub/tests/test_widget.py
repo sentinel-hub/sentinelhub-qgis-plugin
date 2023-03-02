@@ -18,10 +18,7 @@ def click_button(button: QAbstractButton) -> None:
     )
 
 
-def test_widget_creation(qgis_app: QgsApplication) -> None:
-    sh_widget = SentinelHubDockWidget()
-    assert sh_widget is not None
-
+def test_widget_creation(qgis_app: QgsApplication, sh_widget: SentinelHubDockWidget) -> None:
     sh_widget.show()
     assert sh_widget.isVisible()
 
@@ -30,8 +27,7 @@ def test_widget_creation(qgis_app: QgsApplication) -> None:
     assert not sh_widget.isVisible()
 
 
-def test_widget_button() -> None:
-    sh_widget = SentinelHubDockWidget()
+def test_widget_button(sh_widget: SentinelHubDockWidget) -> None:
     click_button(sh_widget.currentExtentRadioButton)
 
     assert sh_widget.currentExtentRadioButton.isChecked()
@@ -41,5 +37,3 @@ def test_widget_button() -> None:
 
     assert not sh_widget.currentExtentRadioButton.isChecked()
     assert sh_widget.customExtentRadioButton.isChecked()
-
-    sh_widget.close()
