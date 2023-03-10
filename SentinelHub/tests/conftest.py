@@ -3,7 +3,6 @@ Module with global fixtures
 """
 import pytest
 
-from ..settings import Settings
 from .testing_utilities import get_input_folder
 
 INPUT_FOLDER = get_input_folder(__file__)
@@ -39,6 +38,9 @@ def sh_widget() -> None:
 @pytest.fixture(scope="session")
 def qsettings(tmp_path_factory) -> None:
     """Create a temporary file and return a Settings instance"""
+
+    from ..settings import Settings  # noqa: E402
+
     file_path = tmp_path_factory.mktemp("settings").joinpath("settings.ini")
     settings = Settings(str(file_path))
     yield settings
