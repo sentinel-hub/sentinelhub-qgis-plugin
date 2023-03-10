@@ -3,6 +3,7 @@ Module with global fixtures
 """
 import pytest
 
+from ..settings import Settings
 from .testing_utilities import get_input_folder
 
 INPUT_FOLDER = get_input_folder(__file__)
@@ -33,3 +34,11 @@ def sh_widget() -> None:
     sh_widget = SentinelHubDockWidget()
     yield sh_widget
     sh_widget.close()
+
+
+@pytest.fixture(scope="session")
+def qsettings(tmp_path_factory) -> None:
+    """Create a temporary file and return a Settings instance"""
+    file_path = tmp_path_factory.mktemp("settings").joinpath("settings.ini")
+    settings = Settings(str(file_path))
+    yield settings

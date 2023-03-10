@@ -20,16 +20,17 @@ from ..utils.geo import bbox_to_string, get_custom_bbox, is_bbox_too_large, is_s
     ],
 )
 def test_get_custom_bbox(
-    input_coords: Tuple[str, str, str, str], expected_coords: Tuple[float, float, float, float]
+    qsettings: Settings,
+    input_coords: Tuple[str, str, str, str],
+    expected_coords: Tuple[float, float, float, float],
 ) -> None:
     lat_max, lat_min, lng_max, lng_min = input_coords
-    sett = Settings()
-    sett.lat_max = lat_max
-    sett.lat_min = lat_min
-    sett.lng_max = lng_max
-    sett.lng_min = lng_min
+    qsettings.lat_max = lat_max
+    qsettings.lat_min = lat_min
+    qsettings.lng_max = lng_max
+    qsettings.lng_min = lng_min
 
-    assert get_custom_bbox(sett) == QgsRectangle(*expected_coords)
+    assert get_custom_bbox(qsettings) == QgsRectangle(*expected_coords)
 
 
 @pytest.mark.parametrize(
