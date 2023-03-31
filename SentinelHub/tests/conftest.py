@@ -26,7 +26,7 @@ def qgis_app() -> None:
     qgis_app.exitQgis()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def sh_widget() -> None:
     """Initialize the Sentinel Hub plugin widget"""
     from ..dockwidget import SentinelHubDockWidget  # noqa: E402
