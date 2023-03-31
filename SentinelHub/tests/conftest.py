@@ -1,6 +1,7 @@
 """
 Module with global fixtures
 """
+
 import pytest
 
 from .testing_utilities import get_input_folder
@@ -25,7 +26,7 @@ def qgis_app() -> None:
     qgis_app.exitQgis()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def sh_widget() -> None:
     """Initialize the Sentinel Hub plugin widget"""
     from ..dockwidget import SentinelHubDockWidget  # noqa: E402
@@ -41,6 +42,6 @@ def qsettings(tmp_path_factory) -> None:
 
     from ..settings import Settings  # noqa: E402
 
-    file_path = tmp_path_factory.mktemp("settings").joinpath("settings.ini")
+    file_path = tmp_path_factory.mktemp("settings").joinpath("settings")
     settings = Settings(str(file_path))
     yield settings

@@ -27,6 +27,7 @@ def test_save_credentials(qsettings: Settings) -> None:
     qsettings.client_id = "test_client_id"
     qsettings.base_url = "www.base-url.com"
     qsettings.save_credentials()
+
     assert all(
         qsettings.value(qsettings._get_store_path(key)) == value
         for key, value in [
@@ -35,3 +36,13 @@ def test_save_credentials(qsettings: Settings) -> None:
             ("base_url", "www.base-url.com"),
         ]
     )
+
+
+def test_copy(qsettings: Settings) -> None:
+    copied_settings = qsettings.copy()
+
+    assert copied_settings is not qsettings
+
+    for attr_name in dir(qsettings):
+        if not attr_name.startswith("__") and not callable(getattr(qsettings, attr_name)):
+            assert getattr(qsettings, attr_name) == getattr(copied_settings, attr_name)

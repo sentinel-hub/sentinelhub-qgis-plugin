@@ -1,12 +1,13 @@
 """
 Module containing parameters and settings for Sentinel Hub services
 """
-import copy
-from typing import Any
+from typing import Any, Optional, TypeVar
 
 from PyQt5.QtCore import QSettings
 
 from .constants import BaseUrl, CrsType, ExtentType, ImageFormat, ImagePriority, ServiceType, TimeType
+
+T = TypeVar("T", bound="Settings")
 
 
 class Settings(QSettings):
@@ -62,14 +63,12 @@ class Settings(QSettings):
         "lng_max",
         "download_folder",
     }
-    _auto_save = False
     _CREDENTIAL_STORE_PARAMETERS = {"base_url", "client_id", "client_secret"}
     _STORE_PARAMETERS = _AUTO_SAVE_STORE_PARAMETERS | _CREDENTIAL_STORE_PARAMETERS
 
-    def __init__(self, path=None):
+    def __init__(self, path: Optional[str] = None):
         super().__init__(path)
         self.load_local_settings()
-        self._auto_save = True
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Whenever one of the attributes from _AUTO_SAVE_STORE_PARAMETERS is set it is automatically saved to
@@ -98,6 +97,9 @@ class Settings(QSettings):
             store_path = self._get_store_path(parameter)
             self.setValue(store_path, getattr(self, parameter))
 
-    def copy(self) -> None:
-        """Provides a copy of a Settings object instance"""
-        return copy.copy(self)
+    def copy(self) -> T:
+        new_settings = Settings(self.fileName())
+        for attr in self.__dict__:
+            if not callable(getattr(self, attr)) and not attr.startswith("_"):
+                setattr(new_settings, attr, getattr(self, attr))
+        return new_settings
