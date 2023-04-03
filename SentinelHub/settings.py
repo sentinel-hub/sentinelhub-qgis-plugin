@@ -1,13 +1,11 @@
 """
 Module containing parameters and settings for Sentinel Hub services
 """
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional
 
 from PyQt5.QtCore import QSettings
 
 from .constants import BaseUrl, CrsType, ExtentType, ImageFormat, ImagePriority, ServiceType, TimeType
-
-T = TypeVar("T", bound="Settings")
 
 
 class Settings(QSettings):
@@ -97,7 +95,7 @@ class Settings(QSettings):
             store_path = self._get_store_path(parameter)
             self.setValue(store_path, getattr(self, parameter))
 
-    def copy(self) -> T:
+    def copy(self) -> "Settings":
         new_settings = Settings(self.fileName())
         for attr in self.__dict__:
             if not callable(getattr(self, attr)) and not attr.startswith("_"):
