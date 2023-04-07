@@ -1,7 +1,8 @@
 from typing import Optional
 
 import pytest
-from utils.time import get_month_time_interval, parse_date
+
+from ..utils.time import get_month_time_interval, parse_date
 
 
 @pytest.mark.parametrize(
