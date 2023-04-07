@@ -1,6 +1,7 @@
 from typing import Union
 
 import pytest
+
 from ..utils.common import is_float_or_undefined
 
 
