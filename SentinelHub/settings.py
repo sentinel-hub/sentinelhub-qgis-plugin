@@ -67,6 +67,7 @@ class Settings(QSettings):
     def __init__(self, path: Optional[str] = None):
         super().__init__(path)
         self.load_local_settings()
+        self.path = path
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Whenever one of the attributes from _AUTO_SAVE_STORE_PARAMETERS is set it is automatically saved to
@@ -85,9 +86,8 @@ class Settings(QSettings):
             if store_value is not None:
                 setattr(self, parameter, str(store_value))
 
-    @staticmethod
-    def _get_store_path(parameter: str) -> str:
-        return f"{Settings._STORE_NAMESPACE}/{parameter}"
+    def _get_store_path(self, parameter: str) -> str:
+        return f"{self._STORE_NAMESPACE}/{parameter}"
 
     def save_credentials(self) -> None:
         """Saves settings to QGIS local store"""
@@ -96,7 +96,7 @@ class Settings(QSettings):
             self.setValue(store_path, getattr(self, parameter))
 
     def copy(self) -> "Settings":
-        new_settings = Settings(self.fileName())
+        new_settings = Settings(self.path)
         for attr in self.__dict__:
             if not callable(getattr(self, attr)) and not attr.startswith("_"):
                 setattr(new_settings, attr, getattr(self, attr))

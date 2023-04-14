@@ -2,6 +2,7 @@
 Module with global fixtures
 """
 
+
 import pytest
 
 from .testing_utilities import get_input_folder
@@ -36,12 +37,12 @@ def sh_widget() -> None:
     sh_widget.close()
 
 
-@pytest.fixture(scope="session")
-def qsettings(tmp_path_factory) -> None:
+@pytest.fixture(scope="function")
+def qsettings() -> None:
     """Create a temporary file and return a Settings instance"""
 
     from ..settings import Settings  # noqa: E402
 
-    file_path = tmp_path_factory.mktemp("settings").joinpath("settings")
-    settings = Settings(str(file_path))
+    settings = Settings("test")
     yield settings
+    settings.clear()
