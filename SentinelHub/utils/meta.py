@@ -8,6 +8,15 @@ from configparser import ConfigParser
 from qgis.utils import plugins_metadata_parser
 
 
+def add_external_path():
+    plugin_dir = _get_main_dir()
+
+    external = os.path.join(plugin_dir, "external")
+
+    if os.path.exists(external) and external not in sys.path:
+        sys.path.insert(0, external)
+
+
 def ensure_import(package_name):
     """Ensures that a dependency package could be imported. It is either already available in the QGIS environment or
     it is available in a subfolder `external` of this plugin and should be added to PATH

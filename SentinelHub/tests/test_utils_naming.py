@@ -5,7 +5,7 @@ pytest.importorskip("qgis.core")
 
 
 from ..constants import ServiceType  # noqa: E402
-from ..sentinelhub.common import DataSource, Layer  # noqa: E402
+from ..sentinelhub_to_deprecate.common import DataSource, Layer  # noqa: E402
 from ..settings import Settings  # noqa: E402
 from ..utils.naming import get_filename, get_qgis_layer_name  # noqa: E402
 

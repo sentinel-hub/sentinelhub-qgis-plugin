@@ -3,6 +3,9 @@ Module with global fixtures
 """
 
 
+import os
+import subprocess
+
 import pytest
 
 from .testing_utilities import get_input_folder
@@ -46,3 +49,24 @@ def qsettings() -> None:
     settings = Settings("test")
     yield settings
     settings.clear()
+
+
+@pytest.fixture(scope="function")
+def myenv():
+    env_name = "env"
+
+    # Create the virtual environment
+    subprocess.run(["bash", "-c", "deactivate"])
+
+    # Activate the virtual environment
+    activate_path = os.path.join(env_name, "bin", "activate")
+    subprocess.run(["bash", "-c", f"source {activate_path}"])
+
+    # Upgrade pip and install the necessary packages
+
+    yield
+
+    activate_path = os.path.join(env_name, "bin", "activate")
+    subprocess.run(["bash", "-c", f"source {activate_path}"])
+
+    # Deactivate the virtual environment

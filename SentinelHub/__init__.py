@@ -31,10 +31,18 @@ def classFactory(iface):
 
     # The following initializes UI
     from . import resources
-    from .utils.meta import ensure_import
+    from .exceptions import MessageType, show_message
+    from .utils.meta import add_external_path, ensure_import
+
+    add_external_path()
 
     ensure_import("oauthlib")
     ensure_import("requests_oauthlib")
+    ensure_import("requests")
+
+    import sentinelhub
+
+    show_message(f"Imported sentinelhub-py {sentinelhub.__version__} !!", MessageType.INFO)
 
     from .main import SentinelHubPlugin
 

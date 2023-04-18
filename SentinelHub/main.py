@@ -32,12 +32,12 @@ from .exceptions import (
     action_handler,
     show_message,
 )
-from .sentinelhub.client import Client
-from .sentinelhub.configuration import ConfigurationManager
-from .sentinelhub.ogc import get_service_uri
-from .sentinelhub.user import get_username
-from .sentinelhub.wcs import download_wcs_image
-from .sentinelhub.wfs import get_cloud_cover
+from .sentinelhub_to_deprecate.client import Client
+from .sentinelhub_to_deprecate.configuration import ConfigurationManager
+from .sentinelhub_to_deprecate.ogc import get_service_uri
+from .sentinelhub_to_deprecate.user import get_username
+from .sentinelhub_to_deprecate.wcs import download_wcs_image
+from .sentinelhub_to_deprecate.wfs import get_cloud_cover
 from .settings import Settings
 from .utils.common import is_float_or_undefined
 from .utils.geo import bbox_to_string, get_bbox, get_custom_bbox, is_bbox_too_large, is_current_map_crs
