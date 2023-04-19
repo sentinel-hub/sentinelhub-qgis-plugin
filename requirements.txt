@@ -1,3 +1,6 @@
 oauthlib
+pyproj==3.1.0
 requests
 requests-oauthlib
+sentinelhub==3.9.0
+utm

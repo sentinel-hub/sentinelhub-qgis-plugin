@@ -28,6 +28,10 @@ pip install -r requirements.txt -r requirements-dev.txt
 mkdir ./SentinelHub/external
 pip download -d ./SentinelHub/external --no-deps -r requirements.txt
 ```
+
+- Unzip the wheels that are in wheels.txt
+./unpack_wheels.sh
+```
 - Configure a path to QGIS Python environment. The path depends on your OS and QGIS installation. Here is an example for Linux:
 ```bash
 export PYTHONPATH=/usr/lib/python3/dist-packages
