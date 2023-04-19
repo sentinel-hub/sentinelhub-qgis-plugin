@@ -17,6 +17,7 @@
  ***************************************************************************/
  This script initializes the plugin, making it known to QGIS.
 """
+from __future__ import absolute_import
 
 
 def classFactory(iface):
@@ -30,11 +31,16 @@ def classFactory(iface):
     # pylint: disable=unused-import
 
     # The following initializes UI
+    import os
+    import sys
+
     from . import resources
     from .exceptions import MessageType, show_message
-    from .utils.meta import add_external_path, ensure_import
+    from .utils.meta import ensure_import
 
-    add_external_path()
+    external = os.path.abspath(os.path.dirname(__file__) + "/external")
+    if os.path.exists(external) and external not in sys.path:
+        sys.path.insert(0, external)
 
     ensure_import("oauthlib")
     ensure_import("requests_oauthlib")

@@ -1,3 +1,3 @@
 SentinelHub/external/sentinelhub-3.9.0-py3-none-any.whl
 SentinelHub/external/pyproj-3.1.0-cp38-cp38-manylinux2010_x86_64.whl
-SentinelHub/external/utm-0.7.0.tar
+SentinelHub/external/utm-0.7.0.tar.gz
