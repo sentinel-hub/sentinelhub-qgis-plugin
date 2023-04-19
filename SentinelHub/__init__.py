@@ -42,10 +42,6 @@ def classFactory(iface):
     if os.path.exists(external) and external not in sys.path:
         sys.path.insert(0, external)
 
-    ensure_import("oauthlib")
-    ensure_import("requests_oauthlib")
-    ensure_import("requests")
-
     import sentinelhub
 
     show_message(f"Imported sentinelhub-py {sentinelhub.__version__} !!", MessageType.INFO)
