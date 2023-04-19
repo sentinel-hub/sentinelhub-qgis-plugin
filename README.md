@@ -28,7 +28,7 @@ pip install -r requirements.txt -r requirements-dev.txt
 mkdir ./SentinelHub/external
 pip download -d ./SentinelHub/external --no-deps -r requirements.txt
 ```
-
+```bash
 - Unzip the wheels that are in wheels.txt
 ./unpack_wheels.sh
 ```
