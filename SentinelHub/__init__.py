@@ -38,6 +38,26 @@ def classFactory(iface):
     from .exceptions import MessageType, show_message
     from .utils.meta import ensure_import
 
+    wheels = [
+        "oauthlib",
+        "requests_oauthlib",
+        "aenum",
+        "click",
+        "dataclasses_json",
+        "numpy",
+        "Pillow",
+        "python_dateutil",
+        "requests",
+        "shapely",
+        "tifffile",
+        "tomli",
+        "tomli_w",
+        "tqdm",
+        "typing_extensions",
+    ]
+    for wheel in wheels:
+        ensure_import(wheel)
+
     external = os.path.abspath(os.path.dirname(__file__) + "/external")
     if os.path.exists(external) and external not in sys.path:
         sys.path.insert(0, external)

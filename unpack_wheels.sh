@@ -27,3 +27,9 @@ function extract_file() {
 while read line; do
     extract_file "$line"
 done < wheels.txt
+
+echo "Removing wheel files..."
+while read line; do
+    rm -f "$line"
+done < wheels.txt
+echo "All wheel files removed."
