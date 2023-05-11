@@ -38,25 +38,25 @@ def classFactory(iface):
     from .exceptions import MessageType, show_message
     from .utils.meta import ensure_import
 
-    wheels = [
-        "oauthlib",
-        "requests_oauthlib",
-        "aenum",
-        "click",
-        "dataclasses_json",
-        "numpy",
-        "Pillow",
-        "python_dateutil",
-        "requests",
-        "shapely",
-        "tifffile",
-        "tomli",
-        "tomli_w",
-        "tqdm",
-        "typing_extensions",
-    ]
-    for wheel in wheels:
-        ensure_import(wheel)
+    wheels = {
+        "requests": "2.27",
+        "oauthlib": None,
+        "requests_oauthlib": "1.0.0",
+        "aenum": "2.1.4",
+        "click": None,
+        "dataclasses_json": None,
+        "Pillow": "9.2.0",
+        "python_dateutil": None,
+        "shapely": None,
+        "tifffile": "2020.9.30",
+        "tomli": None,
+        "tomli_w": None,
+        "tqdm": None,
+        "typing_extensions": None,
+    }
+
+    for wheel, version in wheels.items():
+        ensure_import(wheel, version)
 
     external = os.path.abspath(os.path.dirname(__file__) + "/external")
     if os.path.exists(external) and external not in sys.path:

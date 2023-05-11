@@ -1,6 +1,7 @@
 aenum>=2.1.4
 click
 dataclasses-json
+marshmallow
 numpy
 oauthlib
 pillow>=9.2.0
@@ -15,5 +16,5 @@ tomli
 tomli_w
 tqdm
 typing-extensions
-utm
+typing-inspect
 utm
