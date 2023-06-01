@@ -24,12 +24,10 @@ function extract_file() {
     fi
 }
 
-while read line; do
-    extract_file "$line"
-done < wheels.txt
+for file in "$external_dir"/*.{whl,zip,tar,gz,bz2}; do
+    extract_file "$file"
+done
 
 echo "Removing wheel files..."
-while read line; do
-    rm -f "$line"
-done < wheels.txt
+rm -f "$external_dir"/*.{whl,zip}
 echo "All wheel files removed."
