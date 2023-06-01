@@ -17,4 +17,3 @@ tomli_w
 tqdm
 typing-extensions
 typing-inspect
-utm

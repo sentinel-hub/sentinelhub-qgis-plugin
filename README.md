@@ -24,7 +24,7 @@ For a quick tutorial check this [blog post](https://medium.com/sentinel-hub/cont
 pip install -r requirements.txt -r requirements-dev.txt
 ```
 - Download Python packages that QGIS might not have by default and will be packed together with the plugin:
-```
+```bash
 mkdir ./SentinelHub/external
 pip download -d ./SentinelHub/external --no-deps -r requirements.txt
 ```

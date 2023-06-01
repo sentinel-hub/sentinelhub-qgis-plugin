@@ -1,6 +1,22 @@
 #!/bin/bash
 
 external_dir="SentinelHub/external"
+tar_file_to_copy="utm.tar"
+
+function copy_tar_file() {
+    local source_file=$1
+    local destination_dir=$2
+
+    if [[ ! -f $destination_dir/source.tar ]]; then
+        echo "Copying source.tar to $destination_dir"
+        cp "$source_file" "$destination_dir/source.tar"
+    else
+        echo "source.tar already exists in $destination_dir, skipping copy"
+    fi
+}
+
+# Copy the specific tar file to the external directory
+copy_tar_file "$tar_file_to_copy" "$external_dir"
 
 function extract_file() {
     local file=$1
@@ -29,5 +45,5 @@ for file in "$external_dir"/*.{whl,zip,tar,gz,bz2}; do
 done
 
 echo "Removing wheel files..."
-rm -f "$external_dir"/*.{whl,zip}
+rm -f "$external_dir"/*.{whl,zip,tar}
 echo "All wheel files removed."
