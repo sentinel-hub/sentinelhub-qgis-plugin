@@ -32,6 +32,9 @@ class Session:
         :type client_secret: str
         """
         self.oauth_url = f"{base_url}/oauth/token"
+        if base_url == "https://sh.dataspace.copernicus.eu":
+            self.oauth_url = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+
         self.client_id = client_id
         self.client_secret = client_secret
 

@@ -35,7 +35,6 @@ from .exceptions import (
 from .sentinelhub.client import Client
 from .sentinelhub.configuration import ConfigurationManager
 from .sentinelhub.ogc import get_service_uri
-from .sentinelhub.user import get_username
 from .sentinelhub.wcs import download_wcs_image
 from .sentinelhub.wfs import get_cloud_cover
 from .settings import Settings
@@ -237,8 +236,7 @@ class SentinelHubPlugin:
         self.dockwidget.layersComboBox.clear()
         self.dockwidget.crsComboBox.clear()
 
-        username = get_username(self.settings, self.client)
-        login_text = f"Logged in as {username}" if username else ""
+        login_text = "Logged in"
         self.dockwidget.loginInfoLabel.setText(login_text)
 
         configuration_names = [configuration.name for configuration in configurations]

@@ -6,7 +6,7 @@ name=SentinelHub
 qgisMinimumVersion=3.22
 qgisMaximumVersion=3.99
 description=SentinelHub plugin enables users to harness the power of Sentinel Hub services directly from QGIS.
-version=2.0.0
+version=2.0.1
 author=Sinergise
 email=info@sentinel-hub.com
 
@@ -21,6 +21,9 @@ repository=https://github.com/sentinel-hub/sentinelhub-qgis-plugin
 
 # Recommended items:
 changelog=
+    2.0.1
+        - change main base_url to cdse
+        - bug fix in settings saving
     2.0.0
         - support for any production Sentinel Hub deployment and data source
         - authentication with OAuth client instead of a configuration instance ID

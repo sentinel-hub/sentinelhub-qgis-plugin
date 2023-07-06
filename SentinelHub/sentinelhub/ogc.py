@@ -116,7 +116,7 @@ def get_wcs_url(settings, layer, bbox, crs=None):
 
 def _get_service_endpoint(settings, layer, service_type=None):
     """A helper function to provide a service endpoint URL"""
-    base_url = layer.data_source.service_url
+    base_url = settings.base_url
     if service_type is None:
         service_type = settings.service_type
     return f"{base_url}/ogc/{service_type.lower()}/{settings.instance_id}"
