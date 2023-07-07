@@ -31,15 +31,18 @@ class Session:
         :param client_secret: A Sentinel Hub Oauth client secret
         :type client_secret: str
         """
-        self.oauth_url = f"{base_url}/oauth/token"
-        if base_url == "https://sh.dataspace.copernicus.eu":
-            self.oauth_url = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
-
+        self.oauth_url = self.select_oauth_url(base_url)
         self.client_id = client_id
         self.client_secret = client_secret
 
         self._token = None
         _ = self.token
+
+    @staticmethod
+    def select_oauth_url(base_url):
+        if base_url == "https://sh.dataspace.copernicus.eu":
+            return "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+        return f"{base_url}/oauth/token"
 
     @property
     def token(self):

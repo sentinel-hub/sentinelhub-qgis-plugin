@@ -26,7 +26,7 @@ def get_service_uri(settings, layer):
 
 def get_wms_or_wmts_uri(settings, layer):
     """Generates URI for a QGIS WMS or WMTS map layer"""
-    base_url = _get_service_endpoint(settings, layer)
+    base_url = _get_service_endpoint(settings)
     url_params = {
         "showLogo": "false",
         "time": _build_time(settings),
@@ -56,7 +56,7 @@ def get_wms_or_wmts_uri(settings, layer):
 
 def get_wfs_uri(settings, layer):
     """Generates URI for a QGIS WFS vector map layer"""
-    base_url = _get_service_endpoint(settings, layer)
+    base_url = _get_service_endpoint(settings)
     url_params = {
         "srsname": settings.crs,
         "time": _build_time(settings),
@@ -76,7 +76,7 @@ def get_wfs_uri(settings, layer):
 
 def get_wfs_url(settings, layer, bbox_str, time_range, maxcc=None):
     """Generate URL for WFS request from parameters"""
-    base_url = _get_service_endpoint(settings, layer, ServiceType.WFS)
+    base_url = _get_service_endpoint(settings, ServiceType.WFS)
     params = {
         "service": "WFS",
         "version": "2.0.0",
@@ -94,7 +94,7 @@ def get_wfs_url(settings, layer, bbox_str, time_range, maxcc=None):
 
 def get_wcs_url(settings, layer, bbox, crs=None):
     """Generate a URL for WCS request from parameters"""
-    base_url = _get_service_endpoint(settings, layer, ServiceType.WCS)
+    base_url = _get_service_endpoint(settings, ServiceType.WCS)
     params = {
         "service": "wcs",
         "request": "GetCoverage",
@@ -114,7 +114,7 @@ def get_wcs_url(settings, layer, bbox, crs=None):
     return _build_url(base_url, params)
 
 
-def _get_service_endpoint(settings, layer, service_type=None):
+def _get_service_endpoint(settings, service_type=None):
     """A helper function to provide a service endpoint URL"""
     base_url = settings.base_url
     if service_type is None:
