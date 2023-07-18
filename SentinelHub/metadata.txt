@@ -16,8 +16,7 @@ The datasets are made available through the services of the Copernicus Data Spac
 Copernicus Data Space Ecosystem accounts can be created completely free of charge <a href="https://identity.dataspace.copernicus.eu/auth/realms/CDSE/login-actions/registration?client_id=account-console&tab_id=_AfaeUKDcX8"> here:</a>
 Sentinel Hub trial accounts are available <a href="https://services.sentinel-hub.com/oauth/subscription?param_domain_id=1&param_redirect_uri=https://apps.sentinel-hub.com/dashboard/oauthCallback.html&param_state=%2F&param_scope=&param_client_id=30cf1d69-af7e-4f3a-997d-0643d660a478&domainId=1"> here </a>, with free accounts open for request here <a href="https://medium.com/sentinel-hub/sentinel-hub-at-the-eo-cloud-free-accounts-for-r-d-projects-eccb3e3d0659">here </a> or <a href="https://medium.com/sentinel-hub/sentinel-hub-free-accounts-within-esa-business-applications-b0046c0595f0"> here </a>.
 
-Disclaimer: CDSE endpoint may not work with Mac Os.
-
+Disclaimer: CDSE endpoint may not work with MacOS. For more information about OGC Services documentation please check <a href="https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/OGC.html"> this link</a>
 
 homepage=https://github.com/sentinel-hub/sentinelhub-qgis-plugin/blob/main/README.md
 tracker=https://github.com/sentinel-hub/sentinelhub-qgis-plugin/issues
