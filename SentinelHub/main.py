@@ -118,7 +118,6 @@ class SentinelHubPlugin:
         self.initialize_ui()
 
         # Login widget
-        self.dockwidget.serviceUrlLineEdit.editingFinished.connect(self.validate_base_url)
         self.dockwidget.loginPushButton.clicked.connect(self.login)
 
         # Create widget
@@ -177,7 +176,6 @@ class SentinelHubPlugin:
 
     def initialize_ui(self):
         """Initializes and resets entire UI"""
-        self.dockwidget.serviceUrlLineEdit.setText(self.settings.base_url)
         self.dockwidget.clientIdLineEdit.setText(self.settings.client_id)
         self.dockwidget.clientSecretLineEdit.setText(self.settings.client_secret)
 
@@ -212,7 +210,7 @@ class SentinelHubPlugin:
 
     def validate_base_url(self):
         """Makes sure the base url is in the correct format"""
-        base_url = self.dockwidget.serviceUrlLineEdit.text()
+        base_url = self.dockwidget.serviceUrlLineEdit.currentText()
         expected_base_url = base_url.rstrip("/")
         if not expected_base_url:
             expected_base_url = BaseUrl.MAIN
@@ -248,7 +246,7 @@ class SentinelHubPlugin:
 
     def _load_new_credentials(self, settings):
         """Loads new credentials into settings"""
-        settings.base_url = self.dockwidget.serviceUrlLineEdit.text()
+        settings.base_url = self.dockwidget.serviceUrlLineEdit.currentText()
         settings.client_id = self.dockwidget.clientIdLineEdit.text()
         settings.client_secret = self.dockwidget.clientSecretLineEdit.text()
 
