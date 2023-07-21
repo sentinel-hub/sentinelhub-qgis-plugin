@@ -20,7 +20,7 @@
 
 
 def classFactory(iface):
-    """ Load SentinelHub class from file SentinelHub.
+    """Load SentinelHub class from file SentinelHub.
 
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface
@@ -31,10 +31,11 @@ def classFactory(iface):
 
     # The following initializes UI
     from . import resources
-
     from .utils.meta import ensure_import
-    ensure_import('oauthlib')
-    ensure_import('requests_oauthlib')
+
+    ensure_import("oauthlib")
+    ensure_import("requests_oauthlib")
 
     from .main import SentinelHubPlugin
+
     return SentinelHubPlugin(iface)

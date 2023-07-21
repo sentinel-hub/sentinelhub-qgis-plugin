@@ -118,3 +118,6 @@ zip_build
 
 # Repo with external package wheels
 external
+
+.vscode
+symbology-style.db

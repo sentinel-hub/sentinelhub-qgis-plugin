@@ -3,15 +3,14 @@ Utilities for interacting with Sentinel Hub WCS service
 """
 import os
 
-from .ogc import get_wcs_url
 from ..constants import CrsType, ExtentType
 from ..utils.geo import bbox_to_string
 from ..utils.naming import get_filename
+from .ogc import get_wcs_url
 
 
 def download_wcs_image(settings, layer, bbox, client):
-    """ Downloads and saves an image from Sentinel Hub WCS service
-    """
+    """Downloads and saves an image from Sentinel Hub WCS service"""
     crs = settings.crs if settings.download_extent_type is ExtentType.CURRENT else CrsType.WGS84
     bbox_str = bbox_to_string(bbox, crs)
     url = get_wcs_url(settings, layer, bbox_str, crs)
@@ -21,7 +20,7 @@ def download_wcs_image(settings, layer, bbox, client):
 
     response = client.download(url)
 
-    with open(path, 'wb') as fp:
+    with open(path, "wb") as fp:
         fp.write(response.content)
 
     return filename
