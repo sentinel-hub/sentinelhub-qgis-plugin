@@ -6,14 +6,17 @@ name=SentinelHub
 qgisMinimumVersion=3.22
 qgisMaximumVersion=3.99
 description=SentinelHub plugin enables users to harness the power of Sentinel Hub services directly from QGIS.
-version=2.0.0
+version=2.0.1
 author=Sinergise
 email=info@sentinel-hub.com
 
 about=
-    The plugin transforms any layer defined in <a href="https://apps.sentinel-hub.com/configurator/"> Sentinel Hub Configuration Utility</a> into a QGIS layer. It enables exploration, customization and image download. A Sentinel Hub account is required in order to use the plugin. Feel free to create a <a href="http://www.sentinel-hub.com/create_account">trial account</a> or request a free account (<a href="https://medium.com/sentinel-hub/sentinel-hub-at-the-eo-cloud-free-accounts-for-r-d-projects-eccb3e3d0659">option 1</a>, <a href="https://medium.com/sentinel-hub/sentinel-hub-free-accounts-within-esa-business-applications-b0046c0595f0">option 2</a>).
+    This plugin allows you to directly access Copernicus satellite imagery in QGIS, enabling exploration, customization and image download. Sentinel-1, Sentinel-2, Sentinel-3 and Sentinel-5P and Copernicus DEM data can be directly loaded into QGIS for visualization and analysis. The plugin allows choosing the satellite sensor, the image date, the maximum cloud coverage per tile, and loading the imagery directly into your GIS.
+    The datasets are made available through the services of the Copernicus Data Space Ecosystem or Sentinel Hub, so either a Copernicus Data Space Ecosystem account or a Sentinel Hub account is required in order to use the plugin. The plugin transforms any layer defined in <a href="https://shapps.dataspace.copernicus.eu/dashboard/#/account/settings"> Copernicus Data Space User Dashboard</a>  or the  <a href="https://apps.sentinel-hub.com/dashboard/#/configurations"> Sentinel Hub Configuration Utility </a> into a QGIS layer.
+    Copernicus Data Space Ecosystem accounts can be created completely free of charge <a href="https://identity.dataspace.copernicus.eu/auth/realms/CDSE/login-actions/registration?client_id=account-console&tab_id=_AfaeUKDcX8"> here:</a>
+    Sentinel Hub trial accounts are available <a href="https://services.sentinel-hub.com/oauth/subscription?param_domain_id=1&param_redirect_uri=https://apps.sentinel-hub.com/dashboard/oauthCallback.html&param_state=%2F&param_scope=&param_client_id=30cf1d69-af7e-4f3a-997d-0643d660a478&domainId=1"> here </a>, with free accounts open for request here <a href="https://medium.com/sentinel-hub/sentinel-hub-at-the-eo-cloud-free-accounts-for-r-d-projects-eccb3e3d0659">here </a> or <a href="https://medium.com/sentinel-hub/sentinel-hub-free-accounts-within-esa-business-applications-b0046c0595f0"> here </a>.
 
-    For more questions please check Sentinel Hub <a href="https://www.sentinel-hub.com/faq/">FAQ</a> or <a href="https://forum.sentinel-hub.com/">forum</a>.
+    Disclaimer: CDSE endpoint may not work with MacOS. For more information about OGC Services documentation please check <a href="https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/OGC.html"> this link</a>
 
 homepage=https://github.com/sentinel-hub/sentinelhub-qgis-plugin/blob/main/README.md
 tracker=https://github.com/sentinel-hub/sentinelhub-qgis-plugin/issues
@@ -21,6 +24,10 @@ repository=https://github.com/sentinel-hub/sentinelhub-qgis-plugin
 
 # Recommended items:
 changelog=
+    2.0.1
+        - change main `base_url` to CDSE endpoint
+        - add drop down menu to choose the `base_url` endpoint.
+        - bug fix in settings saving
     2.0.0
         - support for any production Sentinel Hub deployment and data source
         - authentication with OAuth client instead of a configuration instance ID
