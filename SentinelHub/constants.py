@@ -65,7 +65,8 @@ class ImageFormat(_BaseParameter):
 class BaseUrl:
     """Base URLs of some Sentinel Hub service deployments"""
 
-    MAIN = "https://services.sentinel-hub.com"
+    MAIN = "https://sh.dataspace.copernicus.eu"
+    SH_MAIN = "https://services.sentinel-hub.com"
     USWEST = "https://services-uswest2.sentinel-hub.com"
 
 
