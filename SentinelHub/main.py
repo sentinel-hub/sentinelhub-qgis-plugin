@@ -178,6 +178,10 @@ class SentinelHubPlugin:
         """Initializes and resets entire UI"""
         self.dockwidget.clientIdLineEdit.setText(self.settings.client_id)
         self.dockwidget.clientSecretLineEdit.setText(self.settings.client_secret)
+        if self.settings.base_url == BaseUrl.MAIN or "":
+            self.dockwidget.serviceUrlLineEdit.setCurrentIndex(0)
+        else:
+            self.dockwidget.serviceUrlLineEdit.setCurrentIndex(1)
 
         self.dockwidget.serviceTypeComboBox.addItems(AVAILABLE_SERVICE_TYPES)
         self.update_service_type(self.settings.service_type.upper())
@@ -207,15 +211,6 @@ class SentinelHubPlugin:
         self._set_download_extent_values()
         self.toggle_extent(self.settings.download_extent_type)
         self.dockwidget.downloadFolderLineEdit.setText(self.settings.download_folder)
-
-    def validate_base_url(self):
-        """Makes sure the base url is in the correct format"""
-        base_url = self.dockwidget.serviceUrlLineEdit.currentText()
-        expected_base_url = base_url.rstrip("/")
-        if not expected_base_url:
-            expected_base_url = BaseUrl.MAIN
-        if base_url != expected_base_url:
-            self.dockwidget.serviceUrlLineEdit.setText(expected_base_url)
 
     @action_handler(cooldown=ACTION_COOLDOWN)
     def login(self, *_):
