@@ -43,6 +43,7 @@ def qsettings() -> None:
 
     from ..settings import Settings  # noqa: E402
 
-    settings = Settings("test")
+    settings = Settings()
     yield settings
+
     settings.clear()
