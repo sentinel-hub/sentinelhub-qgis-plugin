@@ -35,7 +35,6 @@ from .exceptions import (
 from .sentinelhub_to_deprecate.client import Client
 from .sentinelhub_to_deprecate.configuration import ConfigurationManager
 from .sentinelhub_to_deprecate.ogc import get_service_uri
-from .sentinelhub_to_deprecate.user import get_username
 from .sentinelhub_to_deprecate.wcs import download_wcs_image
 from .sentinelhub_to_deprecate.wfs import get_cloud_cover
 from .settings import Settings
@@ -119,7 +118,6 @@ class SentinelHubPlugin:
         self.initialize_ui()
 
         # Login widget
-        self.dockwidget.serviceUrlLineEdit.editingFinished.connect(self.validate_base_url)
         self.dockwidget.loginPushButton.clicked.connect(self.login)
 
         # Create widget
@@ -178,7 +176,6 @@ class SentinelHubPlugin:
 
     def initialize_ui(self):
         """Initializes and resets entire UI"""
-        self.dockwidget.serviceUrlLineEdit.setText(self.settings.base_url)
         self.dockwidget.clientIdLineEdit.setText(self.settings.client_id)
         self.dockwidget.clientSecretLineEdit.setText(self.settings.client_secret)
 
@@ -213,7 +210,7 @@ class SentinelHubPlugin:
 
     def validate_base_url(self):
         """Makes sure the base url is in the correct format"""
-        base_url = self.dockwidget.serviceUrlLineEdit.text()
+        base_url = self.dockwidget.serviceUrlLineEdit.currentText()
         expected_base_url = base_url.rstrip("/")
         if not expected_base_url:
             expected_base_url = BaseUrl.MAIN
@@ -237,8 +234,7 @@ class SentinelHubPlugin:
         self.dockwidget.layersComboBox.clear()
         self.dockwidget.crsComboBox.clear()
 
-        username = get_username(self.settings, self.client)
-        login_text = f"Logged in as {username}" if username else ""
+        login_text = "Logged in"
         self.dockwidget.loginInfoLabel.setText(login_text)
 
         configuration_names = [configuration.name for configuration in configurations]
@@ -250,7 +246,7 @@ class SentinelHubPlugin:
 
     def _load_new_credentials(self, settings):
         """Loads new credentials into settings"""
-        settings.base_url = self.dockwidget.serviceUrlLineEdit.text()
+        settings.base_url = self.dockwidget.serviceUrlLineEdit.currentText()
         settings.client_id = self.dockwidget.clientIdLineEdit.text()
         settings.client_secret = self.dockwidget.clientSecretLineEdit.text()
 
