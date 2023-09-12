@@ -26,6 +26,8 @@ repository=https://github.com/sentinel-hub/sentinelhub-qgis-plugin
 
 # Recommended items:
 changelog=
+    2.0.2
+        - bug fix about getting incorrect data endpoint when using sentinel hub service endpoint
     2.0.1
         - change main `base_url` to CDSE endpoint
         - add drop down menu to choose the `base_url` endpoint.
