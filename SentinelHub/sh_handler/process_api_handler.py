@@ -8,7 +8,7 @@ from PyQt5.QtCore import QByteArray
 import tempfile
 
 
-class SentinelHubQGISLoader:
+class SentinelHubRequestHandler:
     def __init__(self, instance_id, layer_name, time_interval, max_cloud_cover=30):
         self.instance_id = instance_id
         self.layer_name = "pingo"
@@ -71,8 +71,8 @@ def get_visible_bbox():
 
 def make_request():
     # Your client credentials
-    client_id = "sh-516f400a-e281-42a1-b6f3-00971bbed8eb"
-    client_secret = "n5ZY2CIJm3Ee0RIx3vNpcnZjP2poivRg"
+    client_id = ""
+    client_secret = ""
     bbox = get_visible_bbox()
     print(bbox)
     # Create a session

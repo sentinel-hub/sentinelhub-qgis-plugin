@@ -1434,19 +1434,10 @@ p, li { white-space: pre-wrap; }
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_10">
-            <item row="10" column="2">
-             <widget class="QComboBox" name="priorityComboBox_2">
-              <property name="minimumSize">
-               <size>
-                <width>400</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>400</width>
-                <height>16777215</height>
-               </size>
+            <item row="5" column="0">
+             <widget class="QLabel" name="crsLabel_2">
+              <property name="text">
+               <string>Height/Width</string>
               </property>
              </widget>
             </item>
@@ -1494,18 +1485,178 @@ p, li { white-space: pre-wrap; }
               </layout>
              </widget>
             </item>
-            <item row="12" column="2">
-             <spacer name="verticalSpacer_3">
-              <property name="orientation">
-               <enum>Qt::Vertical</enum>
+            <item row="10" column="0">
+             <widget class="QLabel" name="priorityLabel_2">
+              <property name="text">
+               <string>Image priority</string>
               </property>
-              <property name="sizeHint" stdset="0">
+             </widget>
+            </item>
+            <item row="7" column="0">
+             <widget class="QLabel" name="timeRangeLabel_2">
+              <property name="text">
+               <string>Time range</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="2">
+             <widget class="QComboBox" name="serviceTypeComboBox_2">
+              <property name="minimumSize">
                <size>
-                <width>20</width>
-                <height>40</height>
+                <width>400</width>
+                <height>0</height>
                </size>
               </property>
-             </spacer>
+              <property name="maximumSize">
+               <size>
+                <width>400</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="editable">
+               <bool>false</bool>
+              </property>
+              <item>
+               <property name="text">
+                <string>sentinel-2-l1c</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>sentinel-2-l2a</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>landsat-ot-l1</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="11" column="2">
+             <widget class="QPushButton" name="sendRequestButton">
+              <property name="text">
+               <string>send request</string>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="2">
+             <layout class="QHBoxLayout" name="horizontalLayout_4">
+              <item>
+               <widget class="QLineEdit" name="startTimeLineEdit_2">
+                <property name="minimumSize">
+                 <size>
+                  <width>191</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>191</width>
+                  <height>25</height>
+                 </size>
+                </property>
+                <property name="cursor">
+                 <cursorShape>PointingHandCursor</cursorShape>
+                </property>
+                <property name="focusPolicy">
+                 <enum>Qt::ClickFocus</enum>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="readOnly">
+                 <bool>false</bool>
+                </property>
+                <property name="placeholderText">
+                 <string>Select start date</string>
+                </property>
+                <property name="clearButtonEnabled">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="timeLabel_2">
+                <property name="text">
+                 <string>-</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="endTimeLineEdit_2">
+                <property name="minimumSize">
+                 <size>
+                  <width>191</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>191</width>
+                  <height>25</height>
+                 </size>
+                </property>
+                <property name="cursor">
+                 <cursorShape>PointingHandCursor</cursorShape>
+                </property>
+                <property name="focusPolicy">
+                 <enum>Qt::ClickFocus</enum>
+                </property>
+                <property name="inputMask">
+                 <string/>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="readOnly">
+                 <bool>false</bool>
+                </property>
+                <property name="placeholderText">
+                 <string>Select end date</string>
+                </property>
+                <property name="clearButtonEnabled">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_6">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>0</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="serviceTypeLabel_2">
+              <property name="text">
+               <string>Collection</string>
+              </property>
+             </widget>
+            </item>
+            <item row="10" column="2">
+             <widget class="QComboBox" name="priorityComboBox_2">
+              <property name="minimumSize">
+               <size>
+                <width>400</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>400</width>
+                <height>16777215</height>
+               </size>
+              </property>
+             </widget>
             </item>
             <item row="8" column="2">
              <layout class="QHBoxLayout" name="horizontalLayout_9">
@@ -2073,100 +2224,21 @@ p, li { white-space: pre-wrap; }
               </item>
              </layout>
             </item>
-            <item row="7" column="2">
-             <layout class="QHBoxLayout" name="horizontalLayout_4">
-              <item>
-               <widget class="QLineEdit" name="startTimeLineEdit_2">
-                <property name="minimumSize">
-                 <size>
-                  <width>191</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>191</width>
-                  <height>25</height>
-                 </size>
-                </property>
-                <property name="cursor">
-                 <cursorShape>PointingHandCursor</cursorShape>
-                </property>
-                <property name="focusPolicy">
-                 <enum>Qt::ClickFocus</enum>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="readOnly">
-                 <bool>false</bool>
-                </property>
-                <property name="placeholderText">
-                 <string>Select start date</string>
-                </property>
-                <property name="clearButtonEnabled">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="timeLabel_2">
-                <property name="text">
-                 <string>-</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="endTimeLineEdit_2">
-                <property name="minimumSize">
-                 <size>
-                  <width>191</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>191</width>
-                  <height>25</height>
-                 </size>
-                </property>
-                <property name="cursor">
-                 <cursorShape>PointingHandCursor</cursorShape>
-                </property>
-                <property name="focusPolicy">
-                 <enum>Qt::ClickFocus</enum>
-                </property>
-                <property name="inputMask">
-                 <string/>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="readOnly">
-                 <bool>false</bool>
-                </property>
-                <property name="placeholderText">
-                 <string>Select end date</string>
-                </property>
-                <property name="clearButtonEnabled">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="horizontalSpacer_6">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>0</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
+            <item row="5" column="2">
+             <widget class="QComboBox" name="crsComboBox_2">
+              <property name="minimumSize">
+               <size>
+                <width>400</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>400</width>
+                <height>16777215</height>
+               </size>
+              </property>
+             </widget>
             </item>
             <item row="9" column="2">
              <layout class="QHBoxLayout" name="horizontalLayout_5">
@@ -2234,91 +2306,6 @@ p, li { white-space: pre-wrap; }
                </spacer>
               </item>
              </layout>
-            </item>
-            <item row="10" column="0">
-             <widget class="QLabel" name="priorityLabel_2">
-              <property name="text">
-               <string>Image priority</string>
-              </property>
-             </widget>
-            </item>
-            <item row="7" column="0">
-             <widget class="QLabel" name="timeRangeLabel_2">
-              <property name="text">
-               <string>Time range</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="serviceTypeLabel_2">
-              <property name="text">
-               <string>Collection</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="2">
-             <widget class="QComboBox" name="serviceTypeComboBox_2">
-              <property name="minimumSize">
-               <size>
-                <width>400</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>400</width>
-                <height>16777215</height>
-               </size>
-              </property>
-              <property name="editable">
-               <bool>false</bool>
-              </property>
-              <item>
-               <property name="text">
-                <string>sentinel-2-l1c</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>sentinel-2-l2a</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>landsat-ot-l1</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="5" column="0">
-             <widget class="QLabel" name="crsLabel_2">
-              <property name="text">
-               <string>Height/Width</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="2">
-             <widget class="QComboBox" name="crsComboBox_2">
-              <property name="minimumSize">
-               <size>
-                <width>400</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>400</width>
-                <height>16777215</height>
-               </size>
-              </property>
-             </widget>
-            </item>
-            <item row="11" column="2">
-             <widget class="QPushButton" name="sendRequestButton">
-              <property name="text">
-               <string>send request</string>
-              </property>
-             </widget>
             </item>
            </layout>
           </widget>

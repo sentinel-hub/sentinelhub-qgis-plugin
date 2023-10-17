@@ -40,7 +40,6 @@ def classFactory(iface):
 
     wheels = {
         "numpy": None,
-        "shapely": None,
         "requests_oauthlib": "1.3.1",
         "urllib3": None,
         "charset_normalizer": None,

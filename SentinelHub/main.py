@@ -7,6 +7,7 @@ from PyQt5.QtCore import QDate, Qt
 from PyQt5.QtGui import QIcon, QTextCharFormat
 from PyQt5.QtWidgets import QAction, QFileDialog
 from qgis.core import QgsMessageLog, QgsProject, QgsRasterLayer, QgsVectorLayer
+from .sh_handler.process_api_handler import SentinelHubRequestHandler
 
 from .constants import (
     ACTION_COOLDOWN,
@@ -137,6 +138,8 @@ class SentinelHubPlugin:
         self.dockwidget.maxccSlider.valueChanged.connect(self.update_maxcc)
         self.dockwidget.maxccSlider.sliderReleased.connect(self.update_available_calendar_dates)
         self.dockwidget.priorityComboBox.activated.connect(self.update_image_priority)
+
+        self.dockwidget.sendRequestButton.clicked.connect(self.proccessing_request)
 
         # Create widget bottom buttons
         self.dockwidget.createLayerPushButton.clicked.connect(self.add_qgis_layer)
@@ -635,3 +638,6 @@ class SentinelHubPlugin:
 
         self.dockwidget.closingPlugin.disconnect(self.on_close_plugin)
         self.dockwidget = None
+
+    def proccessing_request(self):
+        SentinelHubRequestHandler.make_request()
