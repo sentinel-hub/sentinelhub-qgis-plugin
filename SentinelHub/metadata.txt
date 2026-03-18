@@ -20,7 +20,7 @@ about=
     Disclaimer: CDSE endpoint may not work in MacOS. For more information about OGC Services documentation please check <a href="https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/OGC.html"> this link</a>
 
 
-homepage=https://github.com/sentinel-hub/sentinelhub-qgis-plugin/blob/main/README.md
+homepage=https://github.com/sentinel-hub/sentinelhub-qgis-plugin
 tracker=https://github.com/sentinel-hub/sentinelhub-qgis-plugin/issues
 repository=https://github.com/sentinel-hub/sentinelhub-qgis-plugin
 
