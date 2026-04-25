@@ -3,7 +3,7 @@ Module containing parameters and settings for Sentinel Hub services
 """
 import copy
 
-from PyQt5.QtCore import QSettings
+from qgis.PyQt.QtCore import QSettings
 
 from .constants import CrsType, ExtentType, ImageFormat, ImagePriority, ServiceType, TimeType
 
