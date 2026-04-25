@@ -4,9 +4,9 @@
 [general]
 name=SentinelHub
 qgisMinimumVersion=3.22
-qgisMaximumVersion=3.99
+qgisMaximumVersion=4.99
 description=SentinelHub plugin enables users to harness the power of Sentinel Hub services directly from QGIS.
-version=2.0.3
+version=2.0.4
 author=Sinergise
 email=info@sentinel-hub.com
 
@@ -26,6 +26,9 @@ repository=https://github.com/sentinel-hub/sentinelhub-qgis-plugin
 
 # Recommended items:
 changelog=
+    2.0.4
+        - QGIS 4 / Qt6 compatibility: switched PyQt5 imports to qgis.PyQt and added Qt enum compatibility
+        - Set qgisMaximumVersion to 4.99
     2.0.3
         - use new endpoints for sh.dataspace.copernicus.eu
     2.0.1
