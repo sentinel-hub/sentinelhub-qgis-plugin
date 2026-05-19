@@ -178,7 +178,7 @@ class SentinelHubPlugin:
         """Initializes and resets entire UI"""
         self.dockwidget.clientIdLineEdit.setText(self.settings.client_id)
         self.dockwidget.clientSecretLineEdit.setText(self.settings.client_secret)
-        if self.settings.base_url == BaseUrl.MAIN or "":
+        if self.settings.base_url in (BaseUrl.MAIN, ""):
             self.dockwidget.serviceUrlLineEdit.setCurrentIndex(0)
         else:
             self.dockwidget.serviceUrlLineEdit.setCurrentIndex(1)
