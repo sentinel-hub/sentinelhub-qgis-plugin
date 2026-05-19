@@ -3,9 +3,9 @@ The main module
 """
 import os
 
-from PyQt5.QtCore import QDate, Qt
-from PyQt5.QtGui import QIcon, QTextCharFormat
-from PyQt5.QtWidgets import QAction, QFileDialog
+from qgis.PyQt.QtCore import QDate, Qt
+from qgis.PyQt.QtGui import QIcon, QTextCharFormat
+from qgis.PyQt.QtWidgets import QAction, QFileDialog
 from qgis.core import QgsMessageLog, QgsProject, QgsRasterLayer, QgsVectorLayer
 
 from .constants import (
@@ -44,6 +44,23 @@ from .utils.map import get_qgis_layers, set_layer_fill_color_opacity
 from .utils.meta import PLUGIN_NAME, get_plugin_version
 from .utils.naming import get_qgis_layer_name
 from .utils.time import get_month_time_interval, parse_date
+
+
+def _qt_value(group_name, member_name):
+    """Return a Qt enum/color value on both Qt5 and Qt6.
+
+    PyQt6 moved many Qt members into nested enum groups, while PyQt5
+    exposes the same members directly on Qt.
+    """
+    group = getattr(Qt, group_name, None)
+    if group is not None and hasattr(group, member_name):
+        return getattr(group, member_name)
+    return getattr(Qt, member_name)
+
+
+QT_BOTTOM_DOCK_WIDGET_AREA = _qt_value("DockWidgetArea", "BottomDockWidgetArea")
+QT_GRAY = _qt_value("GlobalColor", "gray")
+QT_WHITE = _qt_value("GlobalColor", "white")
 
 
 class SentinelHubPlugin:
@@ -171,7 +188,7 @@ class SentinelHubPlugin:
         # Close event
         self.dockwidget.closingPlugin.connect(self.on_close_plugin)
 
-        self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dockwidget)
+        self.iface.addDockWidget(QT_BOTTOM_DOCK_WIDGET_AREA, self.dockwidget)
         self.dockwidget.show()
 
     def initialize_ui(self):
@@ -434,13 +451,13 @@ class SentinelHubPlugin:
                 date_props = list(map(int, date.split("-")))
                 qdate = QDate(*date_props)
                 style = QTextCharFormat()
-                style.setBackground(Qt.gray)
+                style.setBackground(QT_GRAY)
                 self.dockwidget.calendarWidget.setDateTextFormat(qdate, style)
 
     def _clear_calendar_cells(self):
         """Resets all highlighted calendar cells"""
         style = QTextCharFormat()
-        style.setBackground(Qt.white)
+        style.setBackground(QT_WHITE)
         self.dockwidget.calendarWidget.setDateTextFormat(QDate(), style)
 
     def update_maxcc(self):

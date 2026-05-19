@@ -4,9 +4,9 @@ Module wrapping the widget interface
 
 import os
 
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QDockWidget
-from PyQt5.uic import loadUiType
+from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtWidgets import QDockWidget
+from qgis.PyQt.uic import loadUiType
 
 FORM_CLASS, _ = loadUiType(os.path.join(os.path.dirname(__file__), "dockwidget.ui"))
 

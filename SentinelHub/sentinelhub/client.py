@@ -6,7 +6,7 @@ from xml.etree import ElementTree
 
 import requests
 import requests.auth
-from PyQt5.QtCore import QSettings
+from qgis.PyQt.QtCore import QSettings
 
 from ..constants import DEFAULT_REQUEST_TIMEOUT
 from ..exceptions import DownloadError
