@@ -108,9 +108,10 @@ class ConfigurationManager:
         if load_url and data_source.service_url is None:
             # Copernicus Dataspace uses different API endpoint
             if self.settings.base_url == "https://sh.dataspace.copernicus.eu":
-                url = f"{self.settings.base_url}/api/v2/configuration/datasets/{data_source.type}/sources/{data_source.id}"
+                base = f"{self.settings.base_url}/api/v2/configuration"
             else:
-                url = f"{self.configuration_url}/datasets/{data_source.type}/sources/{data_source.id}"
+                base = self.configuration_url
+            url = f"{base}/datasets/{data_source.type}/sources/{data_source.id}"
             result = self.client.download(url, session_settings=self.settings).json()
 
             data_source.name = result["description"]
