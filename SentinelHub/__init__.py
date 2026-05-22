@@ -33,6 +33,7 @@ def classFactory(iface):
     from . import resources
     from .utils.meta import ensure_import
 
+    ensure_import("defusedxml")
     ensure_import("oauthlib")
     ensure_import("requests_oauthlib")
 
