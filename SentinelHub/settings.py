@@ -15,7 +15,8 @@ class Settings:
 
     base_url = ""
     client_id = ""
-    client_secret = ""
+    # Placeholder default, populated from QSettings at runtime
+    client_secret = ""  # nosec B105
 
     instance_id = ""
     service_type = ServiceType.WMS

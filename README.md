@@ -55,6 +55,13 @@ pylint SentinelHub
 
 ### Release
 
+- Verify the plugin passes the checks that the [QGIS plugin repository runs on upload](https://plugins.qgis.org/docs/security-scanning). Bandit and detect-secrets findings are blocking; flake8 is informational but worth resolving:
+```bash
+pip install bandit detect-secrets flake8
+bandit -r SentinelHub/ -x SentinelHub/tests
+detect-secrets scan SentinelHub/
+flake8 SentinelHub/
+```
 - Package code into a zip file using `pb_tool`
 ```bash
 cd ./SentinelHub
