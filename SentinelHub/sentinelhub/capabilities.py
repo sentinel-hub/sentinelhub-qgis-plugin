@@ -1,7 +1,7 @@
 """
 Module handling Sentinel Hub service capabilities
 """
-from xml.etree import ElementTree
+from defusedxml import ElementTree
 
 from ..constants import CrsType, ServiceType
 from ..utils.geo import is_supported_crs

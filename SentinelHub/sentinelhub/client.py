@@ -2,7 +2,7 @@
 Download client for Sentinel Hub service
 """
 
-from xml.etree import ElementTree
+from defusedxml import ElementTree
 
 import requests
 import requests.auth
