@@ -4,15 +4,8 @@ on:
   pull_request:
   push:
     branches:
-      - "master"
-      - "develop"
-  schedule:
-    # Schedule events are triggered by whoever last changed the cron schedule
-    - cron: "5 0 * * *"
+      - "main"
 
-env:
-  # The only way to simulate if-else statement
-  CHECKOUT_BRANCH: ${{ github.event_name == 'schedule' && 'develop' || github.ref }}
 
 jobs:
   check-pre-commit-hooks:
