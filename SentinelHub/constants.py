@@ -1,6 +1,7 @@
 """
 Module containing constants
 """
+
 from enum import Enum
 
 from qgis.core import Qgis

@@ -38,7 +38,9 @@ class Client:
         proxy_dict, auth = get_proxy_config()
         headers = self._prepare_headers(session_settings)
         try:
-            response = requests.get(url, headers=headers, timeout=timeout, proxies=proxy_dict, auth=auth)
+            response = requests.get(
+                url, headers=headers, timeout=timeout, proxies=proxy_dict, auth=auth
+            )
             response.raise_for_status()
         except requests.RequestException as exception:
             raise DownloadError(get_error_message(exception)) from exception
@@ -63,7 +65,9 @@ class Client:
             return Client._CACHED_SESSIONS[cache_key]
 
         session = Session(
-            base_url=settings.base_url, client_id=settings.client_id, client_secret=settings.client_secret
+            base_url=settings.base_url,
+            client_id=settings.client_id,
+            client_secret=settings.client_secret,
         )
 
         Client._CACHED_SESSIONS[cache_key] = session
@@ -132,7 +136,11 @@ def get_proxy_config():
         for protocol in ["http", "https", "ftp"]:
             proxy_dict[protocol] = f"{protocol}://{host}{port_str}"
 
-    auth = requests.auth.HTTPProxyAuth(user, password) if enabled and user and password else None
+    auth = (
+        requests.auth.HTTPProxyAuth(user, password)
+        if enabled and user and password
+        else None
+    )
 
     return proxy_dict, auth
 

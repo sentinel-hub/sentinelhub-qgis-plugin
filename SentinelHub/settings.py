@@ -1,11 +1,19 @@
 """
 Module containing parameters and settings for Sentinel Hub services
 """
+
 import copy
 
 from qgis.PyQt.QtCore import QSettings
 
-from .constants import CrsType, ExtentType, ImageFormat, ImagePriority, ServiceType, TimeType
+from .constants import (
+    CrsType,
+    ExtentType,
+    ImageFormat,
+    ImagePriority,
+    ServiceType,
+    TimeType,
+)
 
 
 class Settings:
@@ -107,4 +115,5 @@ class Settings:
         return copy.copy(self)
 
     def clear(self):
+        """Clears all settings from the local store and from the instance"""
         self.qsettings.clear()
