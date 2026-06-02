@@ -10,7 +10,7 @@ from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from qgis.core import QgsMessageLog
 from requests_oauthlib import OAuth2Session
 
-from ..exceptions import SessionError
+from ..exceptions import SessionError, get_error_message
 
 
 class Session:
@@ -88,8 +88,6 @@ class Session:
                     client_secret=self.client_secret,
                 )
         except requests.HTTPError as exception:
-            from .client import get_error_message  # pylint: disable=import-outside-toplevel, cyclic-import
-
             error_msg = get_error_message(exception)
             raise SessionError(error_msg) from exception
         except OAuth2Error as exception:

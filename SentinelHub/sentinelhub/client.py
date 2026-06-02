@@ -2,14 +2,12 @@
 Download client for Sentinel Hub service
 """
 
-from defusedxml import ElementTree
-
 import requests
 import requests.auth
 from qgis.PyQt.QtCore import QSettings
 
 from ..constants import DEFAULT_REQUEST_TIMEOUT
-from ..exceptions import DownloadError
+from ..exceptions import DownloadError, get_error_message
 from ..utils.meta import get_plugin_version
 from .session import Session
 
@@ -72,54 +70,6 @@ class Client:
 
         Client._CACHED_SESSIONS[cache_key] = session
         return session
-
-
-def get_error_message(exception):
-    """Creates an error message from the given exception
-
-    :param exception: Exception obtained during download
-    :type exception: requests.RequestException
-    :return: error message
-    :rtype: str
-    """
-    message = f"{exception.__class__.__name__}: "
-
-    if isinstance(exception, (requests.ConnectionError, requests.Timeout)):
-        if isinstance(exception, requests.ConnectionError):
-            message += "Cannot access service, check your internet connection."
-        else:
-            message += "Connection timed out, service is too slow"
-
-        enabled, host, port, _, _ = get_proxy_from_qsettings()
-        if enabled:
-            message += f" QGIS is configured to use proxy: {host}"
-            if port:
-                message += f":{port}"
-
-        return message
-
-    if isinstance(exception, requests.HTTPError):
-        try:
-            server_message = ""
-            for elem in ElementTree.fromstring(exception.response.content):
-                if "ServiceException" in elem.tag:
-                    server_message += elem.text.strip("\n\t ")
-        except ElementTree.ParseError:
-            server_message = exception.response.text.strip("\n\t ")
-
-        server_message = server_message.encode("ascii", errors="ignore").decode("utf-8")
-
-        # Include HTTP status code
-        status_code = exception.response.status_code
-        message += f"HTTP {status_code} - "
-
-        # Provide meaningful message when server response is empty
-        if not server_message:
-            server_message = "No additional details provided by server"
-
-        return message + f"{server_message}"
-
-    return message + str(exception)
 
 
 def get_proxy_config():
