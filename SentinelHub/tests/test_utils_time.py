@@ -1,3 +1,5 @@
+"""Tests for time utilities."""
+
 from typing import Optional
 
 import pytest
@@ -25,6 +27,7 @@ from ..utils.time import get_month_time_interval, parse_date
     ],
 )
 def test_parse_date(input_date: str, parsed_date: Optional[str]) -> None:
+    """Tests the parse_date function."""
     assert parse_date(input_date) == parsed_date
 
 
@@ -37,4 +40,5 @@ def test_parse_date(input_date: str, parsed_date: Optional[str]) -> None:
     ],
 )
 def test_get_month_time_interval(year: int, month: int, output: str) -> None:
+    """Tests the get_month_time_interval function."""
     assert get_month_time_interval(year, month) == output

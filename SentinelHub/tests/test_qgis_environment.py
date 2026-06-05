@@ -1,3 +1,5 @@
+"""Tests for the QGIS environment, such as providers registry, projection reading and raster loading."""
+
 # coding=utf-8
 import os
 
@@ -17,18 +19,21 @@ WKT = (
 
 
 def test_providers_registry() -> None:
+    """Tests the providers registry"""
     r = QgsProviderRegistry.instance()
     assert "gdal" in r.providerList()
     assert "ogr" in r.providerList()
 
 
 def test_projection_reading() -> None:
+    """Tests the projection reading"""
     crs = QgsCoordinateReferenceSystem()
     crs.createFromWkt(WKT)
     assert crs.authid() == CRS
 
 
 def test_loaded_raster(input_folder: str) -> None:
+    """Tests loading a raster layer"""
     input_raster = os.path.join(input_folder, "raster_sample.tiff")
     title = "TestRaster"
     layer = QgsRasterLayer(input_raster, title)
