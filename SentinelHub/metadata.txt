@@ -27,7 +27,7 @@ repository=https://github.com/sentinel-hub/sentinelhub-qgis-plugin
 # Recommended items:
 changelog=
     2.0.8
-        - Fix plugin failing to load on QGIS 4 / Qt6: drop the compiled Qt resource (which hardcoded a PyQt5 import) and load the toolbar icon directly from file
+        - Fix plugin failing to load on QGIS 4 / Qt6: drop the compiled Qt resource and load the toolbar icon directly from file
     2.0.5
         - Use defusedxml for parsing XML responses to address security scanner findings
     2.0.4
