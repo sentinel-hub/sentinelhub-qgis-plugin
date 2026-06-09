@@ -1,65 +1,13 @@
 """
 Utilities for handling exceptions and error messaging
 """
-
 import time
 from abc import ABC, abstractmethod
-from defusedxml import ElementTree
-import requests
 
 from qgis.utils import iface
 
-from sentinelhub.client import get_proxy_from_qsettings
 from .constants import ExtentType, MessageType
 from .utils.meta import PLUGIN_NAME
-
-
-def get_error_message(exception):
-    """Creates an error message from the given exception
-
-    :param exception: Exception obtained during download
-    :type exception: requests.RequestException
-    :return: error message
-    :rtype: str
-    """
-    message = f"{exception.__class__.__name__}: "
-
-    if isinstance(exception, (requests.ConnectionError, requests.Timeout)):
-        if isinstance(exception, requests.ConnectionError):
-            message += "Cannot access service, check your internet connection."
-        else:
-            message += "Connection timed out, service is too slow"
-
-        enabled, host, port, _, _ = get_proxy_from_qsettings()
-        if enabled:
-            message += f" QGIS is configured to use proxy: {host}"
-            if port:
-                message += f":{port}"
-
-        return message
-
-    if isinstance(exception, requests.HTTPError):
-        try:
-            server_message = ""
-            for elem in ElementTree.fromstring(exception.response.content):
-                if "ServiceException" in elem.tag:
-                    server_message += elem.text.strip("\n\t ")
-        except ElementTree.ParseError:
-            server_message = exception.response.text.strip("\n\t ")
-
-        server_message = server_message.encode("ascii", errors="ignore").decode("utf-8")
-
-        # Include HTTP status code
-        status_code = exception.response.status_code
-        message += f"HTTP {status_code} - "
-
-        # Provide meaningful message when server response is empty
-        if not server_message:
-            server_message = "No additional details provided by server"
-
-        return message + f"{server_message}"
-
-    return message + str(exception)
 
 
 def show_message(message, message_type):
@@ -244,10 +192,7 @@ class ExtentValidator(BaseValidator):
             return True
 
         return (
-            plugin.settings.lat_min
-            and plugin.settings.lat_max
-            and plugin.settings.lng_min
-            and plugin.settings.lng_max
+            plugin.settings.lat_min and plugin.settings.lat_max and plugin.settings.lng_min and plugin.settings.lng_max
         )
 
 

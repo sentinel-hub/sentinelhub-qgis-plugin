@@ -10,7 +10,7 @@ from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from qgis.core import QgsMessageLog
 from requests_oauthlib import OAuth2Session
 
-from ..exceptions import SessionError, get_error_message
+from ..exceptions import SessionError
 
 
 class Session:
@@ -42,7 +42,6 @@ class Session:
 
     @staticmethod
     def select_oauth_url(base_url):
-        """Selects the appropriate OAuth URL based on the base URL."""
         if base_url == "https://sh.dataspace.copernicus.eu":
             return "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
         return f"{base_url}/oauth/token"
@@ -54,10 +53,7 @@ class Session:
         :return: A token in a form of dictionary of parameters
         :rtype: dict
         """
-        if (
-            self._token
-            and self._token["expires_at"] > time.time() + self.SECONDS_BEFORE_EXPIRY
-        ):
+        if self._token and self._token["expires_at"] > time.time() + self.SECONDS_BEFORE_EXPIRY:
             return self._token
 
         self._token = self._fetch_token()
@@ -76,24 +72,20 @@ class Session:
         """Collects a new token from Sentinel Hub service"""
         oauth_client = BackendApplicationClient(client_id=self.client_id)
 
-        QgsMessageLog.logMessage(
-            "Creating a new authentication session with Sentinel Hub service"
-        )
+        QgsMessageLog.logMessage("Creating a new authentication session with Sentinel Hub service")
 
         try:
             with OAuth2Session(client=oauth_client) as oauth_session:
                 return oauth_session.fetch_token(
-                    token_url=self.oauth_url,
-                    client_id=self.client_id,
-                    client_secret=self.client_secret,
+                    token_url=self.oauth_url, client_id=self.client_id, client_secret=self.client_secret
                 )
         except requests.HTTPError as exception:
+            from ..sentinelhub.client import get_error_message
+
             error_msg = get_error_message(exception)
             raise SessionError(error_msg) from exception
         except OAuth2Error as exception:
             error_details = str(exception)
             if error_details:
-                raise SessionError(
-                    f"Authentication failed: {error_details}"
-                ) from exception
+                raise SessionError(f"Authentication failed: {error_details}") from exception
             raise SessionError() from exception

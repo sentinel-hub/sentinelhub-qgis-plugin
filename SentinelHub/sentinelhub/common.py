@@ -36,9 +36,7 @@ class Layer:
         elif "datasetSource" in payload:
             data_source_id = payload["datasetSource"]["@id"].rsplit("/", 1)[-1]
         else:
-            raise ValueError(
-                "Layer payload missing both 'datasetSourceId' and 'datasetSource' fields"
-            )
+            raise ValueError("Layer payload missing both 'datasetSourceId' and 'datasetSource' fields")
 
         return cls(
             layer_id=payload["id"],
@@ -54,14 +52,7 @@ class Layer:
 class DataSource:
     """Stores info about a Sentinel Hub data source"""
 
-    def __init__(
-        self,
-        data_source_type,
-        data_source_id,
-        collection_id=None,
-        name=None,
-        service_url=None,
-    ):  # pylint: disable=too-many-positional-arguments
+    def __init__(self, data_source_type, data_source_id, collection_id=None, name=None, service_url=None):
         self.type = data_source_type
         self.id = int(data_source_id)
         self.collection_id = collection_id
