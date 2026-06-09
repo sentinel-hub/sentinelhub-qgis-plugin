@@ -29,8 +29,6 @@ def classFactory(iface):
     # pylint: disable=import-outside-toplevel
     # pylint: disable=unused-import
 
-    # The following initializes UI
-    from . import resources
     from .utils.meta import ensure_import
 
     ensure_import("defusedxml")
