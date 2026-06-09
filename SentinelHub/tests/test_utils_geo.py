@@ -1,5 +1,3 @@
-"""Tests for the geo utilities"""
-
 # coding=utf-8
 from typing import Tuple
 
@@ -10,12 +8,7 @@ pytest.importorskip("qgis.core")
 from qgis.core import QgsRectangle  # noqa: E402
 
 from ..settings import Settings  # noqa: E402
-from ..utils.geo import (
-    bbox_to_string,
-    get_custom_bbox,
-    is_bbox_too_large,
-    is_supported_crs,
-)  # noqa: E402
+from ..utils.geo import bbox_to_string, get_custom_bbox, is_bbox_too_large, is_supported_crs  # noqa: E402
 
 
 @pytest.mark.parametrize(
@@ -31,7 +24,6 @@ def test_get_custom_bbox(
     input_coords: Tuple[str, str, str, str],
     expected_coords: Tuple[float, float, float, float],
 ) -> None:
-    """Tests the get_custom_bbox function"""
     lat_max, lat_min, lng_max, lng_min = input_coords
     qsettings.lat_max = lat_max
     qsettings.lat_min = lat_min
@@ -44,29 +36,17 @@ def test_get_custom_bbox(
 @pytest.mark.parametrize(
     "coords, crs, output",
     [
-        (
-            (10.00300000005, 20.123456789, 23.123456789, 3.123456789),
-            "EPSG:4326",
-            "3.123457,10.003,20.123457,23.123457",
-        ),
-        (
-            (10.00300000005, 20.123456789, 23.123456789, 3.123456789),
-            "EPSG:3857",
-            "10.0,3.12,23.12,20.12",
-        ),
+        ((10.00300000005, 20.123456789, 23.123456789, 3.123456789), "EPSG:4326", "3.123457,10.003,20.123457,23.123457"),
+        ((10.00300000005, 20.123456789, 23.123456789, 3.123456789), "EPSG:3857", "10.0,3.12,23.12,20.12"),
         ((1.123456, 2.123456, 3.123456, 4.123456), "EPSG:3535", "1.12,2.12,3.12,4.12"),
     ],
 )
-def test_bbox_to_string(
-    coords: Tuple[float, float, float, float], crs: str, output: str
-) -> None:
-    """Tests the bbox_to_string function"""
+def test_bbox_to_string(coords: Tuple[float, float, float, float], crs: str, output: str) -> None:
     coordinates = bbox_to_string(QgsRectangle(*coords), crs)
     assert coordinates == output
 
 
 def test_is_bbox_too_large() -> None:
-    """Tests the is_bbox_too_large function"""
     assert is_bbox_too_large(QgsRectangle(0, 0, 0, 1), "EPSG:4326", 1e5)
     assert not is_bbox_too_large(QgsRectangle(0, 0, 0, 1), "EPSG:4326", 1e6)
 
@@ -76,5 +56,4 @@ def test_is_bbox_too_large() -> None:
     ["EPSG:3857", "EPSG:3535", "EPSG:3030", "EPSG:4326"],
 )
 def test_is_supported_crs(crs: str) -> None:
-    """Tests the is_supported_crs function"""
     assert is_supported_crs(crs)

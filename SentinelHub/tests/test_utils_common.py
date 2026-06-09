@@ -1,5 +1,3 @@
-"""Tests for the common utilities"""
-
 from typing import Union
 
 import pytest
@@ -8,7 +6,7 @@ from ..utils.common import is_float_or_undefined
 
 
 @pytest.mark.parametrize(
-    "input_value, output",
+    "input, output",
     [
         ("", True),
         (0.1, True),
@@ -24,6 +22,5 @@ from ..utils.common import is_float_or_undefined
         ("abcd", False),
     ],
 )
-def test_is_float_or_undefined(input_value: Union[str, float], output: bool) -> None:
-    """Tests the is_float_or_undefined function"""
-    assert is_float_or_undefined(input_value) == output
+def test_is_float_or_undefined(input: Union[str, float], output: bool) -> None:
+    assert is_float_or_undefined(input) == output

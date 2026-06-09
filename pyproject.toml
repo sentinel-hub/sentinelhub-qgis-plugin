@@ -18,18 +18,14 @@ max-line-length = 120
 
 [tool.pylint.messages_control]
 disable = [
-  "no-member",
-  "arguments-differ",
-  "assignment-from-no-return",
-  "unsubscriptable-object",
-  "invalid-unary-operand-type",
-  "unspecified-encoding",
-  "unnecessary-ellipsis",
-  "use-dict-literal",
-  "import-error",
-  "invalid-name",
-  "wrong-import-position",
-  "import-outside-toplevel",
+    "no-member",
+    "arguments-differ",
+    "assignment-from-no-return",
+    "unsubscriptable-object",
+    "invalid-unary-operand-type",
+    "unspecified-encoding",
+    "unnecessary-ellipsis",
+    "use-dict-literal"
 ]
 
 [tool.pylint.design]
@@ -45,4 +41,6 @@ min-similarity-lines = 5
 valid-metaclass-classmethod-first-arg = "mcs"
 
 [tool.pytest.ini_options]
-pythonpath = ["SentinelHub"]
+pythonpath = [
+  "SentinelHub"
+]

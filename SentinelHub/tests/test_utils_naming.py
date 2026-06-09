@@ -1,5 +1,3 @@
-"""Tests for naming utilities."""
-
 # coding=utf-8
 import pytest
 
@@ -33,13 +31,7 @@ qsettings.end_time = END_TIME
 @pytest.mark.parametrize(
     "data_source_type, layer_name, data_source_name, service_type, expected_str",
     [
-        (
-            "DEM",
-            "TOPOGRAPHIC-VIS",
-            "COP_30",
-            ServiceType.WMS,
-            f"COP_30 - TOPOGRAPHIC-VIS (WMS, {CRS})",
-        ),
+        ("DEM", "TOPOGRAPHIC-VIS", "COP_30", ServiceType.WMS, f"COP_30 - TOPOGRAPHIC-VIS (WMS, {CRS})"),
         (
             "S1GRD",
             "VH-DB",
@@ -63,10 +55,7 @@ qsettings.end_time = END_TIME
         ),
     ],
 )
-def test_get_qgis_layer_name(
-    data_source_type, layer_name, data_source_name, service_type, expected_str
-) -> None:
-    """Tests the get_qgis_layer_name function."""
+def test_get_qgis_layer_name(data_source_type, layer_name, data_source_name, service_type, expected_str) -> None:
     qsettings.service_type = service_type
     ds = DataSource(data_source_type, DATA_SOURCE_ID, name=data_source_name)
     layer = Layer(LAYER_ID, layer_name, ds)
@@ -106,10 +95,7 @@ def test_get_qgis_layer_name(
         ),
     ],
 )
-def test_get_filename(
-    data_source_type, data_source_name, layer_name, show_logo, expected_str
-) -> None:
-    """Tests the get_filename function."""
+def test_get_filename(data_source_type, data_source_name, layer_name, show_logo, expected_str) -> None:
     qsettings.show_logo = show_logo
     ds = DataSource(data_source_type, DATA_SOURCE_ID, name=data_source_name)
     layer = Layer(LAYER_ID, layer_name, ds)

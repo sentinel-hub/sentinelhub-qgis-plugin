@@ -1,7 +1,6 @@
 """
 Module with Sentinel Hub OGC utilities
 """
-
 import datetime as dt
 from urllib.parse import quote_plus, urlencode
 
@@ -93,7 +92,7 @@ def get_wfs_url(settings, layer, bbox_str, time_range, maxcc=None):
     return _build_url(base_url, params)
 
 
-def get_wcs_url(settings, bbox, crs=None):
+def get_wcs_url(settings, layer, bbox, crs=None):
     """Generate a URL for WCS request from parameters"""
     base_url = _get_service_endpoint(settings, ServiceType.WCS)
     params = {
@@ -148,9 +147,7 @@ def _build_uri(base_url, url_params, uri_params, use_builder=False):
 
 def _build_time(settings):
     """Builds a time string to be sent to Sentinel Hub service"""
-    if (settings.is_exact_date and not settings.start_time) or (
-        not settings.start_time and not settings.end_time
-    ):
+    if (settings.is_exact_date and not settings.start_time) or (not settings.start_time and not settings.end_time):
         return ""
 
     start_time = settings.start_time

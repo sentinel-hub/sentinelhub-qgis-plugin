@@ -30,7 +30,7 @@ def classFactory(iface):
     # pylint: disable=unused-import
 
     # The following initializes UI
-    from . import resources  # pylint: disable=import-self,no-name-in-module
+    from . import resources
     from .utils.meta import ensure_import
 
     ensure_import("defusedxml")
