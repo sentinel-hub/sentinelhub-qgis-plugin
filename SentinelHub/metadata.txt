@@ -6,7 +6,7 @@ name=SentinelHub
 qgisMinimumVersion=3.22
 qgisMaximumVersion=4.99
 description=SentinelHub plugin enables users to harness the power of Sentinel Hub services directly from QGIS.
-version=2.0.7
+version=2.0.8
 author=Sinergise
 email=info@sentinel-hub.com
 
@@ -26,8 +26,8 @@ repository=https://github.com/sentinel-hub/sentinelhub-qgis-plugin
 
 # Recommended items:
 changelog=
-    2.0.7
-        - Revert 2.0.6, which introduced an import regression that prevented the plugin from loading
+    2.0.8
+        - Fix plugin failing to load on QGIS 4 / Qt6: drop the compiled Qt resource and load the toolbar icon directly from file
     2.0.5
         - Use defusedxml for parsing XML responses to address security scanner findings
     2.0.4

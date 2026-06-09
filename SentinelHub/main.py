@@ -77,7 +77,7 @@ class SentinelHubPlugin:
 
     # pylint: disable=too-many-public-methods
 
-    ICON_PATH = ":/plugins/SentinelHub/favicon.ico"
+    ICON_PATH = os.path.join(os.path.dirname(__file__), "favicon.ico")
 
     def __init__(self, iface):
         """Called by QGIS at the beginning when you open QGIS or when the plugin is enabled in the
