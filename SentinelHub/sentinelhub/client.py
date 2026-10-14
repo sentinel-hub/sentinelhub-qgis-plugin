@@ -5,12 +5,11 @@ Download client for Sentinel Hub service
 from defusedxml import ElementTree
 
 import requests
-import requests.auth
-from qgis.PyQt.QtCore import QSettings
 
 from ..constants import DEFAULT_REQUEST_TIMEOUT
 from ..exceptions import DownloadError
 from ..utils.meta import get_plugin_version
+from .proxy import get_proxies, get_proxy_description
 from .session import Session
 
 
@@ -35,10 +34,9 @@ class Client:
         :return: download response or None if download failed
         :rtype: requests.Response or None
         """
-        proxy_dict, auth = get_proxy_config()
         headers = self._prepare_headers(session_settings)
         try:
-            response = requests.get(url, headers=headers, timeout=timeout, proxies=proxy_dict, auth=auth)
+            response = requests.get(url, headers=headers, timeout=timeout, proxies=get_proxies(url))
             response.raise_for_status()
         except requests.RequestException as exception:
             raise DownloadError(get_error_message(exception)) from exception
@@ -86,12 +84,17 @@ def get_error_message(exception):
         else:
             message += "Connection timed out, service is too slow"
 
-        enabled, host, port, _, _ = get_proxy_from_qsettings()
-        if enabled:
-            message += f" QGIS is configured to use proxy: {host}"
-            if port:
-                message += f":{port}"
+        proxy_description = get_proxy_description()
+        if proxy_description:
+            message += f" QGIS is configured to use proxy: {proxy_description}"
 
+        return message
+
+    if isinstance(exception, requests.exceptions.InvalidSchema) and "SOCKS" in str(exception):
+        message += (
+            "The SOCKS proxy that is configured in QGIS cannot be used because the PySocks package is missing. "
+            "Install it into the Python environment that QGIS uses."
+        )
         return message
 
     if isinstance(exception, requests.HTTPError):
@@ -116,39 +119,3 @@ def get_error_message(exception):
         return message + f"{server_message}"
 
     return message + str(exception)
-
-
-def get_proxy_config():
-    """Get proxy config from QSettings and builds proxy parameters
-
-    :return: A dictionary of transfer protocols mapped to an address, also authentication if set in QSettings
-    :rtype: (dict, requests.auth.HTTPProxyAuth) or (dict, None)
-    """
-    enabled, host, port, user, password = get_proxy_from_qsettings()
-
-    proxy_dict = {}
-    if enabled and host:
-        port_str = f":{port}" if port else ""
-        for protocol in ["http", "https", "ftp"]:
-            proxy_dict[protocol] = f"{protocol}://{host}{port_str}"
-
-    auth = requests.auth.HTTPProxyAuth(user, password) if enabled and user and password else None
-
-    return proxy_dict, auth
-
-
-def get_proxy_from_qsettings():
-    """Gets the proxy configuration from QSettings
-
-    :return: Proxy settings: flag specifying if proxy is enabled, host, port, user and password
-    :rtype: tuple(str)
-    """
-    qsettings = QSettings()
-    qsettings.beginGroup("proxy")
-    enabled = str(qsettings.value("proxyEnabled")).lower() == "true"
-    host = qsettings.value("proxyHost")
-    port = qsettings.value("proxyPort")
-    user = qsettings.value("proxyUser")
-    password = qsettings.value("proxyPassword")
-    qsettings.endGroup()
-    return enabled, host, port, user, password

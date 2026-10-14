@@ -14,6 +14,20 @@ In case of manual installation, you can download [latest release](https://github
 
 For a quick tutorial check this [blog post](https://medium.com/sentinel-hub/control-sentinel-hub-from-within-qgis-2a83eb7f13db).
 
+### Proxy
+
+The plugin uses the proxy that is configured in QGIS under `Settings -> Options -> Network`, both for the map layers
+it adds and for the requests it makes itself (authentication, listing configurations and layers, and downloading
+images). There are no separate proxy settings in the plugin.
+
+Supported QGIS proxy types are `HttpProxy`, `HttpCachingProxy`, `DefaultProxy` (the system proxy) and `Socks5Proxy`.
+Proxy credentials are used, including those that come from a QGIS authentication configuration, and the QGIS lists of
+excluded URLs are respected. A `Socks5Proxy` additionally requires the `PySocks` package to be installed in the Python
+environment that QGIS uses.
+
+If no proxy is configured in QGIS, the standard `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` environment variables are
+used instead.
+
 ## Development
 
 ### Set up an environment

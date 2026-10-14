@@ -47,3 +47,22 @@ def qsettings() -> None:
     yield settings
 
     settings.clear()
+
+
+@pytest.fixture(name="set_qgis_proxy")
+def set_qgis_proxy_fixture(qgis_app: None) -> None:
+    """Provides a function that configures the QGIS proxy and restores the original configuration afterwards"""
+    from qgis.core import QgsNetworkAccessManager  # noqa: E402
+
+    network_manager = QgsNetworkAccessManager.instance()
+    original_config = (
+        network_manager.fallbackProxy(),
+        network_manager.excludeList(),
+        network_manager.noProxyList(),
+    )
+
+    def set_qgis_proxy(proxy, excluded_urls=(), no_proxy_urls=()) -> None:
+        network_manager.setFallbackProxyAndExcludes(proxy, list(excluded_urls), list(no_proxy_urls))
+
+    yield set_qgis_proxy
+    network_manager.setFallbackProxyAndExcludes(*original_config)
